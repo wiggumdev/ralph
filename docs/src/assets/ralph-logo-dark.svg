@@ -1,0 +1,11 @@
+<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Loop circle representing the agentic loop -->
+  <circle cx="20" cy="20" r="16" stroke="#FFD93D" stroke-width="3" stroke-linecap="round" stroke-dasharray="4 6"/>
+
+  <!-- Inner arrow suggesting iteration -->
+  <path d="M26 14L30 20L26 26" stroke="#FAFAFA" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M14 14L10 20L14 26" stroke="#FAFAFA" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Center dot - the context window reset point -->
+  <circle cx="20" cy="20" r="3" fill="#FFD93D"/>
+</svg>

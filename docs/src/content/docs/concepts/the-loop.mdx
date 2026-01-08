@@ -1,0 +1,192 @@
+---
+title: The Loop
+description: Understanding ralph's core mechanism—the iterative agentic loop.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+# The Loop
+
+At its heart, ralph is beautifully simple: it's a loop. The same loop that Geoffrey Huntley described when he coined the technique:
+
+> "Ralph is a Bash loop."
+
+But this simplicity hides surprising power. Let's understand why.
+
+## The Basic Loop
+
+Here's ralph in its purest form:
+
+```bash
+while ! done; do
+  ai_agent "$PROMPT"
+done
+```
+
+That's it. Run the AI with a prompt. When it exits, check if we're done. If not, run it again with the same prompt.
+
+The key insight: **the prompt doesn't change, but the codebase does.**
+
+## How It Works
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│   ┌──────────┐    ┌──────────┐    ┌──────────┐            │
+│   │  Start   │───▶│ Run AI   │───▶│  Check   │            │
+│   │  Fresh   │    │   Tool   │    │   Exit   │            │
+│   │ Context  │    │          │    │  Conds   │            │
+│   └──────────┘    └──────────┘    └────┬─────┘            │
+│        ▲                               │                   │
+│        │         ┌──────────┐    ┌─────┴─────┐            │
+│        │         │   Not    │    │           │            │
+│        └─────────│   Done   │◀───│   Done?   │───▶ Exit   │
+│                  └──────────┘    └───────────┘            │
+│                                                             │
+│   State persists via: git commits, files, test results     │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+Each iteration:
+
+1. **Fresh Context** — The AI starts with an empty context window
+2. **Read State** — It reads your prompt, checks files, runs commands
+3. **Do Work** — Makes progress (writes code, fixes bugs, adds tests)
+4. **Save State** — Commits changes, updates progress markers
+5. **Exit** — The AI session ends (either naturally or via timeout)
+6. **Check Conditions** — ralph evaluates if the task is complete
+7. **Loop or Exit** — Continue if not done, stop if complete
+
+## Why This Works
+
+### The Context Window Problem
+
+AI models have a fixed context window—the amount of text they can "see" at once. As you interact with a model:
+
+- Tool calls accumulate
+- File contents pile up
+- Conversation history grows
+- Errors and corrections add noise
+
+Eventually, the model is swimming in context. It forgets earlier instructions. It gets confused by old errors it already fixed. It starts making mistakes it didn't make before.
+
+<Aside type="caution" title="The Research">
+Anthropic's engineering team found that model performance degrades significantly as context fills. Fresh context = better performance. This is documented in their research on effective harnesses for long-running agents.
+</Aside>
+
+### The Reset Solution
+
+ralph solves this by **resetting context between iterations**:
+
+```
+Iteration 1: Fresh model → reads files → does work → exits
+Iteration 2: Fresh model → reads updated files → does more work → exits
+Iteration 3: Fresh model → reads further updates → finishes → exits
+```
+
+Each iteration, the model:
+- Starts completely fresh
+- Learns the current state from files and git history
+- Has maximum cognitive capacity for the actual task
+- Isn't burdened by accumulated conversation baggage
+
+### State Externalization
+
+The magic trick is that **state lives in the codebase, not the conversation**.
+
+The model doesn't need to remember what it did. It can:
+- Read git log to see recent changes
+- Check test results to see what's passing
+- Look at TODO comments or progress files
+- Examine the actual code it wrote
+
+This is more reliable than conversation memory anyway. Files don't hallucinate.
+
+## The Prompt Paradox
+
+Here's what confuses people at first: **the same prompt runs every iteration**.
+
+Won't it just do the same thing over and over?
+
+No, because the codebase changes. Consider this prompt:
+
+```markdown
+Add unit tests for all untested functions in src/.
+Check PROGRESS.md for what's already done.
+```
+
+- **Iteration 1**: Finds 20 untested functions. Tests 5 of them.
+- **Iteration 2**: Fresh model reads code. Finds 15 untested. Tests 5 more.
+- **Iteration 3**: Finds 10 untested. Tests 5 more.
+- ...
+- **Iteration N**: Finds 0 untested. Task complete.
+
+The prompt is constant. The codebase evolves. The model adapts.
+
+## Iteration Dynamics
+
+### Early Iterations
+
+In the first few iterations, the model is orienting:
+- Understanding the codebase structure
+- Setting up patterns and conventions
+- Making big-picture progress
+
+### Middle Iterations
+
+The bulk of the work happens here:
+- Systematic progress through the task
+- Building on established patterns
+- Handling the "boring" repetitive work
+
+### Late Iterations
+
+Final polish and edge cases:
+- Fixing tests that were broken by earlier changes
+- Handling corner cases
+- Final cleanup
+
+<Aside type="tip" title="Natural Convergence">
+Well-designed tasks naturally converge. Each iteration has less to do than the last, until the exit condition is met.
+</Aside>
+
+## Why "Ralph Wiggum"?
+
+The name perfectly captures the technique's nature:
+
+**Deterministically stubborn** — Same prompt, every time. No clever adaptation. Just persistence.
+
+**Surprisingly effective** — Like Ralph occasionally saying something profound, this simple approach produces remarkable results.
+
+**Optimistic to a fault** — It just keeps trying. Failed test? Loop again. Error? Loop again. Eventually, it works.
+
+The humor isn't accidental. There's something delightfully absurd about a technique this simple being this powerful.
+
+## Common Misconceptions
+
+### "Won't it loop forever?"
+
+No. Exit conditions stop the loop:
+- Tests pass
+- No more errors
+- Max iterations reached
+- Completion marker found
+
+### "Won't it undo its own work?"
+
+Rarely. The model reads what exists and continues from there. Git history provides additional context about what changed and why.
+
+### "Isn't this wasteful?"
+
+It's actually efficient. Each iteration runs at peak performance. Compare to a single long session where the model gets progressively worse.
+
+### "Can't I just use a longer context window?"
+
+Longer windows help, but degradation still occurs. The issue isn't just length—it's accumulated noise. Fresh context always wins.
+
+## Next Steps
+
+- **[Context Windows](/concepts/context-windows/)** — Deep dive into why resets matter
+- **[Exit Conditions](/concepts/exit-conditions/)** — Configure when to stop
+- **[State Persistence](/concepts/state-persistence/)** — How state survives resets

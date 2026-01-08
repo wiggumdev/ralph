@@ -1,0 +1,102 @@
+---
+title: Introduction
+description: What is ralph and why does it exist?
+---
+
+import { Aside, Card, CardGrid } from '@astrojs/starlight/components';
+
+# Introduction to ralph
+
+**ralph** is a CLI tool that orchestrates AI coding agents in iterative loops. It implements the "Ralph Wiggum" technique—resetting context windows between iterations while preserving state through your codebase.
+
+## The Core Insight
+
+AI models have a fundamental limitation: as context accumulates, performance degrades. Anthropic's research on [long-running agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents) confirms what practitioners have observed:
+
+> When the context window fills up, the model gets dumb.
+
+ralph solves this by:
+1. Running your AI tool with a prompt
+2. Letting it work until it tries to exit
+3. Resetting the context (starting a new session)
+4. Feeding the same prompt back
+5. Repeating until done
+
+The magic: **the prompt stays the same, but the codebase changes**. Each iteration, the model reads updated files, git history, and test results—learning from its own output.
+
+## Why "Ralph Wiggum"?
+
+The technique was coined by [Geoffrey Huntley](https://ghuntley.com/ralph/), who described it beautifully:
+
+> "Ralph is a Bash loop."
+
+<Aside type="tip" title="The Philosophy">
+Like Ralph Wiggum from The Simpsons, this approach is deterministically stubborn in an undeterministic world. It keeps trying, keeps iterating, and—surprisingly often—succeeds.
+</Aside>
+
+The name captures something real about the technique:
+- **Simple to the point of seeming naive**
+- **Persistently optimistic about outcomes**
+- **Surprisingly effective in practice**
+
+## What Makes ralph Different?
+
+### AI-Agnostic
+
+Unlike tool-specific solutions, ralph works with any CLI-based AI coding tool:
+
+- **Claude Code** — Anthropic's official CLI
+- **OpenCode** — Open-source alternative
+- **Aider** — Git-integrated coding assistant
+- **Any CLI tool** — If it takes a prompt and writes code, ralph can loop it
+
+### Research-Backed
+
+ralph implements best practices from Anthropic's research on effective harnesses for long-running agents:
+
+- **Context window management** — Fresh context each iteration
+- **State externalization** — Progress lives in files, not conversation
+- **Explicit checkpoints** — Clear markers of completed work
+- **Graceful exit conditions** — Know when to stop
+
+### Production-Ready
+
+ralph isn't a toy. It's been used to:
+- Build complete programming languages (3-month loop)
+- Ship multiple repositories overnight ($297 in API costs)
+- Automate massive refactoring projects
+- Generate comprehensive test suites
+
+## When to Use ralph
+
+<CardGrid>
+  <Card title="Large Refactors" icon="pencil">
+    Rename across hundreds of files. Update API contracts. Migrate frameworks.
+  </Card>
+  <Card title="Test Coverage" icon="approve-check">
+    Add tests for all modules systematically. The loop continues until coverage targets are met.
+  </Card>
+  <Card title="Documentation" icon="document">
+    Generate docs for every function, class, and module. Consistent style throughout.
+  </Card>
+  <Card title="Migrations" icon="rocket">
+    Database schema changes. Framework upgrades. Language version bumps.
+  </Card>
+</CardGrid>
+
+## When NOT to Use ralph
+
+ralph isn't the right choice for everything:
+
+- **Quick one-off questions** — Just use your AI tool directly
+- **Exploratory conversations** — ralph is for task completion, not brainstorming
+- **Highly interactive work** — If you need to make decisions constantly, work directly
+- **Simple tasks** — If one prompt gets it done, one prompt is enough
+
+## Next Steps
+
+Ready to dive in?
+
+1. **[Installation](/guides/installation/)** — Get ralph set up
+2. **[Quick Start](/guides/quickstart/)** — Your first loop
+3. **[The Loop](/concepts/the-loop/)** — Understand the core concept

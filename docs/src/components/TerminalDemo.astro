@@ -1,0 +1,137 @@
+---
+// Terminal demonstration component
+interface Props {
+  title?: string;
+  commands: Array<{
+    prompt?: string;
+    command: string;
+    output?: string[];
+  }>;
+}
+
+const { title = 'terminal', commands } = Astro.props;
+---
+
+<div class="terminal-demo">
+  <div class="terminal-header">
+    <span class="terminal-dot red"></span>
+    <span class="terminal-dot yellow"></span>
+    <span class="terminal-dot green"></span>
+    <span class="terminal-title">{title}</span>
+  </div>
+  <div class="terminal-body">
+    {commands.map((cmd, i) => (
+      <div class="terminal-block">
+        <div class="terminal-line">
+          <span class="terminal-prompt">{cmd.prompt || '$'}</span>
+          <span class="terminal-command">{cmd.command}</span>
+        </div>
+        {cmd.output && cmd.output.map(line => (
+          <div class="terminal-output" set:html={line}></div>
+        ))}
+      </div>
+    ))}
+    <div class="terminal-cursor">█</div>
+  </div>
+</div>
+
+<style>
+  .terminal-demo {
+    background: #0D1117;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    margin: 1.5rem 0;
+    box-shadow:
+      0 4px 6px -1px rgba(0, 0, 0, 0.1),
+      0 2px 4px -1px rgba(0, 0, 0, 0.06),
+      0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+
+  .terminal-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: #161B22;
+    border-bottom: 1px solid #30363D;
+  }
+
+  .terminal-dot {
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 50%;
+  }
+
+  .terminal-dot.red { background: #FF5F56; }
+  .terminal-dot.yellow { background: #FFBD2E; }
+  .terminal-dot.green { background: #27C93F; }
+
+  .terminal-title {
+    flex: 1;
+    text-align: center;
+    font-size: 0.75rem;
+    color: #8B949E;
+    font-family: var(--sl-font-mono);
+  }
+
+  .terminal-body {
+    padding: 1rem;
+    font-family: var(--sl-font-mono);
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+
+  .terminal-block {
+    margin-bottom: 0.75rem;
+  }
+
+  .terminal-block:last-of-type {
+    margin-bottom: 0;
+  }
+
+  .terminal-line {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .terminal-prompt {
+    color: #7EE787;
+    user-select: none;
+  }
+
+  .terminal-command {
+    color: #79C0FF;
+  }
+
+  .terminal-output {
+    color: #8B949E;
+    padding-left: 1rem;
+    margin-top: 0.25rem;
+  }
+
+  .terminal-output :global(.success) {
+    color: #7EE787;
+  }
+
+  .terminal-output :global(.error) {
+    color: #F85149;
+  }
+
+  .terminal-output :global(.warning) {
+    color: #D29922;
+  }
+
+  .terminal-output :global(.highlight) {
+    color: #FFD93D;
+  }
+
+  .terminal-cursor {
+    color: #7EE787;
+    animation: blink 1s step-end infinite;
+  }
+
+  @keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+  }
+</style>

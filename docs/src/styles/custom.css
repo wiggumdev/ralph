@@ -1,0 +1,292 @@
+/* Ralph Wiggum Theme for Starlight */
+
+:root {
+  /* Core accent colors - Ralph's yellow */
+  --sl-color-accent-low: #451A03;
+  --sl-color-accent: #FFD93D;
+  --sl-color-accent-high: #FEF3C7;
+
+  /* Text colors */
+  --sl-color-white: #FAFAFA;
+  --sl-color-gray-1: #E4E4E7;
+  --sl-color-gray-2: #A1A1AA;
+  --sl-color-gray-3: #71717A;
+  --sl-color-gray-4: #3F3F46;
+  --sl-color-gray-5: #27272A;
+  --sl-color-gray-6: #18181B;
+  --sl-color-black: #09090B;
+
+  /* Background with subtle warmth */
+  --sl-color-bg: #FAFAFA;
+  --sl-color-bg-sidebar: #F4F4F5;
+  --sl-color-bg-nav: rgba(250, 250, 250, 0.95);
+
+  /* Typography */
+  --sl-font: 'Inter', system-ui, sans-serif;
+  --sl-font-mono: 'JetBrains Mono', monospace;
+
+  /* Borders */
+  --sl-color-hairline-light: #E4E4E7;
+  --sl-color-hairline: #D4D4D8;
+
+  /* Content sizing */
+  --sl-content-width: 50rem;
+  --sl-sidebar-width: 18rem;
+}
+
+:root[data-theme='dark'] {
+  --sl-color-accent-low: #78350F;
+  --sl-color-accent: #FFD93D;
+  --sl-color-accent-high: #FFFBEB;
+
+  --sl-color-bg: #0A0A0B;
+  --sl-color-bg-sidebar: #111113;
+  --sl-color-bg-nav: rgba(10, 10, 11, 0.95);
+
+  --sl-color-hairline-light: #27272A;
+  --sl-color-hairline: #3F3F46;
+}
+
+/* Custom header styling */
+.site-title {
+  font-weight: 700 !important;
+  letter-spacing: -0.02em;
+}
+
+/* Sidebar styling */
+.sidebar-content {
+  padding-top: 1rem;
+}
+
+nav.sidebar a {
+  border-radius: 0.5rem;
+  transition: all 0.15s ease;
+}
+
+nav.sidebar a:hover {
+  background-color: var(--sl-color-accent-low);
+}
+
+nav.sidebar a[aria-current='page'] {
+  background-color: var(--sl-color-accent);
+  color: var(--sl-color-black);
+  font-weight: 600;
+}
+
+/* Code block styling */
+.expressive-code {
+  margin: 1.5rem 0;
+}
+
+.expressive-code pre {
+  border-radius: 0.75rem !important;
+  border: 1px solid var(--sl-color-hairline-light) !important;
+}
+
+.expressive-code .frame {
+  border-radius: 0.75rem !important;
+}
+
+/* Headings with personality */
+h1, h2, h3, h4, h5, h6 {
+  letter-spacing: -0.02em;
+}
+
+h1 {
+  font-weight: 800;
+}
+
+/* Links with Ralph's yellow accent */
+.sl-markdown-content a:not(.not-content *) {
+  color: var(--sl-color-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: all 0.15s ease;
+}
+
+.sl-markdown-content a:not(.not-content *):hover {
+  color: var(--sl-color-accent-high);
+  text-decoration-color: var(--sl-color-accent);
+}
+
+/* Callout/admonition styling */
+.starlight-aside {
+  border-radius: 0.75rem;
+  border-left-width: 4px;
+}
+
+.starlight-aside--tip {
+  --sl-color-asides-text-accent: #FFD93D;
+  background: linear-gradient(to right, rgba(255, 217, 61, 0.1), transparent);
+}
+
+.starlight-aside--note {
+  --sl-color-asides-text-accent: #70D6FF;
+  background: linear-gradient(to right, rgba(112, 214, 255, 0.1), transparent);
+}
+
+.starlight-aside--caution {
+  --sl-color-asides-text-accent: #FF9F1C;
+  background: linear-gradient(to right, rgba(255, 159, 28, 0.1), transparent);
+}
+
+.starlight-aside--danger {
+  --sl-color-asides-text-accent: #FF4444;
+  background: linear-gradient(to right, rgba(255, 68, 68, 0.1), transparent);
+}
+
+/* Table styling */
+.sl-markdown-content table {
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 1px solid var(--sl-color-hairline-light);
+}
+
+.sl-markdown-content th {
+  background-color: var(--sl-color-bg-sidebar);
+  font-weight: 600;
+}
+
+.sl-markdown-content tr:hover {
+  background-color: var(--sl-color-bg-sidebar);
+}
+
+/* Custom badge for loop iterations */
+.iteration-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  background: linear-gradient(135deg, #FFD93D 0%, #FF9F1C 100%);
+  color: #18181B;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Loop visualization */
+.loop-visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  background: var(--sl-color-bg-sidebar);
+  border-radius: 1rem;
+  margin: 2rem 0;
+}
+
+.loop-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: var(--sl-color-bg);
+  border: 2px solid var(--sl-color-hairline);
+  border-radius: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.loop-node:hover {
+  border-color: var(--sl-color-accent);
+  transform: translateY(-2px);
+}
+
+.loop-arrow {
+  color: var(--sl-color-accent);
+  font-size: 1.5rem;
+}
+
+/* Hero section styling */
+.hero-section {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: linear-gradient(180deg, var(--sl-color-bg) 0%, var(--sl-color-bg-sidebar) 100%);
+}
+
+.hero-tagline {
+  font-size: 1.25rem;
+  color: var(--sl-color-gray-2);
+  max-width: 36rem;
+  margin: 0 auto;
+}
+
+/* Feature cards */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+.feature-card {
+  padding: 1.5rem;
+  background: var(--sl-color-bg);
+  border: 1px solid var(--sl-color-hairline-light);
+  border-radius: 1rem;
+  transition: all 0.2s ease;
+}
+
+.feature-card:hover {
+  border-color: var(--sl-color-accent);
+  box-shadow: 0 0 24px rgba(255, 217, 61, 0.15);
+}
+
+.feature-card h3 {
+  margin-top: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Terminal animation */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.terminal-cursor {
+  animation: blink 1s infinite;
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Selection color */
+::selection {
+  background-color: rgba(255, 217, 61, 0.3);
+}
+
+/* Focus states */
+:focus-visible {
+  outline: 2px solid var(--sl-color-accent);
+  outline-offset: 2px;
+}
+
+/* Mobile improvements */
+@media (max-width: 768px) {
+  .hero-section {
+    padding: 2rem 1rem;
+  }
+
+  .feature-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Print styles */
+@media print {
+  .sidebar, .header {
+    display: none !important;
+  }
+
+  .main-frame {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}

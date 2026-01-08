@@ -1,0 +1,259 @@
+---
+title: Quick Start
+description: Run your first ralph loop in 5 minutes.
+---
+
+import { Aside, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+
+# Quick Start
+
+Let's run your first ralph loop. We'll add tests to a simple project—the kind of tedious, repetitive work that ralph excels at.
+
+<Aside type="tip">
+This guide assumes you've [installed ralph](/guides/installation/) and have an AI tool like Claude Code available.
+</Aside>
+
+## The 5-Minute Version
+
+If you just want to see ralph in action:
+
+```bash
+# In any project directory
+ralph run --tool claude "Fix all TypeScript errors in this project"
+```
+
+That's it. ralph will:
+1. Start Claude Code with your prompt
+2. Wait for it to work and try to exit
+3. Reset context and feed the same prompt
+4. Repeat until no TypeScript errors remain
+
+## A Proper Example
+
+Let's do something more structured. We'll add tests to a Node.js project.
+
+<Steps>
+
+1. **Set up the example**
+
+   ```bash
+   # Clone a simple project (or use your own)
+   git clone https://github.com/example/node-starter my-project
+   cd my-project
+   npm install
+   ```
+
+2. **Initialize ralph**
+
+   ```bash
+   ralph init
+   ```
+
+   This creates `ralph.config.json`. Edit it:
+
+   ```json
+   {
+     "tool": "claude",
+     "exitConditions": {
+       "command": "npm test",
+       "successPattern": "All tests passed",
+       "maxIterations": 20
+     }
+   }
+   ```
+
+3. **Create your task prompt**
+
+   Create a file called `TASK.md`:
+
+   ```markdown
+   # Task: Add Comprehensive Tests
+
+   Add unit tests for all modules in `src/`.
+
+   ## Guidelines
+   - Use Jest (already configured)
+   - Each module should have a corresponding `.test.js` file
+   - Aim for >80% coverage
+   - Test both success and error paths
+
+   ## How to Check Progress
+   1. Run `npm test` to see current status
+   2. Run `npm run coverage` to check coverage %
+
+   ## When You're Done
+   All tests should pass. Coverage should be >80%.
+   If complete, just exit normally.
+   ```
+
+4. **Run the loop**
+
+   ```bash
+   ralph run --prompt TASK.md
+   ```
+
+5. **Watch it work**
+
+   You'll see output like:
+
+   ```
+   ┌─────────────────────────────────────────────────┐
+   │  ralph v1.0.0                                   │
+   │  Loop iteration: 1                              │
+   └─────────────────────────────────────────────────┘
+
+   → Starting claude with prompt from TASK.md
+   → Waiting for AI to work...
+
+   [Claude Code output here]
+
+   → AI exited. Checking exit conditions...
+   → Running: npm test
+   → Tests: 3 passing, 5 failing
+   → Condition not met. Starting iteration 2...
+
+   ┌─────────────────────────────────────────────────┐
+   │  Loop iteration: 2                              │
+   └─────────────────────────────────────────────────┘
+
+   → Starting claude with prompt from TASK.md
+   ...
+   ```
+
+   Each iteration:
+   - Claude reads the prompt and current codebase
+   - Makes progress (adds tests, fixes issues)
+   - ralph checks if tests pass
+   - If not done, loops again with fresh context
+
+</Steps>
+
+## Understanding the Output
+
+Here's what a typical ralph session looks like:
+
+```
+$ ralph run --prompt TASK.md
+
+ralph v1.0.0 — the loop that keeps going
+
+╭──────────────────────────────────────────╮
+│ Iteration 1 of 20                        │
+╰──────────────────────────────────────────╯
+
+▸ Tool: claude
+▸ Prompt: TASK.md (247 words)
+▸ Exit condition: npm test → "All tests passed"
+
+Starting AI session...
+
+[... Claude works, you see its output ...]
+
+Session ended. Checking conditions...
+
+  ✗ Exit command returned: 5 tests failed
+
+Continuing to iteration 2...
+
+╭──────────────────────────────────────────╮
+│ Iteration 2 of 20                        │
+╰──────────────────────────────────────────╯
+
+[... continues ...]
+
+╭──────────────────────────────────────────╮
+│ Iteration 7 of 20                        │
+╰──────────────────────────────────────────╯
+
+[... Claude works ...]
+
+Session ended. Checking conditions...
+
+  ✓ Exit command returned: All tests passed
+
+╭──────────────────────────────────────────╮
+│ Complete!                                │
+├──────────────────────────────────────────┤
+│ Iterations: 7                            │
+│ Duration: 12m 34s                        │
+│ Files modified: 14                       │
+│ Tests added: 23                          │
+╰──────────────────────────────────────────╯
+```
+
+## Common Patterns
+
+### Pattern 1: Fix All Errors
+
+```bash
+ralph run "Fix all ESLint errors. Run 'npm run lint' to check."
+```
+
+Exit condition: `npm run lint` returns zero.
+
+### Pattern 2: Migration
+
+```bash
+ralph run --prompt migration.md --max-iterations 50
+```
+
+Where `migration.md` describes the migration and how to verify progress.
+
+### Pattern 3: Documentation
+
+```bash
+ralph run "Add JSDoc comments to all exported functions in src/"
+```
+
+Exit condition: No undocumented exports remain.
+
+### Pattern 4: Marker File
+
+Create a task that ends with:
+
+```markdown
+When complete, create an empty file called `DONE` in the project root.
+```
+
+Then:
+
+```bash
+ralph run --prompt TASK.md --exit-file DONE
+```
+
+## Tips for Effective Prompts
+
+<Aside type="caution" title="The Prompt Matters">
+The same prompt runs every iteration. Make it clear, self-contained, and include instructions for checking progress.
+</Aside>
+
+**Good prompt structure:**
+
+```markdown
+# Task
+[What needs to be done]
+
+# Guidelines
+[How to do it well]
+
+# Checking Progress
+[How to see what's already done]
+
+# Definition of Done
+[Clear exit criteria]
+```
+
+**Include these elements:**
+
+1. **Context** — What's the project? What's the goal?
+2. **Constraints** — Style guides, patterns to follow
+3. **Progress markers** — How to check what's done
+4. **Exit criteria** — When is the task complete?
+
+## Next Steps
+
+Now that you've run your first loop:
+
+- **[The Loop](/concepts/the-loop/)** — Understand why this works
+- **[Exit Conditions](/concepts/exit-conditions/)** — Configure when to stop
+- **[CLI Reference](/usage/cli/)** — All commands and options

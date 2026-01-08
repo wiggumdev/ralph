@@ -1,0 +1,387 @@
+---
+title: Architecture
+description: How ralph is built and how it orchestrates AI tools.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+# Architecture
+
+ralph is designed to be simple, composable, and tool-agnostic. This document explains how it works under the hood.
+
+## High-Level Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                           ralph                                  │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐     │
+│  │  Config  │──▶│  Loop    │──▶│  Tool    │──▶│  Exit    │     │
+│  │  Loader  │   │  Engine  │   │  Runner  │   │  Checker │     │
+│  └──────────┘   └────┬─────┘   └──────────┘   └──────────┘     │
+│                      │                                          │
+│                      ▼                                          │
+│               ┌──────────┐                                      │
+│               │  State   │                                      │
+│               │  Manager │                                      │
+│               └──────────┘                                      │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     AI Tool (External)                          │
+│                                                                  │
+│    ┌────────┐   ┌────────┐   ┌────────┐   ┌────────┐          │
+│    │ Claude │   │OpenCode│   │ Aider  │   │ Custom │          │
+│    │  Code  │   │        │   │        │   │  Tool  │          │
+│    └────────┘   └────────┘   └────────┘   └────────┘          │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Core Components
+
+### Config Loader
+
+Responsible for loading and validating configuration from multiple sources.
+
+```
+Priority (lowest to highest):
+1. Default values
+2. ralph.config.json
+3. Environment variables
+4. CLI arguments
+```
+
+Key responsibilities:
+- Schema validation
+- Environment variable expansion
+- Configuration merging
+- Default value application
+
+### Loop Engine
+
+The heart of ralph. Manages the iteration lifecycle.
+
+```typescript
+// Simplified loop logic
+async function runLoop(config: Config): Promise<Result> {
+  let iteration = 0;
+
+  while (iteration < config.maxIterations) {
+    iteration++;
+
+    // Pre-iteration hooks
+    await runHooks('beforeIteration', { iteration });
+
+    // Run the AI tool
+    const toolResult = await runTool(config.tool, config.prompt);
+
+    // Post-iteration hooks
+    await runHooks('afterIteration', { iteration, toolResult });
+
+    // Check exit conditions
+    const exitResult = await checkExitConditions(config.exitConditions);
+
+    if (exitResult.shouldExit) {
+      return { success: true, iterations: iteration };
+    }
+  }
+
+  return { success: false, reason: 'maxIterations' };
+}
+```
+
+### Tool Runner
+
+Abstracts the interface to different AI tools.
+
+```typescript
+interface ToolRunner {
+  // Start the tool with a prompt
+  start(prompt: string, options: ToolOptions): Promise<void>;
+
+  // Wait for the tool to exit
+  waitForExit(): Promise<ToolResult>;
+
+  // Force stop the tool
+  stop(): Promise<void>;
+
+  // Get current status
+  getStatus(): ToolStatus;
+}
+```
+
+Each supported tool has an adapter implementing this interface:
+- `ClaudeCodeRunner`
+- `OpenCodeRunner`
+- `AiderRunner`
+- `CustomToolRunner`
+
+### Exit Checker
+
+Evaluates exit conditions after each iteration.
+
+```typescript
+interface ExitCondition {
+  type: 'command' | 'file' | 'marker' | 'limit';
+  check(): Promise<{ met: boolean; reason?: string }>;
+}
+
+// Conditions can be combined
+interface ExitConditionGroup {
+  mode: 'all' | 'any';  // AND vs OR
+  conditions: ExitCondition[];
+}
+```
+
+### State Manager
+
+Handles state persistence between iterations.
+
+```
+State Channels:
+├── Git (commits, history)
+├── Progress files (PROGRESS.md)
+├── Ralph directory (.ralph/)
+└── Environment variables
+```
+
+## Data Flow
+
+### 1. Initialization
+
+```
+CLI args → Config Loader → Validated Config
+                              │
+                              ├── Load prompt file
+                              ├── Initialize tool runner
+                              └── Set up state manager
+```
+
+### 2. Each Iteration
+
+```
+Loop Engine
+    │
+    ├── 1. beforeIteration hooks
+    │
+    ├── 2. Tool Runner
+    │       │
+    │       ├── Format prompt (variables)
+    │       ├── Start tool process
+    │       ├── Stream output
+    │       └── Wait for exit
+    │
+    ├── 3. afterIteration hooks
+    │
+    ├── 4. Exit Checker
+    │       │
+    │       ├── Run exit commands
+    │       ├── Check files
+    │       └── Evaluate limits
+    │
+    └── 5. Decision: Continue or Exit
+```
+
+### 3. Completion
+
+```
+Exit Checker returns "met"
+    │
+    ├── Run onComplete hooks
+    ├── Generate summary
+    ├── Clean up resources
+    └── Return result
+```
+
+## Tool Adapters
+
+### Claude Code Adapter
+
+```typescript
+class ClaudeCodeRunner implements ToolRunner {
+  async start(prompt: string, options: ToolOptions) {
+    this.process = spawn('claude', [
+      '--print', prompt,
+      '--model', options.model || 'claude-sonnet-4-20250514',
+      '--dangerously-skip-permissions',  // if configured
+    ]);
+
+    this.setupOutputHandlers();
+  }
+
+  async waitForExit(): Promise<ToolResult> {
+    return new Promise((resolve) => {
+      this.process.on('exit', (code) => {
+        resolve({
+          exitCode: code,
+          output: this.capturedOutput,
+          duration: Date.now() - this.startTime,
+        });
+      });
+    });
+  }
+}
+```
+
+### Custom Tool Adapter
+
+```typescript
+class CustomToolRunner implements ToolRunner {
+  constructor(private config: CustomToolConfig) {}
+
+  async start(prompt: string, options: ToolOptions) {
+    const args = this.config.args.map(arg =>
+      arg.replace('{{prompt}}', prompt)
+         .replace('{{promptFile}}', this.promptFile)
+    );
+
+    this.process = spawn(this.config.command, args, {
+      env: { ...process.env, ...this.config.env },
+      shell: this.config.shell,
+    });
+  }
+}
+```
+
+## Exit Condition Evaluation
+
+```typescript
+async function checkExitConditions(
+  conditions: ExitConditionConfig
+): Promise<ExitResult> {
+  // Always check limits first (fail-safe)
+  if (await checkLimits(conditions.limits)) {
+    return { shouldExit: true, reason: 'limit_reached' };
+  }
+
+  // Check primary conditions
+  const results = await Promise.all(
+    conditions.primary.map(c => c.check())
+  );
+
+  const mode = conditions.mode || 'all';
+
+  if (mode === 'all') {
+    const allMet = results.every(r => r.met);
+    return { shouldExit: allMet, results };
+  } else {
+    const anyMet = results.some(r => r.met);
+    return { shouldExit: anyMet, results };
+  }
+}
+```
+
+## Hook System
+
+Hooks allow customization at key points:
+
+```typescript
+type HookPoint =
+  | 'preRun'           // Before loop starts
+  | 'postRun'          // After loop ends
+  | 'beforeIteration'  // Before each iteration
+  | 'afterIteration'   // After each iteration
+  | 'onError'          // On any error
+  | 'onComplete';      // When exit conditions met
+
+interface HookContext {
+  iteration: number;
+  elapsed: number;
+  config: Config;
+  toolResult?: ToolResult;
+  exitResult?: ExitResult;
+}
+
+async function runHooks(
+  point: HookPoint,
+  context: HookContext
+): Promise<void> {
+  const hooks = config.hooks[point];
+  if (!hooks) return;
+
+  for (const hook of Array.isArray(hooks) ? hooks : [hooks]) {
+    await executeHook(hook, context);
+  }
+}
+```
+
+## Logging and Telemetry
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                        Logging                                │
+├──────────────────────────────────────────────────────────────┤
+│                                                               │
+│  Console Output ──────────────────────────┐                  │
+│  (user-facing)                            │                  │
+│                                            ▼                  │
+│  Log File ────────────────────────▶  Log Aggregator          │
+│  (.ralph/logs/)                           │                  │
+│                                            │                  │
+│  Telemetry ───────────────────────────────┘                  │
+│  (optional, local only)                                       │
+│                                                               │
+└──────────────────────────────────────────────────────────────┘
+```
+
+Logs include:
+- Iteration start/end times
+- Tool output (optionally)
+- Exit condition results
+- Errors and warnings
+- Cost/token tracking (if available)
+
+## Error Handling
+
+```typescript
+class RalphError extends Error {
+  constructor(
+    message: string,
+    public code: ErrorCode,
+    public recoverable: boolean,
+    public context?: Record<string, unknown>
+  ) {
+    super(message);
+  }
+}
+
+// Error codes
+enum ErrorCode {
+  CONFIG_INVALID = 'CONFIG_INVALID',
+  TOOL_NOT_FOUND = 'TOOL_NOT_FOUND',
+  TOOL_CRASH = 'TOOL_CRASH',
+  EXIT_CHECK_FAILED = 'EXIT_CHECK_FAILED',
+  LIMIT_EXCEEDED = 'LIMIT_EXCEEDED',
+  HOOK_FAILED = 'HOOK_FAILED',
+}
+```
+
+Recoverable errors trigger the `onError` hook and may continue.
+Non-recoverable errors stop the loop immediately.
+
+## Performance Considerations
+
+### Memory
+
+- Tool output is streamed, not buffered entirely
+- Large logs are rotated automatically
+- State files are read on-demand
+
+### Process Management
+
+- Tools run as child processes
+- Proper signal handling (SIGINT, SIGTERM)
+- Zombie process prevention
+
+### File System
+
+- Atomic writes for state files
+- File watching uses efficient mechanisms (inotify, FSEvents)
+
+<Aside type="note" title="Design Philosophy">
+ralph is intentionally simple. Complex orchestration should happen in your AI tool's prompts, not in ralph's code. ralph just handles the loop.
+</Aside>

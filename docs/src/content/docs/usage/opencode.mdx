@@ -1,0 +1,299 @@
+---
+title: With OpenCode
+description: Using ralph with the OpenCode AI assistant.
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+# Using ralph with OpenCode
+
+OpenCode is an open-source AI coding assistant. ralph supports OpenCode as a first-class tool option.
+
+## Setup
+
+<Steps>
+
+1. **Install OpenCode**
+
+   ```bash
+   go install github.com/opencode-ai/opencode@latest
+   ```
+
+   Or download from [releases](https://github.com/opencode-ai/opencode/releases).
+
+2. **Configure your provider**
+
+   OpenCode supports multiple AI providers. Set your preferred one:
+
+   ```bash
+   # For Anthropic Claude
+   export ANTHROPIC_API_KEY="sk-ant-..."
+
+   # For OpenAI
+   export OPENAI_API_KEY="sk-..."
+
+   # For local models (Ollama)
+   export OPENCODE_PROVIDER="ollama"
+   export OLLAMA_HOST="http://localhost:11434"
+   ```
+
+3. **Verify installation**
+
+   ```bash
+   opencode --version
+   ralph doctor
+   ```
+
+</Steps>
+
+## Configuration
+
+```json
+{
+  "tool": "opencode",
+  "toolOptions": {
+    "provider": "anthropic",
+    "model": "claude-sonnet-4-20250514"
+  }
+}
+```
+
+### Provider Options
+
+| Provider | Config | Notes |
+|----------|--------|-------|
+| Anthropic | `"provider": "anthropic"` | Best quality |
+| OpenAI | `"provider": "openai"` | Good alternative |
+| Ollama | `"provider": "ollama"` | Local, free |
+
+### Full Configuration
+
+```json
+{
+  "tool": "opencode",
+  "toolOptions": {
+    "provider": "anthropic",
+    "model": "claude-sonnet-4-20250514",
+    "maxTokens": 8192,
+    "contextWindow": 128000,
+    "temperature": 0
+  }
+}
+```
+
+## OpenCode-Specific Features
+
+### Context Management
+
+OpenCode has built-in context management that complements ralph's approach:
+
+```json
+{
+  "tool": "opencode",
+  "toolOptions": {
+    "contextStrategy": "smart",
+    "maxContextFiles": 20
+  }
+}
+```
+
+### File Watching
+
+OpenCode can watch files and reload context:
+
+```json
+{
+  "toolOptions": {
+    "watch": true,
+    "watchPatterns": ["src/**/*.ts"]
+  }
+}
+```
+
+<Aside type="note">
+File watching is useful for development but may increase token usage. Consider disabling for production runs.
+</Aside>
+
+## Prompt Patterns
+
+### Standard Pattern
+
+Works the same as Claude Code:
+
+```markdown
+# Task
+
+Add error handling to all API routes.
+
+## Guidelines
+- Use try/catch for async functions
+- Return appropriate HTTP status codes
+- Log errors with context
+
+## Verification
+Run `npm run lint` - no unhandled promise rejections.
+
+## Progress
+Check PROGRESS.md for completed routes.
+```
+
+### OpenCode-Specific: Using Context Files
+
+OpenCode supports `.opencode` context files:
+
+```markdown
+<!-- .opencode/context.md -->
+# Project Context
+
+This is a Node.js API server using Express.
+Error handling should follow the patterns in src/middleware/error.ts.
+```
+
+ralph automatically includes this context each iteration.
+
+## Local Models with Ollama
+
+For running completely locally (no API costs):
+
+<Steps>
+
+1. **Install Ollama**
+
+   ```bash
+   curl -fsSL https://ollama.com/install.sh | sh
+   ```
+
+2. **Pull a model**
+
+   ```bash
+   ollama pull codellama:34b
+   # or
+   ollama pull deepseek-coder:33b
+   ```
+
+3. **Configure ralph**
+
+   ```json
+   {
+     "tool": "opencode",
+     "toolOptions": {
+       "provider": "ollama",
+       "model": "codellama:34b",
+       "ollamaHost": "http://localhost:11434"
+     }
+   }
+   ```
+
+</Steps>
+
+<Aside type="caution" title="Local Model Performance">
+Local models are slower and less capable than cloud models. Expect more iterations and longer run times. Best for cost-sensitive or offline scenarios.
+</Aside>
+
+## Comparison: OpenCode vs Claude Code
+
+| Feature | OpenCode | Claude Code |
+|---------|----------|-------------|
+| Provider options | Multiple | Anthropic only |
+| Local models | Yes (Ollama) | No |
+| Open source | Yes | No |
+| Hooks system | Limited | Comprehensive |
+| File context | Automatic | Manual |
+| Cost | Varies | Anthropic pricing |
+
+## Troubleshooting
+
+### "Provider not configured"
+
+Ensure environment variables are set:
+
+```bash
+echo $ANTHROPIC_API_KEY  # Should show key
+# or
+echo $OPENAI_API_KEY
+```
+
+### "Model not found"
+
+Check available models:
+
+```bash
+# For Ollama
+ollama list
+
+# For cloud providers
+opencode models list
+```
+
+### "Context too large"
+
+OpenCode may include too many files. Restrict context:
+
+```json
+{
+  "toolOptions": {
+    "maxContextFiles": 10,
+    "contextPatterns": ["src/**/*.ts", "!**/*.test.ts"]
+  }
+}
+```
+
+### Slow iterations
+
+With local models, iterations take longer. Adjust timeouts:
+
+```json
+{
+  "exitConditions": {
+    "perIterationTimeout": "30m"
+  }
+}
+```
+
+## Example: Using OpenCode with Ollama
+
+Complete local setup (no API costs):
+
+**ralph.config.json:**
+```json
+{
+  "tool": "opencode",
+  "toolOptions": {
+    "provider": "ollama",
+    "model": "deepseek-coder:33b",
+    "ollamaHost": "http://localhost:11434"
+  },
+  "prompt": {
+    "file": "TASK.md"
+  },
+  "exitConditions": {
+    "command": "npm test",
+    "successExitCode": 0,
+    "maxIterations": 100,
+    "perIterationTimeout": "30m"
+  }
+}
+```
+
+**TASK.md:**
+```markdown
+# Add Input Validation
+
+Add input validation to all API endpoints.
+
+## Guidelines
+- Use Zod for schema validation
+- Return 400 for validation errors
+- Include error details in response
+
+## Check Progress
+Look at validated files in PROGRESS.md.
+
+## Done When
+All endpoints in src/routes/ have validation.
+```
+
+**Run:**
+```bash
+ralph run
+```

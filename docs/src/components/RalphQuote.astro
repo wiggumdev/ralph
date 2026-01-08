@@ -1,0 +1,76 @@
+---
+// Playful Ralph Wiggum quote component
+interface Props {
+  quote: string;
+  meaning?: string;
+}
+
+const { quote, meaning } = Astro.props;
+---
+
+<div class="ralph-quote">
+  <div class="quote-bubble">
+    <span class="quote-text">"{quote}"</span>
+  </div>
+  {meaning && (
+    <div class="quote-meaning">
+      <span class="meaning-label">Translation:</span>
+      <span class="meaning-text">{meaning}</span>
+    </div>
+  )}
+</div>
+
+<style>
+  .ralph-quote {
+    margin: 2rem 0;
+    max-width: 32rem;
+  }
+
+  .quote-bubble {
+    position: relative;
+    padding: 1.25rem 1.5rem;
+    background: linear-gradient(135deg, #FFD93D 0%, #FF9F1C 100%);
+    border-radius: 1rem;
+    color: #18181B;
+  }
+
+  .quote-bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 2rem;
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-top: 10px solid #FF9F1C;
+  }
+
+  .quote-text {
+    font-family: 'Comic Neue', cursive;
+    font-size: 1.125rem;
+    font-weight: 700;
+    font-style: italic;
+    display: block;
+  }
+
+  .quote-meaning {
+    margin-top: 1rem;
+    padding-left: 1rem;
+    font-size: 0.875rem;
+    color: var(--sl-color-gray-2);
+  }
+
+  :root:not([data-theme='dark']) .quote-meaning {
+    color: var(--sl-color-gray-4);
+  }
+
+  .meaning-label {
+    font-weight: 600;
+    margin-right: 0.5rem;
+  }
+
+  .meaning-text {
+    font-style: italic;
+  }
+</style>

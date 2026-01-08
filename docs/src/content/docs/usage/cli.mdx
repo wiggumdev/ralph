@@ -1,0 +1,353 @@
+---
+title: CLI Reference
+description: Complete reference for ralph command-line options.
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+# CLI Reference
+
+Complete reference for all ralph commands and options.
+
+## Commands
+
+### ralph run
+
+Start the agentic loop.
+
+```bash
+ralph run [options] [prompt]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `prompt` | Inline prompt text (alternative to --prompt file) |
+
+**Options:**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--prompt, -p <file>` | Path to prompt file | `TASK.md` |
+| `--tool, -t <name>` | AI tool to use | From config or `claude` |
+| `--max-iterations, -n <num>` | Maximum iterations | `100` |
+| `--exit-command <cmd>` | Command to check completion | From config |
+| `--exit-file <path>` | Marker file to check | From config |
+| `--timeout <ms>` | Timeout per iteration | `600000` (10 min) |
+| `--verbose, -v` | Verbose output | `false` |
+| `--dry-run` | Show what would run without executing | `false` |
+| `--continue, -c` | Continue from previous run | `false` |
+| `--config <file>` | Custom config file path | `ralph.config.json` |
+
+**Examples:**
+
+```bash
+# Simple inline prompt
+ralph run "Fix all TypeScript errors"
+
+# Using a prompt file
+ralph run --prompt TASK.md
+
+# With specific tool and limits
+ralph run -t opencode -n 20 --prompt refactor.md
+
+# Verbose output for debugging
+ralph run -v --prompt TASK.md
+
+# Dry run to see configuration
+ralph run --dry-run --prompt TASK.md
+```
+
+---
+
+### ralph init
+
+Initialize ralph configuration in current directory.
+
+```bash
+ralph init [options]
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--tool <name>` | Default AI tool |
+| `--force, -f` | Overwrite existing config |
+| `--minimal` | Create minimal config |
+
+**Example:**
+
+```bash
+ralph init --tool claude
+```
+
+Creates `ralph.config.json`:
+
+```json
+{
+  "tool": "claude",
+  "exitConditions": {
+    "maxIterations": 50
+  },
+  "prompt": {
+    "file": "TASK.md"
+  }
+}
+```
+
+---
+
+### ralph doctor
+
+Check system configuration and dependencies.
+
+```bash
+ralph doctor [options]
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--fix` | Attempt to fix issues |
+| `--json` | Output as JSON |
+
+**Example output:**
+
+```
+ralph doctor
+
+Checking configuration...
+
+✓ ralph.config.json found
+✓ Configuration valid
+✓ Prompt file exists: TASK.md
+
+Checking AI tools...
+
+✓ claude: /usr/local/bin/claude (v1.2.3)
+✓ ANTHROPIC_API_KEY is set
+○ opencode: not found (optional)
+○ aider: not found (optional)
+
+Checking environment...
+
+✓ Node.js: v20.10.0
+✓ npm: v10.2.3
+✓ Git: v2.42.0
+
+All checks passed!
+```
+
+---
+
+### ralph check-exit
+
+Test exit conditions without running a loop.
+
+```bash
+ralph check-exit [options]
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--config <file>` | Config file to use |
+| `--verbose, -v` | Show detailed output |
+
+**Example:**
+
+```bash
+$ ralph check-exit
+
+Checking exit conditions...
+
+Command: npm test
+  Exit code: 1
+  Output contains "5 failed"
+  ✗ Does not meet success criteria
+
+Marker file: DONE
+  ✗ File does not exist
+
+Summary: Exit conditions NOT met
+```
+
+---
+
+### ralph status
+
+Show current loop status (if running in background).
+
+```bash
+ralph status [options]
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--json` | Output as JSON |
+| `--watch, -w` | Continuous updates |
+
+---
+
+### ralph stop
+
+Stop a running loop.
+
+```bash
+ralph stop [options]
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--force, -f` | Force stop without cleanup |
+| `--id <id>` | Stop specific run by ID |
+
+---
+
+### ralph history
+
+Show history of ralph runs.
+
+```bash
+ralph history [options]
+```
+
+**Options:**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--limit, -n <num>` | Number of runs to show | `10` |
+| `--json` | Output as JSON | `false` |
+| `--verbose, -v` | Show detailed info | `false` |
+
+**Example:**
+
+```bash
+$ ralph history -n 3
+
+ID          Started              Duration  Iterations  Status
+──────────────────────────────────────────────────────────────
+a1b2c3d4    2024-01-15 14:30    12m 34s   7           ✓ Complete
+e5f6g7h8    2024-01-15 10:15    45m 12s   23          ✓ Complete
+i9j0k1l2    2024-01-14 16:45    5m 02s    50          ⚠ Max iterations
+```
+
+---
+
+## Global Options
+
+These options work with all commands:
+
+| Option | Description |
+|--------|-------------|
+| `--help, -h` | Show help |
+| `--version` | Show version |
+| `--no-color` | Disable colored output |
+| `--quiet, -q` | Minimal output |
+
+## Configuration File
+
+The `ralph.config.json` file supports these options:
+
+```json
+{
+  // AI tool configuration
+  "tool": "claude",
+  "toolOptions": {
+    "model": "claude-sonnet-4-20250514",
+    "maxTokens": 8192
+  },
+
+  // Prompt configuration
+  "prompt": {
+    "file": "TASK.md",
+    "prepend": "You are working on the ralph project.",
+    "append": "Remember to commit your changes."
+  },
+
+  // Exit conditions
+  "exitConditions": {
+    "command": "npm test",
+    "successExitCode": 0,
+    "successPattern": "All tests passed",
+    "failPattern": null,
+    "markerFile": "DONE",
+    "maxIterations": 50,
+    "maxDuration": "4h",
+    "maxCost": 100.00
+  },
+
+  // State management
+  "state": {
+    "progressFile": "PROGRESS.md",
+    "useRalphDir": true,
+    "gitCommitAfterIteration": true
+  },
+
+  // Hooks
+  "hooks": {
+    "beforeIteration": "npm run lint:fix",
+    "afterIteration": "npm run format",
+    "onComplete": "npm run notify"
+  },
+
+  // Advanced
+  "advanced": {
+    "iterationTimeout": 600000,
+    "retryOnError": true,
+    "maxRetries": 3,
+    "parallelIterations": false
+  }
+}
+```
+
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `RALPH_TOOL` | Default AI tool | `claude` |
+| `RALPH_CONFIG` | Config file path | `ralph.config.json` |
+| `RALPH_MAX_ITERATIONS` | Default max iterations | `100` |
+| `RALPH_VERBOSE` | Enable verbose mode | `false` |
+| `RALPH_NO_COLOR` | Disable colors | `false` |
+| `RALPH_STATE_DIR` | State directory | `.ralph` |
+
+## Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| `0` | Success - exit conditions met |
+| `1` | Error - configuration or runtime error |
+| `2` | Stopped - user interrupted |
+| `3` | Limit reached - max iterations/time/cost |
+| `4` | Tool error - AI tool failed |
+
+## Shell Completion
+
+Enable tab completion:
+
+<Tabs>
+  <TabItem label="bash">
+    ```bash
+    ralph completion bash >> ~/.bashrc
+    ```
+  </TabItem>
+  <TabItem label="zsh">
+    ```bash
+    ralph completion zsh >> ~/.zshrc
+    ```
+  </TabItem>
+  <TabItem label="fish">
+    ```bash
+    ralph completion fish > ~/.config/fish/completions/ralph.fish
+    ```
+  </TabItem>
+</Tabs>

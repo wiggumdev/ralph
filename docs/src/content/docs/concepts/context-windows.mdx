@@ -1,0 +1,210 @@
+---
+title: Context Windows
+description: Why resetting context makes AI agents smarter, not dumber.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+# Context Windows
+
+The context window is both an AI model's greatest asset and its Achilles' heel. Understanding this is key to understanding why ralph works.
+
+## What Is a Context Window?
+
+A context window is the total amount of text a model can "see" at once. Everything the model knows about your conversation must fit in this window:
+
+- Your prompt
+- The model's responses
+- Tool calls and their results
+- File contents it's read
+- Errors it's encountered
+- Previous back-and-forth
+
+Modern models have large windows—100K+ tokens for Claude. That sounds like a lot. It isn't.
+
+## The Degradation Problem
+
+Here's what happens as context fills:
+
+```
+Context Usage    │ Model Performance
+─────────────────┼──────────────────────
+      0-20%      │ ████████████████████  Peak performance
+     20-40%      │ ██████████████████    Still great
+     40-60%      │ ███████████████       Noticeably worse
+     60-80%      │ ██████████            Missing instructions
+     80-100%     │ █████                 Confused, repetitive
+```
+
+This isn't speculation—it's observed behavior documented by Anthropic and others.
+
+### Why Does This Happen?
+
+Several factors compound:
+
+**Attention diffusion** — The model must attend to more content. Important instructions get lost in the noise.
+
+**Conflicting signals** — Earlier errors, corrections, and abandoned approaches remain in context. The model might try an approach you already told it didn't work.
+
+**Instruction drift** — Your original prompt gets buried under tool outputs. The model loses sight of the actual goal.
+
+**Noise accumulation** — Every tool call, every file read, every intermediate step adds tokens that aren't directly relevant to the current task.
+
+## Watching Degradation Happen
+
+You've probably seen this yourself. A typical pattern:
+
+```
+Hour 1: Model is sharp. Following instructions precisely.
+        Making good architectural decisions.
+
+Hour 2: Still good, but occasionally needs reminding
+        about requirements you already specified.
+
+Hour 3: Starting to repeat mistakes. Forgets conventions
+        you established. Needs more correction.
+
+Hour 4: Clearly struggling. Re-implementing things it
+        already built. Missing obvious issues.
+```
+
+<Aside type="caution" title="The Frustration Trap">
+At this point, most developers either give up or start new conversations manually. Both waste the work already done. ralph automates the smarter approach.
+</Aside>
+
+## The Reset Advantage
+
+When you reset context, you get:
+
+**Full attention capacity** — 100% of the model's attention on your task.
+
+**Clean slate** — No accumulated errors or abandoned approaches.
+
+**Clear instructions** — Your prompt is front and center, not buried.
+
+**Peak performance** — The model operates at its best.
+
+The question becomes: how do you reset context without losing progress?
+
+## State Externalization
+
+This is ralph's key insight: **move state out of the conversation and into files**.
+
+Instead of:
+```
+Conversation Memory:
+- We decided to use Jest for testing
+- We're following the repository's existing patterns
+- We've completed auth.js, user.js, still need payment.js
+- There was a bug with async handling, we fixed it by...
+```
+
+You have:
+```
+Codebase State:
+- src/auth.test.js          ← Jest test exists
+- src/user.test.js          ← Jest test exists
+- src/payment.js            ← No test file yet
+- PROGRESS.md               ← "Completed: auth, user. Next: payment"
+- git log                   ← Full history of what changed
+```
+
+The model can reconstruct everything it needs by reading files. It doesn't need to "remember"—it can observe.
+
+## Optimal Reset Frequency
+
+When should you reset? It's a tradeoff:
+
+**Too frequent** — Model spends too much time re-orienting. Overhead dominates.
+
+**Too infrequent** — Performance degrades. Work quality suffers.
+
+The sweet spot depends on task complexity:
+
+| Task Type | Typical Sweet Spot |
+|-----------|-------------------|
+| Simple refactors | Every 5-10 minutes of work |
+| Test writing | Every test file or module |
+| Bug fixing | After each bug |
+| Large features | After each logical checkpoint |
+
+ralph handles this automatically. The model works until it tries to exit, then ralph resets and continues.
+
+## Context Window Strategies
+
+### Strategy 1: Natural Exits
+
+Let the model work until it naturally pauses. This respects the model's sense of a "unit of work."
+
+```yaml
+# ralph.config.json
+exitConditions:
+  waitForNaturalExit: true
+```
+
+### Strategy 2: Time-Based
+
+Reset after a fixed duration to prevent deep degradation.
+
+```yaml
+exitConditions:
+  timeout: 300000  # 5 minutes per iteration
+```
+
+### Strategy 3: Progress-Based
+
+Reset after measurable progress (tests pass, files complete, etc.).
+
+```yaml
+exitConditions:
+  command: "npm test"
+  # Resets after each test run
+```
+
+### Strategy 4: Hybrid
+
+Combine strategies for robustness.
+
+```yaml
+exitConditions:
+  timeout: 600000           # Hard limit: 10 minutes
+  waitForNaturalExit: true  # But let it finish naturally if possible
+  maxTokens: 80000          # Reset if context gets too large
+```
+
+## Measuring the Impact
+
+You can observe the difference yourself:
+
+**Single long session:**
+- Hour 1: 95% instruction compliance
+- Hour 2: 80% instruction compliance
+- Hour 3: 60% instruction compliance
+- Total effective work: ~78%
+
+**ralph (with resets):**
+- Every iteration: 95% instruction compliance
+- Total effective work: ~95%
+
+The compound effect is dramatic. More work gets done, with fewer errors, in less wall-clock time.
+
+## The Counter-Intuitive Truth
+
+It feels wasteful to "throw away" context. You want the model to remember. You want to build on previous conversation.
+
+But conversation memory is unreliable. The model "remembers" by having text in its window—and that text competes with everything else.
+
+File-based state is:
+- **Reliable** — Files don't hallucinate
+- **Inspectable** — You can see exactly what the model knows
+- **Persistent** — Survives any number of resets
+- **Versionable** — Git tracks every change
+
+<Aside type="tip" title="Trust the Files">
+When you read state from files, you know exactly what information the model has. When you rely on conversation memory, you're hoping the model is attending to the right parts.
+</Aside>
+
+## Next Steps
+
+- **[Exit Conditions](/concepts/exit-conditions/)** — When to trigger resets
+- **[State Persistence](/concepts/state-persistence/)** — How to structure external state

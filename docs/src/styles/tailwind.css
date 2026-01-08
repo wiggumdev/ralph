@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-6 py-3 font-semibold rounded-lg transition-all duration-200;
+    @apply bg-accent-300 text-gray-900 hover:bg-accent-400 hover:shadow-glow;
+    @apply focus:outline-none focus:ring-2 focus:ring-accent-400 focus:ring-offset-2;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center px-6 py-3 font-semibold rounded-lg transition-all duration-200;
+    @apply bg-gray-800 text-white border border-gray-700;
+    @apply hover:bg-gray-700 hover:border-gray-600;
+    @apply focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2;
+  }
+
+  .card {
+    @apply rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm;
+    @apply transition-all duration-200 hover:shadow-md hover:border-accent-300;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+    @apply bg-accent-100 text-accent-800 dark:bg-accent-900 dark:text-accent-200;
+  }
+
+  .code-block {
+    @apply font-mono text-sm bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto;
+    @apply border border-gray-700;
+  }
+
+  .quote-ralph {
+    @apply relative pl-6 py-4 my-6 italic text-lg;
+    @apply border-l-4 border-accent-300 bg-accent-50 dark:bg-accent-950/20;
+    @apply rounded-r-lg;
+  }
+
+  .quote-ralph::before {
+    content: '"';
+    @apply absolute left-2 -top-2 text-4xl text-accent-300 font-display;
+  }
+}

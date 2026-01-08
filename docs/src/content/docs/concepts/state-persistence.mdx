@@ -1,0 +1,320 @@
+---
+title: State Persistence
+description: How ralph preserves progress across context resets.
+---
+
+import { Aside, Card, CardGrid } from '@astrojs/starlight/components';
+
+# State Persistence
+
+When ralph resets context, how does progress survive? This is the key question—and the answer is surprisingly elegant.
+
+## The Problem
+
+Each iteration starts fresh. The AI has no memory of previous iterations. So how does it know:
+
+- What work has been completed?
+- What patterns and conventions to follow?
+- What approaches failed?
+- What's left to do?
+
+## The Solution: Externalized State
+
+State lives **in the codebase**, not in conversation. The AI reconstructs context by reading files.
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                    State Externalization                      │
+├──────────────────────────────────────────────────────────────┤
+│                                                               │
+│   Conversation Memory (lost on reset):                        │
+│   ┌─────────────────────────────────────────────────────┐    │
+│   │ ❌ "We decided to use this pattern..."               │    │
+│   │ ❌ "The user said they prefer..."                    │    │
+│   │ ❌ "Earlier we tried X and it failed..."             │    │
+│   └─────────────────────────────────────────────────────┘    │
+│                                                               │
+│   File-Based State (persists always):                         │
+│   ┌─────────────────────────────────────────────────────┐    │
+│   │ ✓ src/auth.test.js         → Pattern visible in code │    │
+│   │ ✓ PROGRESS.md              → Explicit status log     │    │
+│   │ ✓ git log                  → History of changes      │    │
+│   │ ✓ .ralph/decisions.md     → Captured decisions       │    │
+│   └─────────────────────────────────────────────────────┘    │
+│                                                               │
+└──────────────────────────────────────────────────────────────┘
+```
+
+## State Channels
+
+ralph uses several channels to persist state:
+
+<CardGrid>
+  <Card title="Git History" icon="git-branch">
+    Every commit tells a story. The AI reads recent commits to understand what changed and why.
+  </Card>
+  <Card title="Code Itself" icon="code">
+    Patterns, conventions, and completed work are visible in the codebase. The AI reads and follows existing code.
+  </Card>
+  <Card title="Progress Files" icon="document">
+    Explicit state files (PROGRESS.md, TODO.md) track what's done and what remains.
+  </Card>
+  <Card title="Test Results" icon="approve-check">
+    Running tests shows current status. Passing tests = completed work. Failing tests = work remaining.
+  </Card>
+</CardGrid>
+
+## Git as Memory
+
+Git is ralph's most powerful state channel.
+
+### What Git Provides
+
+```bash
+# Recent changes
+git log --oneline -10
+
+# What files changed
+git diff HEAD~3
+
+# Full history of a file
+git log -p src/auth.test.js
+
+# Uncommitted work
+git status
+```
+
+Each iteration, the AI can read git history to understand:
+
+- What has been done (committed files)
+- What was attempted (commit messages)
+- What's in progress (uncommitted changes)
+- The evolution of decisions (diff history)
+
+### Commit Message Strategy
+
+Good commit messages are state documents:
+
+```bash
+# Bad - no useful state
+git commit -m "Updates"
+
+# Good - captures state
+git commit -m "Add tests for UserAuth module
+
+- Added 5 test cases covering login, logout, refresh
+- Edge cases: expired tokens, invalid credentials
+- Remaining: SessionManager, TokenService modules"
+```
+
+<Aside type="tip" title="Instruct Your AI">
+Include commit message guidance in your prompt:
+```markdown
+When committing, include:
+- What was completed
+- Any decisions made
+- What remains to be done
+```
+</Aside>
+
+## Progress Files
+
+Explicit progress tracking gives the AI (and you) clear status.
+
+### PROGRESS.md Pattern
+
+```markdown
+# Progress Tracker
+
+## Status: In Progress
+
+## Completed
+- [x] UserAuth module tests (5 tests)
+- [x] SessionManager tests (3 tests)
+
+## In Progress
+- [ ] TokenService tests
+
+## Remaining
+- [ ] OAuth integration tests
+- [ ] SAML provider tests
+
+## Notes
+- Using Jest with async/await pattern
+- Each module follows AAA pattern (Arrange, Act, Assert)
+- Mock external services, don't call real APIs
+
+## Last Updated
+Iteration 4 - 2024-01-15 14:32
+```
+
+### Instruct the AI
+
+In your prompt:
+```markdown
+Track your progress in PROGRESS.md:
+1. Mark completed items with [x]
+2. Add notes about patterns and decisions
+3. Update "Last Updated" each iteration
+```
+
+## Code as State
+
+The most reliable state is the code itself. The AI:
+
+1. **Reads existing code** to understand patterns
+2. **Follows conventions** it observes
+3. **Continues from where code stops**
+
+### Example
+
+If the AI is adding tests and finds:
+
+```javascript
+// src/auth.test.js
+describe('UserAuth', () => {
+  it('should login with valid credentials', async () => {
+    // ... test code
+  });
+
+  it('should reject invalid passwords', async () => {
+    // ... test code
+  });
+});
+```
+
+It knows:
+- Tests use Jest (`describe`, `it`)
+- Tests are async
+- The pattern to follow
+- UserAuth is already tested
+
+Next iteration, it looks for modules without `.test.js` files and continues.
+
+## Test Results as State
+
+Running tests provides immediate state:
+
+```bash
+$ npm test
+
+PASS src/auth.test.js
+PASS src/user.test.js
+FAIL src/payment.test.js
+  ● PaymentService › should process refunds
+    Expected: true
+    Received: false
+
+Tests: 14 passed, 1 failed
+```
+
+The AI now knows:
+- auth and user are complete
+- payment has a failing test to fix
+- 14 tests exist (progress metric)
+
+## The .ralph Directory
+
+ralph can create a `.ralph/` directory for its own state:
+
+```
+.ralph/
+├── decisions.md      # Key decisions made
+├── blockers.md       # Issues encountered
+├── iteration-log.md  # Per-iteration notes
+└── config.local.json # Runtime state
+```
+
+### decisions.md
+
+```markdown
+# Decisions Log
+
+## Testing Framework
+Decided: Jest
+Reason: Already configured in project, team familiarity
+
+## Mocking Strategy
+Decided: Mock all external API calls
+Reason: Tests should be fast and deterministic
+
+## Coverage Target
+Decided: 80% minimum
+Reason: User requirement
+```
+
+### iteration-log.md
+
+```markdown
+# Iteration Log
+
+## Iteration 1
+- Scanned codebase, found 12 modules needing tests
+- Created test structure for auth module
+- Completed: 3 test files
+
+## Iteration 2
+- Continued with user module
+- Found edge case with null handling
+- Completed: 2 test files
+
+## Iteration 3
+- Working on payment module
+- Blocked: unclear API contract for refunds
+- Added TODO in code, continuing with other tests
+```
+
+## State Recovery
+
+If something goes wrong, state helps recover:
+
+```bash
+# See what ralph did
+git log --oneline -20
+
+# Undo last iteration's work
+git reset --hard HEAD~1
+
+# Continue from a known good state
+git checkout known-good-commit
+ralph run --continue
+```
+
+## Best Practices
+
+### 1. Instruct State Tracking in Your Prompt
+
+```markdown
+## State Management
+
+1. Update PROGRESS.md after completing each module
+2. Commit after each significant piece of work
+3. Use descriptive commit messages
+4. Check git status before starting work
+```
+
+### 2. Create State Files Before Running
+
+```bash
+# Initialize progress tracking
+echo "# Progress\n\n## Status: Not Started" > PROGRESS.md
+git add PROGRESS.md
+git commit -m "Initialize progress tracking for ralph"
+```
+
+### 3. Use Test Output as Truth
+
+Tests are objective. A passing test suite is more reliable than any progress file.
+
+### 4. Trust the Code
+
+If there's a conflict between a progress file and actual code, trust the code. Files can get out of sync; code is ground truth.
+
+<Aside type="caution" title="Stale State">
+Progress files can become stale if the AI doesn't update them consistently. Always verify against actual codebase state (tests, code review, git status).
+</Aside>
+
+## Next Steps
+
+- **[CLI Reference](/usage/cli/)** — Configure state management
+- **[With Claude Code](/usage/claude-code/)** — Claude-specific state patterns

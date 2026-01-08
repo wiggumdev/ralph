@@ -1,0 +1,327 @@
+---
+title: Large Refactors
+description: Using ralph for systematic, large-scale code refactoring.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+# Large Refactors with ralph
+
+Refactoring is where ralph shines. The repetitive, systematic nature of large refactors is perfectly suited for iterative AI loops.
+
+## Why ralph Excels at Refactoring
+
+- **Systematic progress** — Each iteration tackles more of the same task
+- **Pattern consistency** — The AI sees its own patterns and continues them
+- **Error recovery** — If something breaks, the next iteration can fix it
+- **No context fatigue** — Fresh context each iteration, consistent quality
+
+## Example: Rename Across Codebase
+
+Rename `UserService` to `AccountService` everywhere.
+
+### Configuration
+
+```json
+{
+  "tool": "claude",
+  "exitConditions": {
+    "command": "grep -r 'UserService' src/ --include='*.ts' | wc -l",
+    "successPattern": "^0$",
+    "maxIterations": 20
+  }
+}
+```
+
+### Prompt (TASK.md)
+
+```markdown
+# Refactor: Rename UserService to AccountService
+
+Rename all occurrences of `UserService` to `AccountService` across the codebase.
+
+## Scope
+- File names: `UserService.ts` → `AccountService.ts`
+- Class names: `class UserService` → `class AccountService`
+- Imports: `import { UserService }` → `import { AccountService }`
+- Type references: `UserService` → `AccountService`
+- Variable names: `userService` → `accountService`
+
+## Process
+1. Run `grep -r "UserService" src/` to find remaining occurrences
+2. Update one file at a time
+3. Run `npm run typecheck` after each change
+4. Commit after each file
+
+## Verification
+- `npm run typecheck` passes
+- `npm test` passes
+- `grep -r "UserService" src/` returns nothing
+
+## Progress
+Check git log for completed files.
+```
+
+### Running
+
+```bash
+ralph run --prompt TASK.md
+```
+
+<Aside type="tip" title="Commit Granularity">
+Instructing the AI to commit after each file makes progress visible and rollback easy.
+</Aside>
+
+## Example: API Migration
+
+Migrate from deprecated API v1 to v2.
+
+### Configuration
+
+```json
+{
+  "tool": "claude",
+  "exitConditions": {
+    "all": [
+      { "command": "grep -r 'api/v1' src/", "successPattern": "^$" },
+      { "command": "npm test", "successExitCode": 0 }
+    ],
+    "maxIterations": 50
+  }
+}
+```
+
+### Prompt
+
+```markdown
+# Migrate API v1 to v2
+
+All API calls using `/api/v1/` need to migrate to `/api/v2/`.
+
+## Migration Rules
+
+| v1 Endpoint | v2 Endpoint | Changes |
+|-------------|-------------|---------|
+| `/api/v1/users` | `/api/v2/accounts` | Name change |
+| `/api/v1/items` | `/api/v2/products` | Name + response shape |
+| `/api/v1/orders` | `/api/v2/orders` | New auth header |
+
+## Response Shape Changes
+
+v1 `items` response:
+```json
+{ "items": [...], "total": 100 }
+```
+
+v2 `products` response:
+```json
+{ "data": [...], "meta": { "total": 100 } }
+```
+
+## Process
+1. Find files with `grep -r "api/v1" src/`
+2. Update one endpoint at a time
+3. Update response handling if needed
+4. Test with `npm test`
+5. Commit
+
+## Done When
+- No references to `/api/v1/` remain
+- All tests pass
+```
+
+## Example: Framework Upgrade
+
+Upgrade from React 17 to React 18.
+
+### Configuration
+
+```json
+{
+  "tool": "claude",
+  "exitConditions": {
+    "all": [
+      { "command": "npm run build", "successExitCode": 0 },
+      { "command": "npm test", "successExitCode": 0 }
+    ],
+    "maxIterations": 30
+  }
+}
+```
+
+### Prompt
+
+```markdown
+# Upgrade React 17 to React 18
+
+Migrate the codebase from React 17 patterns to React 18.
+
+## Required Changes
+
+### 1. Root API
+Change:
+```jsx
+import ReactDOM from 'react-dom';
+ReactDOM.render(<App />, document.getElementById('root'));
+```
+
+To:
+```jsx
+import { createRoot } from 'react-dom/client';
+const root = createRoot(document.getElementById('root'));
+root.render(<App />);
+```
+
+### 2. Automatic Batching
+No changes needed—React 18 handles this automatically.
+
+### 3. Strict Mode Changes
+Double-rendering in Strict Mode is now expected. Remove any workarounds.
+
+### 4. TypeScript Types
+Update any `React.FC` that relies on implicit `children` prop.
+
+## Process
+1. Start with entry point (src/index.tsx)
+2. Check for warnings with `npm run build`
+3. Fix TypeScript errors with `npm run typecheck`
+4. Run tests to verify behavior
+
+## Verification
+- `npm run build` succeeds
+- `npm test` passes
+- No React 17 deprecation warnings
+```
+
+## Example: Dependency Replacement
+
+Replace Moment.js with date-fns.
+
+### Configuration
+
+```json
+{
+  "tool": "claude",
+  "exitConditions": {
+    "all": [
+      {
+        "command": "grep -r \"from 'moment'\" src/ | wc -l",
+        "successPattern": "^0$"
+      },
+      { "command": "npm test", "successExitCode": 0 }
+    ],
+    "maxIterations": 40
+  }
+}
+```
+
+### Prompt
+
+```markdown
+# Replace Moment.js with date-fns
+
+Migrate all date handling from Moment.js to date-fns.
+
+## Why
+- Moment.js is deprecated
+- date-fns is tree-shakeable (smaller bundles)
+- date-fns is more modern
+
+## Common Conversions
+
+| Moment | date-fns |
+|--------|----------|
+| `moment()` | `new Date()` |
+| `moment(date).format('YYYY-MM-DD')` | `format(date, 'yyyy-MM-dd')` |
+| `moment(date).add(1, 'days')` | `addDays(date, 1)` |
+| `moment(date).diff(other, 'days')` | `differenceInDays(date, other)` |
+| `moment(date).isAfter(other)` | `isAfter(date, other)` |
+| `moment(date).startOf('day')` | `startOfDay(date)` |
+
+## Import Pattern
+```typescript
+import { format, addDays, isAfter } from 'date-fns';
+```
+
+## Process
+1. Find Moment imports: `grep -r "from 'moment'" src/`
+2. Migrate one file at a time
+3. Run tests after each file
+4. Remove Moment import when file is done
+
+## Final Step
+When all files are migrated, run:
+```bash
+npm uninstall moment
+```
+
+## Done When
+- No imports from 'moment'
+- All tests pass
+- moment not in package.json
+```
+
+## Tips for Refactoring Tasks
+
+### 1. Provide Clear Conversion Rules
+
+The AI needs to know exactly how to transform code. Tables work well:
+
+```markdown
+| Before | After |
+|--------|-------|
+| `oldPattern()` | `newPattern()` |
+```
+
+### 2. Include Verification Commands
+
+Always give the AI a way to check its work:
+
+```markdown
+## Verify Each Change
+Run `npm run typecheck && npm test` after each file.
+```
+
+### 3. Scope Appropriately
+
+Too broad = AI gets confused. Too narrow = too many iterations.
+
+```markdown
+## Scope
+Only modify files in src/services/.
+Ignore test files (they'll be updated separately).
+```
+
+### 4. Handle Edge Cases
+
+Document known edge cases:
+
+```markdown
+## Edge Cases
+- Nested callbacks: Extract to named functions first
+- Dynamic imports: May need manual review
+- Generated files: Skip files in src/generated/
+```
+
+### 5. Track Progress
+
+```markdown
+## Progress Tracking
+After completing each directory:
+1. Add to PROGRESS.md
+2. Commit with message: "refactor(dirname): migrate to new API"
+```
+
+## Common Pitfalls
+
+<Aside type="caution" title="Watch Out">
+
+**Circular changes** — AI changes A→B, then later changes B→A. Solution: Clear conversion rules.
+
+**Incomplete changes** — File modified but not all occurrences. Solution: Verification commands.
+
+**Breaking changes** — Refactor breaks functionality. Solution: Test after each change.
+
+**Over-refactoring** — AI "improves" unrelated code. Solution: Explicit scope in prompt.
+
+</Aside>
