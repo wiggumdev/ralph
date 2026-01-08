@@ -1,0 +1,464 @@
+---
+title: Migrations
+description: Using ralph for database migrations, framework upgrades, and language updates.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+# Migrations with ralph
+
+Migrations require careful, systematic changes across a codebase. ralph's iterative approach ensures consistent progress with verification at each step.
+
+## Database Schema Migration
+
+Migrate from one schema to another.
+
+### Configuration
+
+```json
+{
+  "tool": "claude",
+  "exitConditions": {
+    "all": [
+      { "command": "npm run db:migrate:status", "successPattern": "All migrations applied" },
+      { "command": "npm test", "successExitCode": 0 }
+    ],
+    "maxIterations": 25
+  }
+}
+```
+
+### Prompt
+
+```markdown
+# Database Schema Migration
+
+Migrate from legacy schema to new normalized schema.
+
+## Schema Changes
+
+### Users Table
+Old:
+```sql
+CREATE TABLE users (
+  id INT PRIMARY KEY,
+  name VARCHAR(255),
+  address VARCHAR(500),
+  city VARCHAR(100),
+  country VARCHAR(100)
+);
+```
+
+New:
+```sql
+CREATE TABLE users (
+  id INT PRIMARY KEY,
+  name VARCHAR(255),
+  address_id INT REFERENCES addresses(id)
+);
+
+CREATE TABLE addresses (
+  id INT PRIMARY KEY,
+  street VARCHAR(500),
+  city VARCHAR(100),
+  country_id INT REFERENCES countries(id)
+);
+
+CREATE TABLE countries (
+  id INT PRIMARY KEY,
+  name VARCHAR(100),
+  code CHAR(2)
+);
+```
+
+## Migration Steps
+1. Create new tables (migration file)
+2. Migrate data (migration file)
+3. Update application code to use new schema
+4. Update queries
+5. Drop old columns (final migration)
+
+## Code Changes Needed
+- Update TypeScript types
+- Update ORM models
+- Update repository methods
+- Update API responses
+
+## Process
+1. Create migration file: `npm run db:migrate:create`
+2. Run migration: `npm run db:migrate`
+3. Update affected code
+4. Run tests
+5. Commit with migration number
+
+## Verification
+- `npm run db:migrate:status` shows all applied
+- All tests pass
+- No references to old column names
+
+## Done When
+Schema fully migrated, all tests passing.
+```
+
+## TypeScript Upgrade
+
+Upgrade TypeScript and fix all new errors.
+
+### Configuration
+
+```json
+{
+  "tool": "claude",
+  "exitConditions": {
+    "command": "npm run typecheck",
+    "successExitCode": 0,
+    "maxIterations": 40
+  }
+}
+```
+
+### Prompt
+
+```markdown
+# Upgrade TypeScript to 5.x
+
+Upgrade from TypeScript 4.x to 5.x and fix all type errors.
+
+## Step 1: Upgrade
+```bash
+npm install typescript@5 --save-dev
+```
+
+## Common Issues to Fix
+
+### 1. Verbatim Module Syntax
+```typescript
+// Old (might warn)
+import { Type } from './types';
+
+// New (explicit type import)
+import type { Type } from './types';
+```
+
+### 2. Enum Changes
+```typescript
+// Issues with const enums in certain contexts
+// May need to use regular enums or union types
+```
+
+### 3. Decorator Metadata
+```typescript
+// Check experimentalDecorators and emitDecoratorMetadata
+```
+
+### 4. Module Resolution
+```typescript
+// moduleResolution: "bundler" is new option
+// May need to update tsconfig.json
+```
+
+## Process
+1. Run `npm run typecheck` to see errors
+2. Fix errors one file at a time
+3. Run typecheck again
+4. Commit when a batch of errors is fixed
+
+## tsconfig.json Updates
+May need to update:
+- `target`
+- `module`
+- `moduleResolution`
+- `strict` options
+
+## Done When
+`npm run typecheck` exits with 0.
+```
+
+## Node.js Version Upgrade
+
+Upgrade Node.js version and fix compatibility issues.
+
+### Configuration
+
+```json
+{
+  "tool": "claude",
+  "exitConditions": {
+    "all": [
+      { "command": "node --version", "successPattern": "v20" },
+      { "command": "npm test", "successExitCode": 0 },
+      { "command": "npm run build", "successExitCode": 0 }
+    ],
+    "maxIterations": 30
+  }
+}
+```
+
+### Prompt
+
+```markdown
+# Upgrade Node.js 18 to 20
+
+Upgrade from Node.js 18 to Node.js 20 LTS.
+
+## Changes to Address
+
+### 1. Package.json
+Update engines:
+```json
+{
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
+```
+
+### 2. Native Fetch
+Node 20 has native fetch. Can remove:
+- `node-fetch`
+- `cross-fetch`
+- polyfills
+
+### 3. Native Test Runner
+Consider migrating to native test runner (optional).
+
+### 4. Deprecated APIs
+Check for deprecated APIs:
+- `url.parse()` → `new URL()`
+- `querystring` → `URLSearchParams`
+- `path.resolve()` behavior changes
+
+### 5. ESM Handling
+Native ESM support improved. Check:
+- `"type": "module"` in package.json
+- `import.meta` usage
+- Dynamic imports
+
+## Process
+1. Update .nvmrc to `20`
+2. Update package.json engines
+3. Run `npm install` with Node 20
+4. Fix deprecation warnings
+5. Run tests
+6. Update CI config
+
+## CI Updates
+Update GitHub Actions / other CI:
+```yaml
+node-version: '20'
+```
+
+## Done When
+All tests pass on Node.js 20.
+```
+
+## Framework Migration
+
+Migrate from Express to Fastify (example).
+
+### Configuration
+
+```json
+{
+  "tool": "claude",
+  "exitConditions": {
+    "all": [
+      { "command": "grep -r \"from 'express'\" src/", "successPattern": "^$" },
+      { "command": "npm test", "successExitCode": 0 }
+    ],
+    "maxIterations": 50
+  }
+}
+```
+
+### Prompt
+
+```markdown
+# Migrate Express to Fastify
+
+Replace Express.js with Fastify for better performance.
+
+## Conversion Patterns
+
+### App Setup
+```typescript
+// Express
+import express from 'express';
+const app = express();
+
+// Fastify
+import Fastify from 'fastify';
+const app = Fastify({ logger: true });
+```
+
+### Routes
+```typescript
+// Express
+app.get('/users/:id', (req, res) => {
+  res.json({ id: req.params.id });
+});
+
+// Fastify
+app.get('/users/:id', async (request, reply) => {
+  return { id: request.params.id };
+});
+```
+
+### Middleware
+```typescript
+// Express middleware
+app.use(express.json());
+app.use(cors());
+
+// Fastify plugins
+await app.register(fastifyCors);
+// JSON parsing is automatic
+```
+
+### Error Handling
+```typescript
+// Express
+app.use((err, req, res, next) => {
+  res.status(500).json({ error: err.message });
+});
+
+// Fastify
+app.setErrorHandler((error, request, reply) => {
+  reply.status(500).send({ error: error.message });
+});
+```
+
+## Migration Order
+1. Install Fastify: `npm install fastify @fastify/cors`
+2. Create new app.ts with Fastify setup
+3. Migrate routes one by one
+4. Migrate middleware to plugins
+5. Update tests
+6. Remove Express: `npm uninstall express`
+
+## Process
+1. Start with app.ts / main entry
+2. Migrate one route file at a time
+3. Run tests after each file
+4. Commit after each successful migration
+
+## Done When
+- No Express imports remain
+- All tests pass
+- Application starts and responds
+```
+
+## CSS Framework Migration
+
+Migrate from one CSS approach to another.
+
+### Prompt
+
+```markdown
+# Migrate CSS Modules to Tailwind
+
+Replace CSS Modules with Tailwind CSS utility classes.
+
+## Conversion Examples
+
+### Basic Styling
+```jsx
+// Before (CSS Modules)
+import styles from './Button.module.css';
+<button className={styles.primary}>Click</button>
+
+// .primary { background: blue; color: white; padding: 8px 16px; }
+
+// After (Tailwind)
+<button className="bg-blue-500 text-white px-4 py-2">Click</button>
+```
+
+### Conditional Classes
+```jsx
+// Before
+<div className={`${styles.card} ${isActive ? styles.active : ''}`}>
+
+// After
+<div className={`p-4 rounded shadow ${isActive ? 'ring-2 ring-blue-500' : ''}`}>
+```
+
+### Responsive
+```jsx
+// Before
+// @media (min-width: 768px) { .container { width: 100%; } }
+
+// After
+<div className="w-full md:w-auto lg:max-w-4xl">
+```
+
+## Process
+1. Ensure Tailwind is configured
+2. Pick a component
+3. Convert CSS classes to Tailwind utilities
+4. Remove CSS Module import
+5. Delete .module.css file
+6. Test visual appearance
+7. Commit
+
+## Finding Components to Migrate
+```bash
+find src -name "*.module.css" | head -1
+```
+
+## Done When
+No .module.css files remain in src/.
+```
+
+<Aside type="tip" title="Migration Testing">
+For migrations, visual testing is important. Consider adding:
+```markdown
+## Visual Verification
+Take screenshots before and after:
+- `npm run test:visual`
+- Compare for regressions
+```
+</Aside>
+
+## Tips for Migration Tasks
+
+### 1. Establish Clear Conversion Rules
+
+Tables work well:
+
+```markdown
+| Before | After |
+|--------|-------|
+| `oldFunction()` | `newFunction()` |
+```
+
+### 2. Define the Migration Order
+
+Specify what to migrate first:
+
+```markdown
+## Migration Order
+1. Core utilities (no dependencies)
+2. Shared components
+3. Feature modules
+4. Entry points
+```
+
+### 3. Include Rollback Plan
+
+```markdown
+## If Something Breaks
+1. `git stash` current changes
+2. Identify the breaking change
+3. Create a fix or skip that file
+4. Continue migration
+```
+
+### 4. Verify at Each Step
+
+```markdown
+## After Each File
+- Build: `npm run build`
+- Typecheck: `npm run typecheck`
+- Test: `npm test`
+- Lint: `npm run lint`
+```

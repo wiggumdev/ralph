@@ -1,0 +1,220 @@
+---
+title: Installation
+description: Get ralph installed and ready to loop.
+---
+
+import { Aside, Tabs, TabItem, Steps } from '@astrojs/starlight/components';
+
+# Installation
+
+ralph is distributed as an npm package and works on macOS, Linux, and Windows (via WSL).
+
+## Prerequisites
+
+Before installing ralph, ensure you have:
+
+- **Node.js 18+** — ralph uses modern JavaScript features
+- **An AI CLI tool** — Claude Code, OpenCode, Aider, or similar
+- **Git** — For state persistence between iterations
+
+<Aside type="note">
+ralph orchestrates other AI tools—it doesn't include an AI model itself. You'll need at least one AI CLI tool installed.
+</Aside>
+
+## Install ralph
+
+<Tabs>
+  <TabItem label="npm">
+    ```bash
+    npm install -g @wiggumdev/ralph
+    ```
+  </TabItem>
+  <TabItem label="pnpm">
+    ```bash
+    pnpm add -g @wiggumdev/ralph
+    ```
+  </TabItem>
+  <TabItem label="yarn">
+    ```bash
+    yarn global add @wiggumdev/ralph
+    ```
+  </TabItem>
+  <TabItem label="bun">
+    ```bash
+    bun add -g @wiggumdev/ralph
+    ```
+  </TabItem>
+</Tabs>
+
+Verify the installation:
+
+```bash
+ralph --version
+```
+
+## Install an AI Tool
+
+ralph needs an AI CLI tool to orchestrate. Here are the popular options:
+
+### Claude Code (Recommended)
+
+Anthropic's official CLI for Claude:
+
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+Set your API key:
+
+```bash
+export ANTHROPIC_API_KEY="your-key-here"
+```
+
+### OpenCode
+
+Open-source AI coding assistant:
+
+```bash
+go install github.com/opencode-ai/opencode@latest
+```
+
+### Aider
+
+Git-aware coding assistant:
+
+```bash
+pip install aider-chat
+```
+
+## Configuration
+
+<Steps>
+
+1. **Initialize ralph in your project**
+
+   Navigate to your project directory and run:
+
+   ```bash
+   cd your-project
+   ralph init
+   ```
+
+   This creates a `ralph.config.json` file.
+
+2. **Configure your AI tool**
+
+   Edit `ralph.config.json`:
+
+   ```json
+   {
+     "tool": "claude",
+     "exitConditions": {
+       "markers": ["DONE", "COMPLETE"],
+       "testsPass": true,
+       "maxIterations": 50
+     },
+     "prompt": {
+       "file": "TASK.md"
+     }
+   }
+   ```
+
+3. **Create your task file**
+
+   Create `TASK.md` with your prompt:
+
+   ```markdown
+   # Task
+
+   Add unit tests for all functions in the `src/utils/` directory.
+
+   ## Requirements
+   - Each function should have at least 3 test cases
+   - Cover edge cases and error conditions
+   - Use the existing Jest setup
+
+   ## Progress
+   Check `PROGRESS.md` for completed work.
+
+   ## Exit Condition
+   When all functions are tested, create a file called `DONE`.
+   ```
+
+4. **Verify setup**
+
+   ```bash
+   ralph doctor
+   ```
+
+   This checks your configuration and AI tool availability.
+
+</Steps>
+
+## Environment Variables
+
+ralph respects several environment variables:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `RALPH_TOOL` | Default AI tool to use | `claude` |
+| `RALPH_MAX_ITERATIONS` | Maximum loop iterations | `100` |
+| `RALPH_VERBOSE` | Enable verbose logging | `false` |
+| `RALPH_CONFIG` | Custom config file path | `ralph.config.json` |
+
+## Shell Completion
+
+Enable tab completion for your shell:
+
+<Tabs>
+  <TabItem label="bash">
+    ```bash
+    ralph completion bash >> ~/.bashrc
+    source ~/.bashrc
+    ```
+  </TabItem>
+  <TabItem label="zsh">
+    ```bash
+    ralph completion zsh >> ~/.zshrc
+    source ~/.zshrc
+    ```
+  </TabItem>
+  <TabItem label="fish">
+    ```bash
+    ralph completion fish > ~/.config/fish/completions/ralph.fish
+    ```
+  </TabItem>
+</Tabs>
+
+## Troubleshooting
+
+### "Command not found: ralph"
+
+Ensure npm's global bin directory is in your PATH:
+
+```bash
+export PATH="$PATH:$(npm config get prefix)/bin"
+```
+
+### "AI tool not found"
+
+Make sure your AI tool is installed and accessible:
+
+```bash
+which claude  # or: which opencode, which aider
+```
+
+### Permission errors
+
+On macOS/Linux, you may need to fix npm permissions:
+
+```bash
+mkdir -p ~/.npm-global
+npm config set prefix '~/.npm-global'
+export PATH="$PATH:$HOME/.npm-global/bin"
+```
+
+## Next Steps
+
+With ralph installed, you're ready to run your first loop:
+
+→ **[Quick Start Guide](/guides/quickstart/)**

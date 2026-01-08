@@ -1,0 +1,183 @@
+---
+title: ralph
+description: AI-agnostic agentic loop CLI. Reset context, persist learnings, ship code.
+template: splash
+hero:
+  tagline: The AI coding loop that keeps going until it's done.
+  actions: []
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<div class="home-intro">
+
+## What is ralph?
+
+**ralph** is a CLI tool that runs AI coding agents in a loop. Instead of one-shot prompts that hit context limits and get confused, ralph resets the context window between iterations while preserving learnings through your codebase.
+
+The technique is named after Ralph Wiggum from The Simpsons—embracing the philosophy of persistent iteration despite setbacks. *"Me fail English? That's unpossible!"*
+
+</div>
+
+<CardGrid stagger>
+  <Card title="Context Window Reset" icon="refresh-cw">
+    Each loop iteration starts fresh. No accumulated confusion. The model reads your updated files and continues from where it left off.
+  </Card>
+  <Card title="State via Git" icon="git-branch">
+    Progress persists through your codebase. The AI reads git history, modified files, and test results to orient itself each iteration.
+  </Card>
+  <Card title="Smart Exit Conditions" icon="stop-circle">
+    Define when to stop: tests passing, no more TODOs, specific markers. ralph knows when the job is done.
+  </Card>
+  <Card title="Tool Agnostic" icon="tool">
+    Works with Claude Code, OpenCode, Aider, or any CLI-based AI tool. Your choice.
+  </Card>
+</CardGrid>
+
+---
+
+## The Problem
+
+AI coding agents are powerful, but they have a critical limitation: **context windows fill up**.
+
+As the model accumulates more context—tool calls, file reads, conversation history—it gets progressively worse at following instructions. Anthropic's research confirms this: models perform best with fresh context.
+
+Traditional approaches fail because:
+
+- **One-shot prompts** can't handle complex multi-step tasks
+- **Long conversations** degrade model performance
+- **Manual iteration** is tedious and error-prone
+
+---
+
+## The Solution
+
+ralph implements the **Ralph Wiggum approach**:
+
+```bash
+# This is ralph at its core
+while ! done; do
+  ai_agent "Complete the task. Check PROGRESS.md for status."
+done
+```
+
+Each iteration:
+1. **Fresh context** — Model starts clean
+2. **Reads state** — Checks files, git status, test results
+3. **Does work** — Makes progress on the task
+4. **Updates state** — Commits changes, updates progress markers
+5. **Checks exit** — Determines if work is complete
+
+The loop continues until exit conditions are met—tests pass, no errors remain, or a completion marker is found.
+
+---
+
+## Why "Ralph Wiggum"?
+
+The technique was coined by [Geoffrey Huntley](https://ghuntley.com/ralph/), who described it simply:
+
+> "Ralph is a Bash loop."
+
+The name captures the philosophy perfectly. Like Ralph Wiggum, the approach is:
+
+- **Persistently optimistic** — Keeps trying regardless of setbacks
+- **Deterministically stubborn** — Same prompt, different codebase state
+- **Surprisingly effective** — What seems simple produces remarkable results
+
+Geoffrey ran a 3-month loop that built a complete programming language. YC hackathon teams shipped 6+ repos overnight for $297 in API costs.
+
+---
+
+## Quick Start
+
+```bash
+# Install ralph
+npm install -g @wiggumdev/ralph
+
+# Run with your AI tool
+ralph run --tool claude "Add comprehensive tests for all API endpoints"
+
+# Or configure and go
+ralph init
+ralph run
+```
+
+<div class="cta-section">
+  <a href="/guides/quickstart/" class="btn-primary">
+    Get Started →
+  </a>
+  <a href="/concepts/the-loop/" class="btn-secondary">
+    Learn the Concepts
+  </a>
+</div>
+
+<style>{`
+  .home-intro {
+    max-width: 48rem;
+    margin: 2rem auto;
+    text-align: center;
+  }
+
+  .home-intro h2 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+  }
+
+  .home-intro p {
+    font-size: 1.125rem;
+    color: var(--sl-color-gray-2);
+    line-height: 1.7;
+  }
+
+  :root:not([data-theme='dark']) .home-intro p {
+    color: var(--sl-color-gray-4);
+  }
+
+  .cta-section {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 2rem;
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.875rem 1.75rem;
+    background: var(--sl-color-accent);
+    color: var(--sl-color-black);
+    font-weight: 600;
+    border-radius: 0.5rem;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 24px rgba(255, 217, 61, 0.4);
+  }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.875rem 1.75rem;
+    background: transparent;
+    border: 1px solid var(--sl-color-gray-5);
+    color: var(--sl-color-white);
+    font-weight: 600;
+    border-radius: 0.5rem;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+
+  :root:not([data-theme='dark']) .btn-secondary {
+    color: var(--sl-color-black);
+    border-color: var(--sl-color-gray-3);
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--sl-color-accent);
+    background: rgba(255, 217, 61, 0.1);
+  }
+`}</style>

@@ -1,0 +1,362 @@
+---
+title: Configuration
+description: Configure ralph for your project and workflow.
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+# Configuration
+
+ralph can be configured through a config file, CLI options, or environment variables. This guide covers all configuration options in detail.
+
+## Configuration File
+
+Create `ralph.config.json` in your project root:
+
+```bash
+ralph init
+```
+
+### Full Configuration Example
+
+```json
+{
+  "$schema": "https://ralph.dev/schema/config.json",
+
+  "tool": "claude",
+
+  "toolOptions": {
+    "model": "claude-sonnet-4-20250514",
+    "dangerouslyAllowAllCommands": false
+  },
+
+  "prompt": {
+    "file": "TASK.md",
+    "prepend": null,
+    "append": null,
+    "variables": {
+      "PROJECT_NAME": "my-app",
+      "COVERAGE_TARGET": "80"
+    }
+  },
+
+  "exitConditions": {
+    "command": "npm test",
+    "successExitCode": 0,
+    "successPattern": null,
+    "markerFile": null,
+    "maxIterations": 50,
+    "maxDuration": "4h",
+    "maxCost": 100.00,
+    "perIterationTimeout": "10m"
+  },
+
+  "state": {
+    "progressFile": "PROGRESS.md",
+    "createRalphDir": true,
+    "autoCommit": true,
+    "commitTemplate": "ralph: {{iteration}} - {{summary}}"
+  },
+
+  "hooks": {
+    "preRun": null,
+    "postRun": null,
+    "beforeIteration": null,
+    "afterIteration": null,
+    "onError": null,
+    "onComplete": null
+  },
+
+  "logging": {
+    "level": "info",
+    "file": ".ralph/logs/ralph.log",
+    "iterations": true
+  }
+}
+```
+
+## Configuration Sections
+
+### Tool Configuration
+
+```json
+{
+  "tool": "claude",
+  "toolOptions": {
+    "model": "claude-sonnet-4-20250514",
+    "maxTokens": 8192,
+    "temperature": 0,
+    "dangerouslyAllowAllCommands": false
+  }
+}
+```
+
+**Supported Tools:**
+
+| Tool | Value | Notes |
+|------|-------|-------|
+| Claude Code | `claude` | Anthropic's official CLI |
+| OpenCode | `opencode` | Open-source alternative |
+| Aider | `aider` | Git-focused assistant |
+| Custom | `custom` | See custom tool config |
+
+**Custom Tool Example:**
+
+```json
+{
+  "tool": "custom",
+  "toolOptions": {
+    "command": "my-ai-tool",
+    "args": ["--prompt", "{{prompt}}"],
+    "env": {
+      "MY_API_KEY": "${MY_API_KEY}"
+    }
+  }
+}
+```
+
+### Prompt Configuration
+
+```json
+{
+  "prompt": {
+    "file": "TASK.md",
+    "prepend": "You are a senior engineer working on {{PROJECT_NAME}}.",
+    "append": "Always run tests before committing.",
+    "variables": {
+      "PROJECT_NAME": "my-app",
+      "AUTHOR": "Team Alpha"
+    }
+  }
+}
+```
+
+**Options:**
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `file` | string | Path to prompt file |
+| `inline` | string | Inline prompt (alternative to file) |
+| `prepend` | string | Text to add before prompt |
+| `append` | string | Text to add after prompt |
+| `variables` | object | Variables for {{variable}} substitution |
+
+<Aside type="tip" title="Variable Substitution">
+Use `{{VARIABLE_NAME}}` in your prompt file. Values come from `variables` config or environment variables.
+</Aside>
+
+### Exit Conditions
+
+```json
+{
+  "exitConditions": {
+    "all": [
+      {
+        "command": "npm test",
+        "successExitCode": 0
+      },
+      {
+        "command": "npm run lint",
+        "successExitCode": 0
+      }
+    ],
+    "limits": {
+      "maxIterations": 50,
+      "maxDuration": "4h",
+      "maxCost": 100.00,
+      "perIterationTimeout": "10m"
+    }
+  }
+}
+```
+
+**Command Conditions:**
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `command` | string | Shell command to run |
+| `successExitCode` | number | Expected exit code for success |
+| `successPattern` | string | Regex pattern to match in output |
+| `failPattern` | string | Regex pattern that indicates failure |
+
+**File Conditions:**
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `markerFile` | string | File whose existence signals completion |
+| `file` | string | File to check contents |
+| `contains` | string | String or regex the file must contain |
+
+**Limits:**
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `maxIterations` | number | Maximum loop iterations |
+| `maxDuration` | string | Maximum total time (e.g., "4h", "30m") |
+| `maxCost` | number | Maximum API cost in dollars |
+| `perIterationTimeout` | string | Timeout for each iteration |
+
+### State Management
+
+```json
+{
+  "state": {
+    "progressFile": "PROGRESS.md",
+    "createRalphDir": true,
+    "autoCommit": true,
+    "commitTemplate": "ralph({{iteration}}): {{summary}}",
+    "branchStrategy": "none"
+  }
+}
+```
+
+**Options:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `progressFile` | string | null | File to track progress |
+| `createRalphDir` | boolean | true | Create .ralph/ directory |
+| `autoCommit` | boolean | false | Auto-commit after each iteration |
+| `commitTemplate` | string | See default | Commit message template |
+| `branchStrategy` | string | `none` | Branch handling strategy |
+
+**Branch Strategies:**
+
+- `none` - Work on current branch
+- `create` - Create new branch for ralph run
+- `isolate` - Each iteration on separate branch, merge at end
+
+### Hooks
+
+```json
+{
+  "hooks": {
+    "preRun": "npm install",
+    "postRun": "npm run cleanup",
+    "beforeIteration": "npm run lint:fix",
+    "afterIteration": "npm run format",
+    "onError": "npm run notify:error",
+    "onComplete": "npm run notify:success"
+  }
+}
+```
+
+**Available Hooks:**
+
+| Hook | Timing |
+|------|--------|
+| `preRun` | Before the loop starts |
+| `postRun` | After the loop ends (success or failure) |
+| `beforeIteration` | Before each iteration starts |
+| `afterIteration` | After each iteration ends |
+| `onError` | When an error occurs |
+| `onComplete` | When exit conditions are met |
+
+Hooks receive environment variables:
+
+```bash
+RALPH_ITERATION=5
+RALPH_ELAPSED=1234
+RALPH_STATUS=running
+```
+
+### Logging
+
+```json
+{
+  "logging": {
+    "level": "info",
+    "file": ".ralph/logs/ralph.log",
+    "iterations": true,
+    "timestamps": true,
+    "toolOutput": "stream"
+  }
+}
+```
+
+**Options:**
+
+| Option | Values | Description |
+|--------|--------|-------------|
+| `level` | `debug`, `info`, `warn`, `error` | Log verbosity |
+| `file` | path | Log file location |
+| `iterations` | boolean | Log each iteration separately |
+| `timestamps` | boolean | Include timestamps |
+| `toolOutput` | `stream`, `buffer`, `none` | How to handle AI tool output |
+
+## Configuration Precedence
+
+Configuration is merged in this order (later overrides earlier):
+
+1. Default values
+2. `ralph.config.json`
+3. Environment variables
+4. CLI options
+
+**Example:**
+
+```bash
+# Config says maxIterations: 50
+# This overrides to 10
+ralph run --max-iterations 10
+```
+
+## Environment-Specific Config
+
+Use different configs for different environments:
+
+```bash
+# Development
+ralph run --config ralph.dev.json
+
+# CI/CD
+ralph run --config ralph.ci.json
+```
+
+Or use environment variable:
+
+```bash
+export RALPH_CONFIG=ralph.ci.json
+ralph run
+```
+
+## Validation
+
+ralph validates config on startup. Check manually:
+
+```bash
+ralph config validate
+```
+
+Or view effective config:
+
+```bash
+ralph config show
+```
+
+## Extending Configuration
+
+### Including Other Configs
+
+```json
+{
+  "extends": "./ralph.base.json",
+  "exitConditions": {
+    "maxIterations": 100
+  }
+}
+```
+
+### Conditional Configuration
+
+Use environment variables for conditional values:
+
+```json
+{
+  "exitConditions": {
+    "maxIterations": "${CI:+10}${CI:-50}"
+  }
+}
+```
+
+This sets 10 iterations in CI (when `$CI` is set), 50 otherwise.

@@ -1,0 +1,419 @@
+---
+// Custom Hero component with Ralph Wiggum personality
+---
+
+<div class="hero-container">
+  <div class="hero-content">
+    <div class="hero-badge">
+      <span class="badge-icon">↻</span>
+      AI-Agnostic Agentic Loops
+    </div>
+
+    <h1 class="hero-title">
+      <span class="title-main">ralph</span>
+      <span class="title-accent">keeps going.</span>
+    </h1>
+
+    <p class="hero-description">
+      Reset the context. Feed the learnings. Watch it ship.
+      <br />
+      <span class="hero-subtext">
+        A CLI tool for running AI coding agents for hours, not minutes.
+      </span>
+    </p>
+
+    <div class="hero-terminal">
+      <div class="terminal-header">
+        <span class="terminal-dot red"></span>
+        <span class="terminal-dot yellow"></span>
+        <span class="terminal-dot green"></span>
+        <span class="terminal-title">terminal</span>
+      </div>
+      <div class="terminal-body">
+        <div class="terminal-line">
+          <span class="terminal-prompt">$</span>
+          <span class="terminal-command">ralph run</span>
+          <span class="terminal-args">"Add tests for all auth modules"</span>
+        </div>
+        <div class="terminal-output">
+          <span class="output-icon">↻</span> Loop 1: Found 12 auth modules, added tests for UserAuth...
+        </div>
+        <div class="terminal-output">
+          <span class="output-icon">↻</span> Loop 2: Added tests for SessionManager, TokenService...
+        </div>
+        <div class="terminal-output">
+          <span class="output-icon">↻</span> Loop 3: Added tests for OAuth, SAML providers...
+        </div>
+        <div class="terminal-output success">
+          <span class="output-icon">✓</span> Done. 47 test files created. All passing.
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-actions">
+      <a href="/guides/quickstart/" class="btn-primary">
+        Get Started
+        <span class="btn-arrow">→</span>
+      </a>
+      <a href="/concepts/the-loop/" class="btn-secondary">
+        How it works
+      </a>
+    </div>
+
+    <div class="hero-quote">
+      <blockquote>
+        "Me fail English? That's unpossible!"
+        <footer>— The philosophy: keep trying until it works</footer>
+      </blockquote>
+    </div>
+  </div>
+
+  <div class="hero-features">
+    <div class="feature-item">
+      <div class="feature-icon">🔄</div>
+      <div class="feature-text">
+        <strong>Context Reset</strong>
+        <span>Fresh context window each iteration</span>
+      </div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">🧠</div>
+      <div class="feature-text">
+        <strong>State Persistence</strong>
+        <span>Learnings carry forward via git</span>
+      </div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">🛑</div>
+      <div class="feature-text">
+        <strong>Exit Conditions</strong>
+        <span>Smart stopping when done</span>
+      </div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">🔧</div>
+      <div class="feature-text">
+        <strong>Tool Agnostic</strong>
+        <span>Claude, OpenCode, any CLI</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .hero-container {
+    max-width: 64rem;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 4rem;
+  }
+
+  .hero-content {
+    text-align: center;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: linear-gradient(135deg, rgba(255, 217, 61, 0.15) 0%, rgba(255, 159, 28, 0.15) 100%);
+    border: 1px solid rgba(255, 217, 61, 0.3);
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--sl-color-accent);
+    margin-bottom: 1.5rem;
+  }
+
+  .badge-icon {
+    font-size: 1rem;
+    animation: spin 4s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .hero-title {
+    font-size: clamp(2.5rem, 8vw, 4.5rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    margin: 0 0 1.5rem;
+  }
+
+  .title-main {
+    display: block;
+    background: linear-gradient(135deg, var(--sl-color-white) 0%, var(--sl-color-gray-2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  :root:not([data-theme='dark']) .title-main {
+    background: linear-gradient(135deg, var(--sl-color-black) 0%, var(--sl-color-gray-4) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .title-accent {
+    display: block;
+    color: var(--sl-color-accent);
+  }
+
+  .hero-description {
+    font-size: 1.25rem;
+    color: var(--sl-color-gray-2);
+    max-width: 32rem;
+    margin: 0 auto 2rem;
+    line-height: 1.6;
+  }
+
+  :root:not([data-theme='dark']) .hero-description {
+    color: var(--sl-color-gray-4);
+  }
+
+  .hero-subtext {
+    font-size: 1rem;
+    opacity: 0.8;
+  }
+
+  .hero-terminal {
+    background: #0D1117;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    max-width: 36rem;
+    margin: 0 auto 2rem;
+    text-align: left;
+    box-shadow:
+      0 4px 6px -1px rgba(0, 0, 0, 0.1),
+      0 2px 4px -1px rgba(0, 0, 0, 0.06),
+      0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+
+  .terminal-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: #161B22;
+    border-bottom: 1px solid #30363D;
+  }
+
+  .terminal-dot {
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 50%;
+  }
+
+  .terminal-dot.red { background: #FF5F56; }
+  .terminal-dot.yellow { background: #FFBD2E; }
+  .terminal-dot.green { background: #27C93F; }
+
+  .terminal-title {
+    flex: 1;
+    text-align: center;
+    font-size: 0.75rem;
+    color: #8B949E;
+    font-family: var(--sl-font-mono);
+  }
+
+  .terminal-body {
+    padding: 1rem;
+    font-family: var(--sl-font-mono);
+    font-size: 0.875rem;
+    line-height: 1.7;
+  }
+
+  .terminal-line {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .terminal-prompt {
+    color: #7EE787;
+  }
+
+  .terminal-command {
+    color: #79C0FF;
+  }
+
+  .terminal-args {
+    color: #A5D6FF;
+  }
+
+  .terminal-output {
+    color: #8B949E;
+    padding-left: 1rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .terminal-output.success {
+    color: #7EE787;
+  }
+
+  .output-icon {
+    margin-right: 0.5rem;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 2.5rem;
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.875rem 1.75rem;
+    background: var(--sl-color-accent);
+    color: var(--sl-color-black);
+    font-weight: 600;
+    font-size: 1rem;
+    border-radius: 0.5rem;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 24px rgba(255, 217, 61, 0.4);
+  }
+
+  .btn-arrow {
+    transition: transform 0.2s ease;
+  }
+
+  .btn-primary:hover .btn-arrow {
+    transform: translateX(4px);
+  }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.875rem 1.75rem;
+    background: transparent;
+    color: var(--sl-color-white);
+    font-weight: 600;
+    font-size: 1rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.5rem;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+
+  :root:not([data-theme='dark']) .btn-secondary {
+    color: var(--sl-color-black);
+    border-color: var(--sl-color-gray-3);
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--sl-color-accent);
+    background: rgba(255, 217, 61, 0.1);
+  }
+
+  .hero-quote {
+    max-width: 28rem;
+    margin: 0 auto 3rem;
+  }
+
+  .hero-quote blockquote {
+    font-family: 'Comic Neue', cursive;
+    font-size: 1.125rem;
+    font-style: italic;
+    color: var(--sl-color-gray-2);
+    margin: 0;
+    padding: 1rem 1.5rem;
+    background: linear-gradient(135deg, rgba(255, 217, 61, 0.08) 0%, transparent 100%);
+    border-left: 3px solid var(--sl-color-accent);
+    border-radius: 0 0.5rem 0.5rem 0;
+  }
+
+  :root:not([data-theme='dark']) .hero-quote blockquote {
+    color: var(--sl-color-gray-4);
+  }
+
+  .hero-quote footer {
+    font-style: normal;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+    opacity: 0.7;
+  }
+
+  .hero-features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    max-width: 48rem;
+    margin: 0 auto;
+  }
+
+  .feature-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: var(--sl-color-bg-sidebar);
+    border: 1px solid var(--sl-color-hairline-light);
+    border-radius: 0.75rem;
+    transition: all 0.2s ease;
+  }
+
+  .feature-item:hover {
+    border-color: var(--sl-color-accent);
+    transform: translateY(-2px);
+  }
+
+  .feature-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+  }
+
+  .feature-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .feature-text strong {
+    font-weight: 600;
+    color: var(--sl-color-white);
+  }
+
+  :root:not([data-theme='dark']) .feature-text strong {
+    color: var(--sl-color-black);
+  }
+
+  .feature-text span {
+    font-size: 0.875rem;
+    color: var(--sl-color-gray-3);
+  }
+
+  @media (max-width: 640px) {
+    .hero-container {
+      padding: 2rem 1rem 3rem;
+    }
+
+    .hero-actions {
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+      width: 100%;
+      max-width: 280px;
+      justify-content: center;
+    }
+
+    .hero-features {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

@@ -1,0 +1,414 @@
+---
+title: Test Coverage
+description: Using ralph to systematically add tests to your codebase.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+# Test Coverage with ralph
+
+Adding comprehensive tests is tedious. It's also perfect for ralph—systematic, repetitive work where each iteration builds on the last.
+
+## Why ralph Works Well for Testing
+
+- **Consistent patterns** — The AI establishes patterns early and follows them
+- **Incremental progress** — Each iteration adds more tests
+- **Self-verifying** — Test output shows what's done and what's not
+- **Natural exit condition** — Coverage percentage provides clear completion criteria
+
+## Example: Full Test Coverage
+
+Add tests until coverage reaches 80%.
+
+### Configuration
+
+```json
+{
+  "tool": "claude",
+  "exitConditions": {
+    "command": "npm test -- --coverage --coverageReporters=text-summary 2>&1 | grep 'All files'",
+    "successPattern": "(8\\d|9\\d|100)%",
+    "maxIterations": 50,
+    "maxCost": 30.00
+  }
+}
+```
+
+### Prompt
+
+```markdown
+# Add Test Coverage
+
+Goal: Achieve 80%+ test coverage for the codebase.
+
+## Current Status
+Run `npm test -- --coverage` to see current coverage.
+
+## Guidelines
+- Use Jest (already configured)
+- Follow patterns in existing tests at `src/__tests__/`
+- Each module should have a corresponding `.test.ts` file
+- Test:
+  - Happy paths
+  - Error conditions
+  - Edge cases (null, undefined, empty arrays)
+
+## What to Test
+Priority order:
+1. Untested files (0% coverage)
+2. Low coverage files (<50%)
+3. Critical paths (auth, payments, data)
+
+## Test Structure
+```typescript
+describe('ModuleName', () => {
+  describe('functionName', () => {
+    it('should do expected behavior', () => {
+      // Arrange
+      // Act
+      // Assert
+    });
+
+    it('should handle edge case', () => {
+      // ...
+    });
+
+    it('should throw on invalid input', () => {
+      // ...
+    });
+  });
+});
+```
+
+## After Each Module
+1. Run `npm test` to verify new tests pass
+2. Check coverage improved
+3. Commit: "test(module): add tests for [name]"
+
+## Progress Tracking
+Coverage report shows progress. Commit after each tested module.
+
+## Done When
+`npm test -- --coverage` shows 80%+ coverage.
+```
+
+## Example: API Endpoint Tests
+
+Add integration tests for all API endpoints.
+
+### Configuration
+
+```json
+{
+  "tool": "claude",
+  "exitConditions": {
+    "command": "find src/routes -name '*.ts' ! -name '*.test.ts' | wc -l",
+    "successPattern": "^0$|matches test count",
+    "maxIterations": 30
+  }
+}
+```
+
+### Prompt
+
+```markdown
+# Add API Endpoint Tests
+
+Add integration tests for all API endpoints.
+
+## Find Untested Endpoints
+```bash
+# Routes without tests
+for f in src/routes/*.ts; do
+  test_file="${f%.ts}.test.ts"
+  if [ ! -f "$test_file" ]; then
+    echo "$f needs tests"
+  fi
+done
+```
+
+## Test Pattern
+
+```typescript
+import request from 'supertest';
+import app from '../app';
+import { setupTestDb, teardownTestDb } from './helpers';
+
+describe('GET /api/users', () => {
+  beforeAll(async () => {
+    await setupTestDb();
+  });
+
+  afterAll(async () => {
+    await teardownTestDb();
+  });
+
+  it('returns list of users', async () => {
+    const response = await request(app)
+      .get('/api/users')
+      .set('Authorization', 'Bearer test-token');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('users');
+    expect(Array.isArray(response.body.users)).toBe(true);
+  });
+
+  it('requires authentication', async () => {
+    const response = await request(app)
+      .get('/api/users');
+
+    expect(response.status).toBe(401);
+  });
+
+  it('handles pagination', async () => {
+    const response = await request(app)
+      .get('/api/users?page=2&limit=10')
+      .set('Authorization', 'Bearer test-token');
+
+    expect(response.status).toBe(200);
+    expect(response.body.meta.page).toBe(2);
+  });
+});
+```
+
+## For Each Endpoint Test
+- Success case (200/201)
+- Authentication required (401)
+- Authorization/permissions (403)
+- Not found (404)
+- Validation errors (400)
+- Server errors (mocked 500)
+
+## Process
+1. Pick an untested route file
+2. Create corresponding .test.ts
+3. Run tests: `npm test src/routes/[name].test.ts`
+4. Commit when passing
+
+## Done When
+Every route file has a corresponding test file.
+```
+
+## Example: Snapshot Testing
+
+Add snapshot tests for React components.
+
+### Configuration
+
+```json
+{
+  "tool": "claude",
+  "exitConditions": {
+    "command": "npm test -- --coverage --collectCoverageFrom='src/components/**/*.tsx'",
+    "successPattern": "All files.*[89]\\d|100",
+    "maxIterations": 40
+  }
+}
+```
+
+### Prompt
+
+```markdown
+# Add Component Snapshot Tests
+
+Add snapshot and behavioral tests for all React components.
+
+## Find Components Needing Tests
+```bash
+find src/components -name '*.tsx' ! -name '*.test.tsx' ! -name '*.stories.tsx'
+```
+
+## Test Structure
+
+```tsx
+import { render, screen, fireEvent } from '@testing-library/react';
+import { Button } from './Button';
+
+describe('Button', () => {
+  // Snapshot test
+  it('matches snapshot', () => {
+    const { container } = render(<Button>Click me</Button>);
+    expect(container).toMatchSnapshot();
+  });
+
+  it('matches snapshot when disabled', () => {
+    const { container } = render(<Button disabled>Click me</Button>);
+    expect(container).toMatchSnapshot();
+  });
+
+  // Behavioral tests
+  it('calls onClick when clicked', () => {
+    const onClick = jest.fn();
+    render(<Button onClick={onClick}>Click me</Button>);
+
+    fireEvent.click(screen.getByText('Click me'));
+
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not call onClick when disabled', () => {
+    const onClick = jest.fn();
+    render(<Button disabled onClick={onClick}>Click me</Button>);
+
+    fireEvent.click(screen.getByText('Click me'));
+
+    expect(onClick).not.toHaveBeenCalled();
+  });
+});
+```
+
+## Test Coverage Goals
+- Snapshot for default render
+- Snapshot for each significant prop variation
+- Behavioral test for all interactions
+- Behavioral test for edge cases
+
+## Process
+1. Find untested component
+2. Create [Component].test.tsx
+3. Add snapshot tests for variations
+4. Add behavioral tests
+5. Run: `npm test -- --updateSnapshot` (first time only)
+6. Commit
+
+## Done When
+All components have test files with passing tests.
+```
+
+## Example: Unit Tests with Mocking
+
+Add unit tests with proper mocking.
+
+### Prompt
+
+```markdown
+# Add Unit Tests with Mocking
+
+Add unit tests for service modules, properly mocking dependencies.
+
+## Mocking Pattern
+
+```typescript
+// services/userService.test.ts
+import { UserService } from './userService';
+import { Database } from '../db';
+import { EmailService } from './emailService';
+
+// Mock dependencies
+jest.mock('../db');
+jest.mock('./emailService');
+
+const mockDb = Database as jest.Mocked<typeof Database>;
+const mockEmail = EmailService as jest.Mocked<typeof EmailService>;
+
+describe('UserService', () => {
+  let service: UserService;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    service = new UserService();
+  });
+
+  describe('createUser', () => {
+    it('creates user and sends welcome email', async () => {
+      // Arrange
+      mockDb.users.create.mockResolvedValue({ id: '123', email: 'test@example.com' });
+      mockEmail.sendWelcome.mockResolvedValue(true);
+
+      // Act
+      const result = await service.createUser({ email: 'test@example.com' });
+
+      // Assert
+      expect(mockDb.users.create).toHaveBeenCalledWith({ email: 'test@example.com' });
+      expect(mockEmail.sendWelcome).toHaveBeenCalledWith('test@example.com');
+      expect(result.id).toBe('123');
+    });
+
+    it('throws on database error', async () => {
+      mockDb.users.create.mockRejectedValue(new Error('DB Error'));
+
+      await expect(service.createUser({ email: 'test@example.com' }))
+        .rejects.toThrow('DB Error');
+
+      expect(mockEmail.sendWelcome).not.toHaveBeenCalled();
+    });
+  });
+});
+```
+
+## What to Mock
+- Database calls
+- External API calls
+- Email/SMS services
+- File system (when applicable)
+- Time-dependent functions
+
+## What NOT to Mock
+- Pure functions
+- Internal utilities
+- The module under test
+
+## Process
+1. Identify service module
+2. List its dependencies
+3. Create test file with mocks
+4. Test each public method
+5. Verify all branches covered
+
+## Done When
+All service modules have tests with mocked dependencies.
+```
+
+## Tips for Test Generation
+
+### 1. Provide Test Examples
+
+The AI follows patterns it sees. Include a good example:
+
+```markdown
+## Example Test (follow this pattern)
+[Your best existing test]
+```
+
+### 2. Specify Coverage Criteria
+
+Be explicit about what "done" means:
+
+```markdown
+## Coverage Requirements
+- Line coverage: 80%+
+- Branch coverage: 70%+
+- All public methods tested
+```
+
+### 3. Handle Test Data
+
+Tell the AI how to handle fixtures:
+
+```markdown
+## Test Data
+- Use factories in `tests/factories/`
+- Don't hardcode IDs
+- Clean up after tests
+```
+
+### 4. Define Edge Cases
+
+List edge cases to test:
+
+```markdown
+## Edge Cases to Cover
+- Empty arrays
+- Null/undefined inputs
+- Maximum length strings
+- Negative numbers
+- Concurrent operations
+```
+
+<Aside type="tip" title="Test Isolation">
+Ensure each test is independent. The AI sometimes creates tests that depend on previous test state. Include this in your prompt:
+
+```markdown
+Each test must be independent. Use beforeEach for setup, afterEach for cleanup.
+```
+</Aside>

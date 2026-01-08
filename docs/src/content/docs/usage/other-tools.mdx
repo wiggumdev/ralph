@@ -1,0 +1,312 @@
+---
+title: With Other Tools
+description: Using ralph with Aider, custom tools, and other AI assistants.
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+# Using ralph with Other Tools
+
+ralph is tool-agnostic. If your AI tool has a CLI, ralph can loop it.
+
+## Aider
+
+[Aider](https://aider.chat) is a popular git-aware coding assistant.
+
+### Setup
+
+```bash
+pip install aider-chat
+export ANTHROPIC_API_KEY="sk-ant-..."  # or OPENAI_API_KEY
+```
+
+### Configuration
+
+```json
+{
+  "tool": "aider",
+  "toolOptions": {
+    "model": "claude-3-5-sonnet",
+    "gitMode": true,
+    "autoCommit": true
+  }
+}
+```
+
+### Aider-Specific Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `model` | AI model to use | claude-3-5-sonnet |
+| `gitMode` | Enable git integration | true |
+| `autoCommit` | Auto-commit changes | false |
+| `darkMode` | Dark terminal theme | true |
+
+### Example Configuration
+
+```json
+{
+  "tool": "aider",
+  "toolOptions": {
+    "model": "claude-3-5-sonnet",
+    "gitMode": true,
+    "autoCommit": false,
+    "editFormat": "diff"
+  },
+  "exitConditions": {
+    "command": "npm test",
+    "successExitCode": 0,
+    "maxIterations": 30
+  }
+}
+```
+
+<Aside type="tip" title="Aider + Git">
+Aider has excellent git integration. Consider letting Aider handle commits (autoCommit: true) rather than ralph's autoCommit feature.
+</Aside>
+
+## Continue
+
+[Continue](https://continue.dev) is a VS Code/JetBrains extension with CLI support.
+
+### Setup
+
+```bash
+npm install -g @continue/cli
+```
+
+### Configuration
+
+```json
+{
+  "tool": "continue",
+  "toolOptions": {
+    "model": "claude-3-5-sonnet",
+    "contextProvider": "codebase"
+  }
+}
+```
+
+## Cursor (via CLI)
+
+Cursor's CLI can be used with ralph:
+
+```json
+{
+  "tool": "cursor",
+  "toolOptions": {
+    "workspace": ".",
+    "model": "claude-3-5-sonnet"
+  }
+}
+```
+
+<Aside type="note">
+Cursor CLI availability varies. Check Cursor's documentation for current CLI support.
+</Aside>
+
+## Custom Tools
+
+For any CLI tool not directly supported, use the `custom` tool type.
+
+### Basic Custom Tool
+
+```json
+{
+  "tool": "custom",
+  "toolOptions": {
+    "command": "my-ai-tool",
+    "args": ["--prompt", "{{prompt}}", "--output", "{{output}}"],
+    "env": {
+      "MY_API_KEY": "${MY_API_KEY}"
+    }
+  }
+}
+```
+
+### Template Variables
+
+| Variable | Description |
+|----------|-------------|
+| `{{prompt}}` | The prompt text |
+| `{{promptFile}}` | Path to prompt file |
+| `{{output}}` | Path for output |
+| `{{iteration}}` | Current iteration number |
+| `{{workdir}}` | Working directory |
+
+### Full Custom Example
+
+```json
+{
+  "tool": "custom",
+  "toolOptions": {
+    "command": "/usr/local/bin/my-agent",
+    "args": [
+      "--task", "{{promptFile}}",
+      "--context", "{{workdir}}",
+      "--iteration", "{{iteration}}",
+      "--json-output"
+    ],
+    "env": {
+      "AI_API_KEY": "${AI_API_KEY}",
+      "AI_MODEL": "gpt-4-turbo"
+    },
+    "shell": true,
+    "cwd": "{{workdir}}",
+    "outputParser": "json",
+    "successIndicator": "status === 'complete'"
+  }
+}
+```
+
+### Output Parsing
+
+ralph can parse tool output to determine success:
+
+<Tabs>
+  <TabItem label="JSON Output">
+    ```json
+    {
+      "toolOptions": {
+        "outputParser": "json",
+        "successIndicator": "result.status === 'done'"
+      }
+    }
+    ```
+  </TabItem>
+  <TabItem label="Text Pattern">
+    ```json
+    {
+      "toolOptions": {
+        "outputParser": "text",
+        "successPattern": "Task completed successfully"
+      }
+    }
+    ```
+  </TabItem>
+  <TabItem label="Exit Code">
+    ```json
+    {
+      "toolOptions": {
+        "outputParser": "exitCode",
+        "successExitCode": 0
+      }
+    }
+    ```
+  </TabItem>
+</Tabs>
+
+## Shell Scripts as Tools
+
+You can wrap any process in a shell script:
+
+**my-ai-wrapper.sh:**
+```bash
+#!/bin/bash
+
+PROMPT_FILE=$1
+ITERATION=$2
+
+# Call your AI tool
+result=$(my-tool --prompt "$(cat $PROMPT_FILE)")
+
+# Do any post-processing
+echo "$result"
+
+# Signal success/failure
+if echo "$result" | grep -q "DONE"; then
+  exit 0
+else
+  exit 1
+fi
+```
+
+**ralph.config.json:**
+```json
+{
+  "tool": "custom",
+  "toolOptions": {
+    "command": "./my-ai-wrapper.sh",
+    "args": ["{{promptFile}}", "{{iteration}}"],
+    "shell": true
+  }
+}
+```
+
+## API-Based Tools
+
+For tools that expose an API rather than CLI:
+
+```json
+{
+  "tool": "custom",
+  "toolOptions": {
+    "command": "curl",
+    "args": [
+      "-X", "POST",
+      "-H", "Authorization: Bearer ${API_KEY}",
+      "-H", "Content-Type: application/json",
+      "-d", "@{{promptFile}}",
+      "https://api.my-ai.com/v1/complete"
+    ],
+    "outputParser": "json",
+    "successIndicator": "response.done === true"
+  }
+}
+```
+
+## Tool Comparison
+
+| Tool | Strengths | Best For |
+|------|-----------|----------|
+| Claude Code | Rich tooling, hooks | General purpose |
+| OpenCode | Multi-provider, local | Flexibility, cost control |
+| Aider | Git integration | Refactoring, migrations |
+| Continue | IDE integration | Development workflows |
+| Custom | Full control | Special requirements |
+
+## Adding Tool Support
+
+Want first-class support for a tool? ralph is extensible:
+
+```typescript
+// plugins/my-tool.ts
+import { ToolPlugin } from '@wiggumdev/ralph';
+
+export const myToolPlugin: ToolPlugin = {
+  name: 'my-tool',
+
+  async start(prompt: string, options: ToolOptions) {
+    // Launch the tool
+  },
+
+  async waitForExit() {
+    // Wait for completion
+  },
+
+  async cleanup() {
+    // Cleanup resources
+  }
+};
+```
+
+Register in config:
+
+```json
+{
+  "plugins": ["./plugins/my-tool.ts"],
+  "tool": "my-tool"
+}
+```
+
+## Tips for Custom Tools
+
+1. **Ensure clean exits** — Your tool should exit cleanly so ralph can restart it
+
+2. **Handle interrupts** — Trap SIGINT/SIGTERM for graceful shutdown
+
+3. **Output to files** — If your tool's output is complex, write to files rather than stdout
+
+4. **Test standalone first** — Make sure your tool works correctly before adding ralph
+
+5. **Check permissions** — Ensure ralph can execute your tool and access required resources

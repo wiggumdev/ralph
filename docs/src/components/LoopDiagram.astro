@@ -1,0 +1,155 @@
+---
+// Interactive loop diagram showing ralph's iteration cycle
+---
+
+<div class="loop-diagram">
+  <div class="loop-ring">
+    <div class="node node-start">
+      <span class="node-icon">▶</span>
+      <span class="node-label">Start</span>
+    </div>
+    <div class="arrow arrow-1">→</div>
+    <div class="node node-run">
+      <span class="node-icon">🤖</span>
+      <span class="node-label">Run AI</span>
+    </div>
+    <div class="arrow arrow-2">→</div>
+    <div class="node node-check">
+      <span class="node-icon">✓</span>
+      <span class="node-label">Check Exit</span>
+    </div>
+    <div class="arrow arrow-3">→</div>
+    <div class="node node-reset">
+      <span class="node-icon">↻</span>
+      <span class="node-label">Reset</span>
+    </div>
+    <div class="arrow arrow-loop">↩</div>
+  </div>
+
+  <div class="loop-state">
+    <div class="state-label">State persists via:</div>
+    <div class="state-items">
+      <span class="state-item">Git</span>
+      <span class="state-item">Files</span>
+      <span class="state-item">Tests</span>
+    </div>
+  </div>
+</div>
+
+<style>
+  .loop-diagram {
+    padding: 2rem;
+    background: var(--sl-color-bg-sidebar);
+    border-radius: 1rem;
+    margin: 2rem 0;
+  }
+
+  .loop-ring {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem 1.5rem;
+    background: var(--sl-color-bg);
+    border: 2px solid var(--sl-color-hairline);
+    border-radius: 0.75rem;
+    transition: all 0.2s ease;
+  }
+
+  .node:hover {
+    border-color: var(--sl-color-accent);
+    transform: translateY(-2px);
+  }
+
+  .node-icon {
+    font-size: 1.5rem;
+  }
+
+  .node-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .node-start { border-color: var(--sl-color-accent); }
+  .node-run .node-icon { animation: pulse 2s infinite; }
+  .node-reset .node-icon { animation: spin 3s linear infinite; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .arrow {
+    font-size: 1.5rem;
+    color: var(--sl-color-accent);
+    font-weight: bold;
+  }
+
+  .arrow-loop {
+    flex-basis: 100%;
+    text-align: center;
+    font-size: 2rem;
+    margin-top: 1rem;
+    animation: bounce 1s infinite;
+  }
+
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+
+  .loop-state {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px dashed var(--sl-color-hairline);
+    text-align: center;
+  }
+
+  .state-label {
+    font-size: 0.875rem;
+    color: var(--sl-color-gray-3);
+    margin-bottom: 0.75rem;
+  }
+
+  .state-items {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+  }
+
+  .state-item {
+    padding: 0.25rem 0.75rem;
+    background: var(--sl-color-accent);
+    color: var(--sl-color-black);
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 9999px;
+  }
+
+  @media (max-width: 640px) {
+    .loop-ring {
+      flex-direction: column;
+    }
+
+    .arrow {
+      transform: rotate(90deg);
+    }
+
+    .arrow-loop {
+      transform: rotate(180deg);
+    }
+  }
+</style>
