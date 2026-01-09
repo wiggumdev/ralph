@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs (except dist which we need)
+coverage/
+*.log
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.*
+*.local
+
+# Test files
+**/*.test.ts
+**/*.spec.ts
+__tests__/
+
+# Documentation source (not needed in container)
+packages/docs/
+
+# Development files
+*.md
+!README.md
+turbo.json
+biome.jsonc
+vitest.config.ts
+tsconfig*.json
+bunfig.toml

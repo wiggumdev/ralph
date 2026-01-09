@@ -1,0 +1,244 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g., 1.0.0 or 1.0.0-preview.1)"
+        required: true
+        type: string
+      dry_run:
+        description: "Dry run (don't actually publish)"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+env:
+  BUN_VERSION: "1.2.17"
+
+jobs:
+  build:
+    name: Build & Package
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is_prerelease: ${{ steps.version.outputs.is_prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            # Extract version from tag (v1.0.0 -> 1.0.0)
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Check if prerelease
+          if [[ "$VERSION" == *"-"* ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Set version
+        working-directory: packages/cli
+        run: bun run script/version.ts ${{ steps.version.outputs.version }}
+
+      - name: Build all platforms
+        working-directory: packages/cli
+        run: bun run script/publish.ts --skip-build=false
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: |
+            packages/cli/dist/*.tar.gz
+            packages/cli/dist/*.zip
+            packages/cli/dist/*/*.tgz
+          retention-days: 7
+
+  # Smoke test on native platforms
+  smoke-test:
+    name: Smoke Test (${{ matrix.os }})
+    needs: build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: ralph-linux-x64.tar.gz
+          - os: macos-latest
+            artifact: ralph-darwin-arm64.zip
+          - os: windows-latest
+            artifact: ralph-windows-x64.zip
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+          path: artifacts
+
+      - name: Extract and test (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          tar -xzf artifacts/${{ matrix.artifact }}
+          chmod +x ralph
+          ./ralph --version
+
+      - name: Extract and test (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          unzip artifacts/${{ matrix.artifact }}
+          chmod +x ralph
+          ./ralph --version
+
+      - name: Extract and test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Expand-Archive -Path artifacts/${{ matrix.artifact }} -DestinationPath .
+          ./ralph.exe --version
+
+  publish-npm:
+    name: Publish to npm
+    needs: [build, smoke-test]
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.dry_run }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+          path: packages/cli/dist
+
+      - name: Setup npm auth
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+
+      - name: Determine npm tag
+        id: npm_tag
+        run: |
+          VERSION="${{ needs.build.outputs.version }}"
+          if [[ "$VERSION" == *"-"* ]]; then
+            echo "tag=preview" >> $GITHUB_OUTPUT
+          else
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish packages
+        working-directory: packages/cli/dist
+        run: |
+          TAG="${{ steps.npm_tag.outputs.tag }}"
+          echo "Publishing with tag: $TAG"
+
+          # Publish platform packages
+          for pkg in ralph-*/; do
+            if [ -f "$pkg"*.tgz ]; then
+              echo "Publishing $pkg..."
+              npm publish "$pkg"*.tgz --access public --tag "$TAG"
+            fi
+          done
+
+          # Publish meta package
+          if [ -f ralph/*.tgz ]; then
+            echo "Publishing ralph-ai..."
+            npm publish ralph/*.tgz --access public --tag "$TAG"
+          fi
+
+  publish-docker:
+    name: Publish Docker Image
+    needs: [build, smoke-test]
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.dry_run }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+          path: packages/cli/dist
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.build.outputs.version }}
+            type=raw,value=latest,enable=${{ needs.build.outputs.is_prerelease == 'false' }}
+            type=raw,value=preview,enable=${{ needs.build.outputs.is_prerelease == 'true' }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  create-release:
+    name: Create GitHub Release
+    needs: [build, smoke-test, publish-npm]
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.dry_run }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+          path: artifacts
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.build.outputs.version }}
+          name: v${{ needs.build.outputs.version }}
+          prerelease: ${{ needs.build.outputs.is_prerelease == 'true' }}
+          generate_release_notes: true
+          files: |
+            artifacts/*.tar.gz
+            artifacts/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

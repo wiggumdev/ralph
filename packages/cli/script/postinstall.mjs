@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { createRequire } from "node::module";
+import { createRequire } from "node:module";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
