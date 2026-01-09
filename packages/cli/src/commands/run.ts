@@ -4,6 +4,7 @@ import type { CommandModule } from "yargs";
 import { getAdapter } from "#adapters/index";
 import type { CLIAdapter } from "#adapters/types";
 import { getPromptPath, loadConfig } from "#config/loader";
+import { createParser, type OutputFormat } from "#parsers";
 import type { LoopResult } from "#ui/ralph-app";
 import { runLoopTUI } from "#ui/ralph-app";
 import { readStream } from "#utils/stream";
@@ -15,6 +16,7 @@ interface RunArgs {
   cwd?: string;
   verbose?: boolean;
   noTui?: boolean;
+  outputFormat?: string;
 }
 
 function resolvePrompt(promptArg: string | undefined, cwd: string): string {
@@ -36,9 +38,10 @@ async function runOnce(
   adapter: CLIAdapter,
   promptContent: string,
   cwd: string,
-  verbose?: boolean
+  verbose?: boolean,
+  outputFormat?: OutputFormat
 ): Promise<number> {
-  const args = adapter.buildArgs(promptContent, { verbose, cwd });
+  const args = adapter.buildArgs(promptContent, { verbose, cwd, outputFormat });
   const proc = Bun.spawn(args, {
     cwd,
     stdin: "inherit",
@@ -54,37 +57,82 @@ async function runLoopPlain(
   promptContent: string,
   cwd: string,
   maxIterations: number,
-  verbose?: boolean
+  verbose?: boolean,
+  outputFormat: OutputFormat = "stream-json"
 ): Promise<LoopResult> {
   let lastExitCode = 0;
   let iterations = 0;
   let exitReason: LoopResult["exitReason"] = "max_iterations";
+  let lastSessionId: string | undefined;
 
   for (let i = 1; i <= maxIterations; i++) {
     iterations = i;
     console.log(`\n--- Iteration ${i}/${maxIterations} ---`);
 
-    const args = adapter.buildArgs(promptContent, { verbose, cwd });
+    const args = adapter.buildArgs(promptContent, {
+      verbose,
+      cwd,
+      outputFormat,
+    });
     const proc = Bun.spawn(args, {
       cwd,
       stdout: "pipe",
       stderr: "pipe",
     });
 
-    let fullOutput = "";
-    const stdoutReader = proc.stdout.getReader();
-    const stderrReader = proc.stderr.getReader();
+    const parser = createParser(outputFormat, adapter.completionMarker);
+
+    const stdout = proc.stdout;
+    const stderr = proc.stderr;
+    if (
+      !(stdout && stderr) ||
+      typeof stdout === "number" ||
+      typeof stderr === "number"
+    ) {
+      console.error("[ERROR] Failed to capture process output");
+      exitReason = "error";
+      lastExitCode = 1;
+      break;
+    }
+
+    const stdoutReader = stdout.getReader();
+    const stderrReader = stderr.getReader();
 
     const handleText = (text: string) => {
-      fullOutput += text;
-      process.stdout.write(text);
+      const chunks = parser.processChunk(text);
+      for (const chunk of chunks) {
+        if (chunk.displayText) {
+          process.stdout.write(`${chunk.displayText}\n`);
+        }
+      }
     };
 
-    await Promise.all([
-      readStream(stdoutReader, handleText),
-      readStream(stderrReader, handleText),
-    ]);
+    try {
+      await Promise.all([
+        readStream(stdoutReader, handleText),
+        readStream(stderrReader, handleText),
+      ]);
+    } finally {
+      stdoutReader.releaseLock();
+      stderrReader.releaseLock();
+    }
+
+    // Flush any remaining buffered content
+    const finalChunks = parser.flush();
+    for (const chunk of finalChunks) {
+      if (chunk.displayText) {
+        process.stdout.write(`${chunk.displayText}\n`);
+      }
+    }
+
     lastExitCode = await proc.exited;
+
+    const result = parser.getResult();
+
+    if (result.sessionId) {
+      lastSessionId = result.sessionId;
+      console.log(`[SESSION] ${result.sessionId}`);
+    }
 
     if (lastExitCode !== 0) {
       console.error(`\n[ERROR] Exit code: ${lastExitCode}`);
@@ -92,7 +140,7 @@ async function runLoopPlain(
       break;
     }
 
-    if (adapter.detectCompletion(fullOutput)) {
+    if (result.complete) {
       console.log("\n[COMPLETE] Task finished!");
       exitReason = "complete";
       break;
@@ -101,7 +149,7 @@ async function runLoopPlain(
     console.log(`\n[OK] Iteration ${i} completed`);
   }
 
-  return { iterations, exitReason, lastExitCode };
+  return { iterations, exitReason, lastExitCode, lastSessionId };
 }
 
 export const runCommand: CommandModule<object, RunArgs> = {
@@ -138,6 +186,13 @@ export const runCommand: CommandModule<object, RunArgs> = {
       .option("no-tui", {
         type: "boolean",
         describe: "Disable TUI (plain text output)",
+      })
+      .option("output-format", {
+        alias: "f",
+        type: "string",
+        choices: ["stream-json", "text"],
+        describe: "Output format from CLI adapter",
+        default: "stream-json",
       }),
 
   handler: async (argv) => {
@@ -150,6 +205,20 @@ export const runCommand: CommandModule<object, RunArgs> = {
     if (!available) {
       console.error(`Error: ${config.adapter} CLI not found`);
       console.error(`Make sure '${config.adapter}' is installed and in PATH`);
+      process.exit(1);
+    }
+
+    // Get output format
+    const outputFormat = (argv.outputFormat as OutputFormat) || "stream-json";
+
+    // Check if adapter supports format
+    if (!adapter.supportedFormats.includes(outputFormat)) {
+      console.error(
+        `Error: ${config.adapter} does not support ${outputFormat} format`
+      );
+      console.error(
+        `Supported formats: ${adapter.supportedFormats.join(", ")}`
+      );
       process.exit(1);
     }
 
@@ -178,7 +247,13 @@ export const runCommand: CommandModule<object, RunArgs> = {
 
     // Single iteration mode
     if (argv.once) {
-      const exitCode = await runOnce(adapter, promptContent, cwd, verbose);
+      const exitCode = await runOnce(
+        adapter,
+        promptContent,
+        cwd,
+        verbose,
+        outputFormat
+      );
       process.exit(exitCode);
     }
 
@@ -200,6 +275,7 @@ export const runCommand: CommandModule<object, RunArgs> = {
         cwd,
         verbose,
         adapter,
+        outputFormat,
       });
     } else {
       result = await runLoopPlain(
@@ -207,7 +283,8 @@ export const runCommand: CommandModule<object, RunArgs> = {
         promptContent,
         cwd,
         maxIterations,
-        verbose
+        verbose,
+        outputFormat
       );
     }
 

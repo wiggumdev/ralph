@@ -3,4 +3,4 @@ adapter = "claude"
 plansDir = ".plans"
 maxIterations = 2
 verbose = true
-tui = false
+tui = true

@@ -1,9 +1,11 @@
+import type { OutputFormat } from "#parsers";
 import { isCommandAvailable } from "#utils/stream";
 import type { AdapterOptions, CLIAdapter } from "./types";
 
 export class OpenCodeAdapter implements CLIAdapter {
   readonly name = "opencode";
   readonly completionMarker = "<promise>COMPLETE</promise>";
+  readonly supportedFormats: OutputFormat[] = ["text"];
 
   buildArgs(prompt: string, options: AdapterOptions): string[] {
     const args = ["opencode", "--non-interactive"];

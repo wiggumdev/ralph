@@ -8,33 +8,20 @@
     "ralph": "./src/index.ts"
   },
   "scripts": {
-    "dev": "bun run --watch src/index.ts"
+    "dev": "bun run --watch src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
   },
   "imports": {
-    "#commands/*": [
-      "./src/commands/*.ts"
-    ],
-    "#adapters/*": [
-      "./src/adapters/*.ts"
-    ],
-    "#config/*": [
-      "./src/config/*.ts"
-    ],
-    "#schema/*": [
-      "./src/schema/*.ts"
-    ],
-    "#ui/*": [
-      "./src/ui/*.tsx"
-    ],
-    "#utils/*": [
-      "./src/utils/*.ts"
-    ],
-    "#global": [
-      "./src/global.ts"
-    ],
-    "#log": [
-      "./src/log.ts"
-    ]
+    "#commands/*": "./src/commands/*.ts",
+    "#adapters/*": "./src/adapters/*.ts",
+    "#config/*": "./src/config/*.ts",
+    "#schema/*": "./src/schema/*.ts",
+    "#ui/*": "./src/ui/*.tsx",
+    "#utils/*": "./src/utils/*.ts",
+    "#parsers": "./src/parsers/index.ts",
+    "#global": "./src/global.ts",
+    "#log": "./src/log.ts"
   },
   "dependencies": {
     "@babel/core": "^7.28.5",

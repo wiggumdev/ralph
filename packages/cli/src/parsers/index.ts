@@ -1,0 +1,24 @@
+import { StreamJsonParser } from "./stream-json-parser";
+import { TextParser } from "./text-parser";
+import type { OutputFormat, OutputParser } from "./types";
+
+export type {
+  OutputFormat,
+  OutputParser,
+  ParsedChunk,
+  ParserResult,
+} from "./types";
+
+export function createParser(
+  format: OutputFormat,
+  completionMarker: string
+): OutputParser {
+  switch (format) {
+    case "stream-json":
+      return new StreamJsonParser();
+    case "text":
+      return new TextParser(completionMarker);
+    default:
+      return new TextParser(completionMarker);
+  }
+}

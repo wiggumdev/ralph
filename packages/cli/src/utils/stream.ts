@@ -2,8 +2,7 @@
  * Read from a stream and call onText for each chunk
  */
 export async function readStream(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  reader: ReadableStreamDefaultReader<any>,
+  reader: { read(): Promise<{ done: boolean; value?: Uint8Array }> },
   onText: (text: string) => void
 ): Promise<string> {
   const decoder = new TextDecoder("utf-8", { fatal: false });

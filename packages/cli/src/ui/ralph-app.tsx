@@ -7,7 +7,8 @@ import {
   onMount,
   Show,
 } from "solid-js";
-import type { CLIAdapter } from "#adapters/types";
+import type { AdapterResult, CLIAdapter } from "#adapters/types";
+import { createParser, type OutputFormat } from "#parsers";
 import { readStream } from "#utils/stream";
 
 /** Max lines to keep in output buffer */
@@ -20,6 +21,7 @@ export interface LoopResult {
   iterations: number;
   exitReason: "complete" | "max_iterations" | "error" | "user_abort";
   lastExitCode: number;
+  lastSessionId?: string;
 }
 
 export interface RalphAppProps {
@@ -28,6 +30,7 @@ export interface RalphAppProps {
   cwd: string;
   verbose?: boolean;
   adapter: CLIAdapter;
+  outputFormat?: OutputFormat;
   onComplete: (result: LoopResult) => void;
 }
 
@@ -54,33 +57,62 @@ async function runIterationCapture(
   promptContent: string,
   cwd: string,
   verbose: boolean | undefined,
+  outputFormat: OutputFormat,
   onOutput: (line: string) => void
-): Promise<{ exitCode: number; complete: boolean }> {
-  const args = adapter.buildArgs(promptContent, { verbose, cwd });
+): Promise<AdapterResult> {
+  const args = adapter.buildArgs(promptContent, { verbose, cwd, outputFormat });
   ctx.proc = Bun.spawn(args, {
     cwd,
     stdout: "pipe",
     stderr: "pipe",
   });
 
-  const stdoutReader = ctx.proc.stdout.getReader();
-  const stderrReader = ctx.proc.stderr.getReader();
+  const stdout = ctx.proc.stdout;
+  const stderr = ctx.proc.stderr;
 
-  let fullOutput = "";
+  if (
+    !(stdout && stderr) ||
+    typeof stdout === "number" ||
+    typeof stderr === "number"
+  ) {
+    return { exitCode: 1, complete: false };
+  }
+
+  const stdoutReader = stdout.getReader();
+  const stderrReader = stderr.getReader();
+
+  const parser = createParser(outputFormat, adapter.completionMarker);
+
   const handleText = (text: string) => {
-    fullOutput += text;
-    const lines = text.split("\n");
-    for (const line of lines) {
-      if (line.trim()) {
-        onOutput(line);
+    const chunks = parser.processChunk(text);
+    for (const chunk of chunks) {
+      if (chunk.displayText) {
+        onOutput(chunk.displayText);
       }
     }
   };
 
-  await Promise.all([
-    readStream(stdoutReader, handleText),
-    readStream(stderrReader, handleText),
-  ]);
+  try {
+    await Promise.all([
+      readStream(stdoutReader, handleText),
+      readStream(stderrReader, handleText),
+    ]);
+  } catch (error) {
+    if (!ctx.aborted) {
+      throw error;
+    }
+  } finally {
+    stdoutReader.releaseLock();
+    stderrReader.releaseLock();
+  }
+
+  // Flush any remaining buffered content
+  const finalChunks = parser.flush();
+  for (const chunk of finalChunks) {
+    if (chunk.displayText) {
+      onOutput(chunk.displayText);
+    }
+  }
 
   const exitCode = await ctx.proc.exited;
   ctx.proc = null;
@@ -89,8 +121,17 @@ async function runIterationCapture(
     return { exitCode: 130, complete: false };
   }
 
-  const complete = adapter.detectCompletion(fullOutput);
-  return { exitCode, complete };
+  const result = parser.getResult();
+
+  if (result.sessionId) {
+    onOutput(`[SESSION] ${result.sessionId}`);
+  }
+
+  return {
+    exitCode,
+    complete: result.complete,
+    sessionId: result.sessionId,
+  };
 }
 
 function RalphApp(props: RalphAppProps) {
@@ -103,6 +144,7 @@ function RalphApp(props: RalphAppProps) {
   const [exitReason, setExitReason] =
     createSignal<LoopResult["exitReason"]>("max_iterations");
   const [spinnerFrame, setSpinnerFrame] = createSignal(0);
+  const [lastSessionId, setLastSessionId] = createSignal<string | undefined>();
   const spinnerChars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
   // Track current process for cleanup
@@ -122,6 +164,7 @@ function RalphApp(props: RalphAppProps) {
         iterations: iteration(),
         exitReason: "user_abort",
         lastExitCode: 130,
+        lastSessionId: lastSessionId(),
       });
     }
   });
@@ -169,9 +212,13 @@ function RalphApp(props: RalphAppProps) {
   };
 
   const handleIterationResult = (
-    result: { exitCode: number; complete: boolean },
+    result: AdapterResult,
     i: number
   ): { shouldBreak: boolean; exitCode: number } => {
+    if (result.sessionId) {
+      setLastSessionId(result.sessionId);
+    }
+
     if (result.exitCode !== 0) {
       setOutput((prev) => [...prev, `[ERROR] Exit code: ${result.exitCode}`]);
       setStatus("error");
@@ -193,6 +240,7 @@ function RalphApp(props: RalphAppProps) {
   const runLoop = async () => {
     setStatus("running");
     let lastExitCode = 0;
+    const outputFormat = props.outputFormat || "stream-json";
 
     for (let i = 1; i <= props.maxIterations; i++) {
       if (ctx.aborted) {
@@ -213,6 +261,7 @@ function RalphApp(props: RalphAppProps) {
           props.promptContent,
           props.cwd,
           props.verbose,
+          outputFormat,
           (line) =>
             setOutput((prev) => [...prev.slice(-OUTPUT_BUFFER_SIZE), line])
         );
@@ -249,6 +298,7 @@ function RalphApp(props: RalphAppProps) {
       iterations: iteration(),
       exitReason: exitReason(),
       lastExitCode,
+      lastSessionId: lastSessionId(),
     });
   };
 
