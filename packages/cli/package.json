@@ -1,22 +1,39 @@
 {
   "name": "@ralph/cli",
   "version": "0.0.1",
-  "module": "src/index.tsx",
+  "module": "src/index.ts",
   "type": "module",
   "private": true,
   "bin": {
-    "ralph": "./src/index.tsx"
+    "ralph": "./src/index.ts"
   },
   "scripts": {
-    "dev": "bun run --watch src/index.tsx"
+    "dev": "bun run --watch src/index.ts"
   },
   "imports": {
-    "#*": [
-      "./src/*",
-      "./src/*.ts",
-      "./src/*.tsx",
-      "./src/*/index.ts",
-      "./src/*/index.tsx"
+    "#commands/*": [
+      "./src/commands/*.ts"
+    ],
+    "#adapters/*": [
+      "./src/adapters/*.ts"
+    ],
+    "#config/*": [
+      "./src/config/*.ts"
+    ],
+    "#schema/*": [
+      "./src/schema/*.ts"
+    ],
+    "#ui/*": [
+      "./src/ui/*.tsx"
+    ],
+    "#utils/*": [
+      "./src/utils/*.ts"
+    ],
+    "#global": [
+      "./src/global.ts"
+    ],
+    "#log": [
+      "./src/log.ts"
     ]
   },
   "dependencies": {
@@ -25,6 +42,7 @@
     "@opentui/core": "^0.1.69",
     "@opentui/solid": "^0.1.69",
     "babel-preset-solid": "1.9.9",
+    "smol-toml": "^1.6.0",
     "solid-js": "1.9.9",
     "xdg-basedir": "^5.1.0",
     "yargs": "^18.0.0",
