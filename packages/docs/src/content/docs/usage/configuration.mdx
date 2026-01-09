@@ -3,7 +3,7 @@ title: Configuration
 description: Configure ralph for your project and workflow.
 ---
 
-import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+import { Aside } from '@astrojs/starlight/components';
 
 # Configuration
 
@@ -109,7 +109,7 @@ ralph init
     "command": "my-ai-tool",
     "args": ["--prompt", "{{prompt}}"],
     "env": {
-      "MY_API_KEY": "${MY_API_KEY}"
+      "MY_API_KEY": "$MY_API_KEY"
     }
   }
 }
@@ -139,7 +139,7 @@ ralph init
 | `inline` | string | Inline prompt (alternative to file) |
 | `prepend` | string | Text to add before prompt |
 | `append` | string | Text to add after prompt |
-| `variables` | object | Variables for {{variable}} substitution |
+| `variables` | object | Variables for `{{variable}}` substitution |
 
 <Aside type="tip" title="Variable Substitution">
 Use `{{VARIABLE_NAME}}` in your prompt file. Values come from `variables` config or environment variables.
@@ -354,9 +354,9 @@ Use environment variables for conditional values:
 ```json
 {
   "exitConditions": {
-    "maxIterations": "${CI:+10}${CI:-50}"
+    "maxIterations": "$CI_MAX_ITERATIONS"
   }
 }
 ```
 
-This sets 10 iterations in CI (when `$CI` is set), 50 otherwise.
+This uses an environment variable for the iteration limit.

@@ -2,49 +2,49 @@
 
 :root {
   /* Core accent colors - Ralph's yellow */
-  --sl-color-accent-low: #451A03;
-  --sl-color-accent: #FFD93D;
-  --sl-color-accent-high: #FEF3C7;
+  --sl-color-accent-low: #451a03;
+  --sl-color-accent: #ffd93d;
+  --sl-color-accent-high: #fef3c7;
 
   /* Text colors */
-  --sl-color-white: #FAFAFA;
-  --sl-color-gray-1: #E4E4E7;
-  --sl-color-gray-2: #A1A1AA;
-  --sl-color-gray-3: #71717A;
-  --sl-color-gray-4: #3F3F46;
-  --sl-color-gray-5: #27272A;
-  --sl-color-gray-6: #18181B;
-  --sl-color-black: #09090B;
+  --sl-color-white: #fafafa;
+  --sl-color-gray-1: #e4e4e7;
+  --sl-color-gray-2: #a1a1aa;
+  --sl-color-gray-3: #71717a;
+  --sl-color-gray-4: #3f3f46;
+  --sl-color-gray-5: #27272a;
+  --sl-color-gray-6: #18181b;
+  --sl-color-black: #09090b;
 
   /* Background with subtle warmth */
-  --sl-color-bg: #FAFAFA;
-  --sl-color-bg-sidebar: #F4F4F5;
+  --sl-color-bg: #fafafa;
+  --sl-color-bg-sidebar: #f4f4f5;
   --sl-color-bg-nav: rgba(250, 250, 250, 0.95);
 
   /* Typography */
-  --sl-font: 'Inter', system-ui, sans-serif;
-  --sl-font-mono: 'JetBrains Mono', monospace;
+  --sl-font: "Inter", system-ui, sans-serif;
+  --sl-font-mono: "JetBrains Mono", monospace;
 
   /* Borders */
-  --sl-color-hairline-light: #E4E4E7;
-  --sl-color-hairline: #D4D4D8;
+  --sl-color-hairline-light: #e4e4e7;
+  --sl-color-hairline: #d4d4d8;
 
   /* Content sizing */
   --sl-content-width: 50rem;
   --sl-sidebar-width: 18rem;
 }
 
-:root[data-theme='dark'] {
-  --sl-color-accent-low: #78350F;
-  --sl-color-accent: #FFD93D;
-  --sl-color-accent-high: #FFFBEB;
+:root[data-theme="dark"] {
+  --sl-color-accent-low: #78350f;
+  --sl-color-accent: #ffd93d;
+  --sl-color-accent-high: #fffbeb;
 
-  --sl-color-bg: #0A0A0B;
+  --sl-color-bg: #0a0a0b;
   --sl-color-bg-sidebar: #111113;
   --sl-color-bg-nav: rgba(10, 10, 11, 0.95);
 
-  --sl-color-hairline-light: #27272A;
-  --sl-color-hairline: #3F3F46;
+  --sl-color-hairline-light: #27272a;
+  --sl-color-hairline: #3f3f46;
 }
 
 /* Custom header styling */
@@ -67,7 +67,7 @@ nav.sidebar a:hover {
   background-color: var(--sl-color-accent-low);
 }
 
-nav.sidebar a[aria-current='page'] {
+nav.sidebar a[aria-current="page"] {
   background-color: var(--sl-color-accent);
   color: var(--sl-color-black);
   font-weight: 600;
@@ -88,7 +88,12 @@ nav.sidebar a[aria-current='page'] {
 }
 
 /* Headings with personality */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   letter-spacing: -0.02em;
 }
 
@@ -116,22 +121,22 @@ h1 {
 }
 
 .starlight-aside--tip {
-  --sl-color-asides-text-accent: #FFD93D;
+  --sl-color-asides-text-accent: #ffd93d;
   background: linear-gradient(to right, rgba(255, 217, 61, 0.1), transparent);
 }
 
 .starlight-aside--note {
-  --sl-color-asides-text-accent: #70D6FF;
+  --sl-color-asides-text-accent: #70d6ff;
   background: linear-gradient(to right, rgba(112, 214, 255, 0.1), transparent);
 }
 
 .starlight-aside--caution {
-  --sl-color-asides-text-accent: #FF9F1C;
+  --sl-color-asides-text-accent: #ff9f1c;
   background: linear-gradient(to right, rgba(255, 159, 28, 0.1), transparent);
 }
 
 .starlight-aside--danger {
-  --sl-color-asides-text-accent: #FF4444;
+  --sl-color-asides-text-accent: #ff4444;
   background: linear-gradient(to right, rgba(255, 68, 68, 0.1), transparent);
 }
 
@@ -157,8 +162,8 @@ h1 {
   align-items: center;
   gap: 0.25rem;
   padding: 0.25rem 0.75rem;
-  background: linear-gradient(135deg, #FFD93D 0%, #FF9F1C 100%);
-  color: #18181B;
+  background: linear-gradient(135deg, #ffd93d 0%, #ff9f1c 100%);
+  color: #18181b;
   font-size: 0.75rem;
   font-weight: 700;
   border-radius: 9999px;
@@ -204,7 +209,11 @@ h1 {
 .hero-section {
   text-align: center;
   padding: 4rem 2rem;
-  background: linear-gradient(180deg, var(--sl-color-bg) 0%, var(--sl-color-bg-sidebar) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--sl-color-bg) 0%,
+    var(--sl-color-bg-sidebar) 100%
+  );
 }
 
 .hero-tagline {
@@ -244,8 +253,14 @@ h1 {
 
 /* Terminal animation */
 @keyframes blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
 }
 
 .terminal-cursor {
@@ -281,7 +296,8 @@ html {
 
 /* Print styles */
 @media print {
-  .sidebar, .header {
+  .sidebar,
+  .header {
     display: none !important;
   }
 

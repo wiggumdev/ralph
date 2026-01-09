@@ -1,0 +1,35 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "extends": ["ultracite/biome/core"],
+  "javascript": {
+    "globals": ["Bun"]
+  },
+  "files": {
+    "includes": ["packages/cli/**", "*.json", "*.jsonc", "*.md"]
+  },
+  "overrides": [
+    {
+      "includes": ["packages/docs/**"],
+      "linter": {
+        "enabled": false
+      },
+      "formatter": {
+        "enabled": false
+      }
+    }
+  ],
+  "linter": {
+    "rules": {
+      "style": {
+        "noNonNullAssertion": "off",
+        "noNamespace": "off",
+        "noParameterAssign": "off"
+      },
+      "suspicious": {
+        "noEmptyBlockStatements": "off",
+        "noExplicitAny": "off",
+        "useAwait": "off"
+      }
+    }
+  }
+}

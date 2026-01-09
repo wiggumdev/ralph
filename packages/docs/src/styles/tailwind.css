@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+@theme {
+  /* Ralph Wiggum inspired accent palette */
+  --color-accent-50: #FFFBEB;
+  --color-accent-100: #FEF3C7;
+  --color-accent-200: #FDE68A;
+  --color-accent-300: #FFD93D;
+  --color-accent-400: #FBBF24;
+  --color-accent-500: #F59E0B;
+  --color-accent-600: #D97706;
+  --color-accent-700: #B45309;
+  --color-accent-800: #92400E;
+  --color-accent-900: #78350F;
+  --color-accent-950: #451A03;
+
+  /* Gray palette */
+  --color-gray-50: #FAFAFA;
+  --color-gray-100: #F4F4F5;
+  --color-gray-200: #E4E4E7;
+  --color-gray-300: #D4D4D8;
+  --color-gray-400: #A1A1AA;
+  --color-gray-500: #71717A;
+  --color-gray-600: #52525B;
+  --color-gray-700: #3F3F46;
+  --color-gray-800: #27272A;
+  --color-gray-900: #18181B;
+  --color-gray-950: #09090B;
+
+  /* Simpsons theme colors */
+  --color-simpsons-yellow: #FFD93D;
+  --color-simpsons-blue: #70D6FF;
+  --color-simpsons-pink: #FF70A6;
+  --color-simpsons-red: #FF4444;
+  --color-simpsons-green: #7DCE82;
+  --color-simpsons-orange: #FF9F1C;
+  --color-simpsons-purple: #9B5DE5;
+
+  /* Typography */
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  --font-display: "Comic Neue", cursive;
+
+  /* Animations */
+  --animate-wiggle: wiggle 1s ease-in-out infinite;
+  --animate-bounce-slow: bounce 2s infinite;
+  --animate-pulse-subtle: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-spin-slow: spin 8s linear infinite;
+
+  /* Shadows */
+  --shadow-glow: 0 0 20px rgba(255, 217, 61, 0.4);
+  --shadow-glow-lg: 0 0 40px rgba(255, 217, 61, 0.5);
+}
+
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-6 py-3 font-semibold rounded-lg transition-all duration-200;
+    @apply bg-accent-300 text-gray-900 hover:bg-accent-400 hover:shadow-glow;
+    @apply focus:outline-none focus:ring-2 focus:ring-accent-400 focus:ring-offset-2;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center px-6 py-3 font-semibold rounded-lg transition-all duration-200;
+    @apply bg-gray-800 text-white border border-gray-700;
+    @apply hover:bg-gray-700 hover:border-gray-600;
+    @apply focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2;
+  }
+
+  .card {
+    @apply rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm;
+    @apply transition-all duration-200 hover:shadow-md hover:border-accent-300;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+    @apply bg-accent-100 text-accent-800 dark:bg-accent-900 dark:text-accent-200;
+  }
+
+  .code-block {
+    @apply font-mono text-sm bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto;
+    @apply border border-gray-700;
+  }
+
+  .quote-ralph {
+    @apply relative pl-6 py-4 my-6 italic text-lg;
+    @apply border-l-4 border-accent-300 bg-accent-50 dark:bg-accent-950/20;
+    @apply rounded-r-lg;
+  }
+
+  .quote-ralph::before {
+    content: '"';
+    @apply absolute left-2 -top-2 text-4xl text-accent-300 font-display;
+  }
+}

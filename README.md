@@ -98,13 +98,13 @@ Each iteration:
 
 ## Documentation
 
-Full documentation at **[ralph.dev](https://ralph.dev)** (coming soon)
+Full documentation at **[ralph.dev](https://wiggum.dev)** (coming soon)
 
 Or run locally:
 ```bash
 cd docs
-npm install
-npm run dev
+bun install
+bun dev
 ```
 
 ### Docs Contents
