@@ -1,4 +1,10 @@
-import { existsSync, readFileSync, watch } from "node:fs";
+import {
+  existsSync,
+  readFileSync,
+  unwatchFile,
+  watch,
+  watchFile,
+} from "node:fs";
 import { resolve } from "node:path";
 import { render, useKeyboard, useRenderer } from "@opentui/solid";
 import {
@@ -13,7 +19,9 @@ import type { AdapterResult, CLIAdapter } from "#adapters/types";
 import { createParser, type OutputFormat, type ParsedChunk } from "#parsers";
 import type { ResultMessage, RichMessage } from "#parsers/message-types";
 import { isResultMessage } from "#parsers/message-types";
+import { type PrdFeature, validatePrd } from "#schema/prd";
 import { MessageList } from "#ui/components/message-list";
+import { type PassFilter, PrdItemsTab } from "#ui/components/prd-items-tab";
 import { JsonLogger } from "#utils/json-logger";
 import { readStream } from "#utils/stream";
 
@@ -40,10 +48,25 @@ export interface RalphAppProps {
   logFile?: string;
   showUsage?: boolean;
   plansDir?: string;
+  prdPath?: string;
   onComplete: (result: LoopResult) => void;
 }
 
-type TabView = "output" | "progress";
+type TabView = "output" | "progress" | "prd";
+
+function loadPrdItems(prdPath: string): PrdFeature[] {
+  if (!existsSync(prdPath)) {
+    return [];
+  }
+  try {
+    const content = readFileSync(prdPath, "utf-8");
+    const data = JSON.parse(content);
+    const result = validatePrd(data);
+    return result.valid && result.data ? result.data : [];
+  } catch {
+    return [];
+  }
+}
 
 function setTerminalTitle(title: string): void {
   if (process.stdout.isTTY) {
@@ -144,6 +167,26 @@ async function runIterationCapture(
   };
 }
 
+function cycleTab(prev: TabView): TabView {
+  if (prev === "output") {
+    return "progress";
+  }
+  if (prev === "progress") {
+    return "prd";
+  }
+  return "output";
+}
+
+function cyclePassFilter(prev: PassFilter): PassFilter {
+  if (prev === "all") {
+    return "passing";
+  }
+  if (prev === "passing") {
+    return "failing";
+  }
+  return "all";
+}
+
 function RalphApp(props: RalphAppProps) {
   const renderer = useRenderer();
   const [iteration, setIteration] = createSignal(0);
@@ -166,6 +209,12 @@ function RalphApp(props: RalphAppProps) {
   // Tab view state
   const [currentTab, setCurrentTab] = createSignal<TabView>("output");
   const [progressContent, setProgressContent] = createSignal<string[]>([]);
+
+  // PRD tab state
+  const [prdItems, setPrdItems] = createSignal<PrdFeature[]>([]);
+  const [passFilter, setPassFilter] = createSignal<PassFilter>("all");
+  const [searchQuery, setSearchQuery] = createSignal("");
+  const [searchMode, setSearchMode] = createSignal(false);
 
   // Progress file path
   const progressPath = () =>
@@ -192,32 +241,100 @@ function RalphApp(props: RalphAppProps) {
   // Initialize logger if logFile provided
   const logger = props.logFile ? new JsonLogger(props.logFile) : undefined;
 
+  // Load PRD items and watch for changes
+  createEffect(() => {
+    if (props.prdPath) {
+      setPrdItems(loadPrdItems(props.prdPath));
+
+      // Watch for file changes
+      watchFile(props.prdPath, { interval: 1000 }, () => {
+        if (props.prdPath) {
+          setPrdItems(loadPrdItems(props.prdPath));
+        }
+      });
+
+      onCleanup(() => {
+        if (props.prdPath) {
+          unwatchFile(props.prdPath);
+        }
+      });
+    }
+  });
+
+  const handleSearchModeKey = (key: { name?: string; sequence?: string }) => {
+    if (key.name === "escape" || key.name === "return") {
+      setSearchMode(false);
+      return true;
+    }
+    if (key.name === "backspace") {
+      setSearchQuery((prev) => prev.slice(0, -1));
+      return true;
+    }
+    if (key.sequence && key.sequence.length === 1 && key.sequence >= " ") {
+      setSearchQuery((prev) => prev + key.sequence);
+      return true;
+    }
+    return true;
+  };
+
+  const handlePrdTabKey = (key: { name?: string }) => {
+    if (key.name === "f") {
+      setPassFilter(cyclePassFilter);
+      return true;
+    }
+    if (key.name === "/") {
+      setSearchMode(true);
+      return true;
+    }
+    if (key.name === "c") {
+      setSearchQuery("");
+      setPassFilter("all");
+      return true;
+    }
+    return false;
+  };
+
+  const handleQuit = () => {
+    ctx.aborted = true;
+    if (ctx.proc) {
+      ctx.proc.kill();
+    }
+    clearTerminalTitle();
+    props.onComplete({
+      iterations: iteration(),
+      exitReason: "user_abort",
+      lastExitCode: 130,
+      lastSessionId: lastSessionId(),
+    });
+    renderer.destroy();
+  };
+
   useKeyboard((key) => {
+    if (searchMode()) {
+      handleSearchModeKey(key);
+      return;
+    }
+
+    if (key.name === "tab") {
+      setCurrentTab(cycleTab);
+      if (currentTab() === "progress") {
+        readProgressFile();
+      }
+      return;
+    }
+
+    if (currentTab() === "prd" && handlePrdTabKey(key)) {
+      return;
+    }
+
     if (key.name === "e" || key.name === "space") {
       setExpanded((prev) => !prev);
     }
     if (key.name === "r") {
       setRichMode((prev) => !prev);
     }
-    if (key.name === "tab" || key.name === "p") {
-      setCurrentTab((prev) => (prev === "output" ? "progress" : "output"));
-      if (currentTab() === "progress") {
-        readProgressFile();
-      }
-    }
     if (key.name === "q" || key.name === "escape") {
-      ctx.aborted = true;
-      if (ctx.proc) {
-        ctx.proc.kill();
-      }
-      clearTerminalTitle();
-      props.onComplete({
-        iterations: iteration(),
-        exitReason: "user_abort",
-        lastExitCode: 130,
-        lastSessionId: lastSessionId(),
-      });
-      renderer.destroy();
+      handleQuit();
     }
   });
 
@@ -427,6 +544,13 @@ function RalphApp(props: RalphAppProps) {
     richMode() ? messages().length : legacyOutput().length;
   const outputLabel = () => (richMode() ? "messages" : "lines");
 
+  const prdHelpText = () => {
+    if (searchMode()) {
+      return `Search: ${searchQuery()}_ | [Enter/Esc] done`;
+    }
+    return "[f] filter | [/] search | [c] clear";
+  };
+
   return (
     <box flexDirection="column" style={{ padding: 1 }}>
       <box>
@@ -460,6 +584,18 @@ function RalphApp(props: RalphAppProps) {
             {currentTab() === "progress" ? "▶ " : "  "}
             Progress
           </span>
+          <span style={{ fg: "#666666" }}> | </span>
+          <span
+            style={{
+              fg: currentTab() === "prd" ? "#00ff00" : "#666666",
+            }}
+          >
+            {currentTab() === "prd" ? "▶ " : "  "}
+            PRD
+          </span>
+          <Show when={currentTab() === "prd"}>
+            <span style={{ fg: "#666666" }}> | {prdHelpText()}</span>
+          </Show>
         </text>
       </box>
 
@@ -550,6 +686,28 @@ function RalphApp(props: RalphAppProps) {
         <scrollbox border style={{ marginTop: 1, height: 20, flexGrow: 1 }}>
           <For each={progressContent()}>{(line) => <text>{line}</text>}</For>
         </scrollbox>
+      </Show>
+
+      {/* PRD Items tab content */}
+      <Show when={currentTab() === "prd"}>
+        <box style={{ marginTop: 1 }}>
+          <Show
+            fallback={
+              <text>
+                <span style={{ fg: "#666666" }}>
+                  No PRD items loaded. Make sure prd.json exists.
+                </span>
+              </text>
+            }
+            when={prdItems().length > 0}
+          >
+            <PrdItemsTab
+              items={prdItems()}
+              passFilter={passFilter()}
+              searchQuery={searchQuery()}
+            />
+          </Show>
+        </box>
       </Show>
     </box>
   );
