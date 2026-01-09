@@ -1,5 +1,7 @@
 #!/usr/bin/env bun
 
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import solidPlugin from "@opentui/solid/bun-plugin";
@@ -129,6 +131,23 @@ for (const item of targets) {
     },
     entrypoints: ["./src/index.ts"],
   });
+}
+
+// Auto-symlink ralph-dev to ~/.local/bin when building for current platform
+if (singleFlag) {
+  const binDir = path.join(os.homedir(), ".local", "bin");
+  const symlinkPath = path.join(binDir, "ralph-dev");
+  const platformName = [
+    pkg.name,
+    process.platform === "win32" ? "windows" : process.platform,
+    process.arch,
+  ].join("-");
+  const binaryPath = path.resolve(dir, `dist/${platformName}/bin/ralph`);
+
+  await fs.promises.mkdir(binDir, { recursive: true });
+  await fs.promises.rm(symlinkPath, { force: true });
+  await fs.promises.symlink(binaryPath, symlinkPath);
+  console.log(`symlinked ${symlinkPath} -> ${binaryPath}`);
 }
 
 export { binaries };

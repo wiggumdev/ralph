@@ -1,8 +1,11 @@
+import { ARR, OBJ, parse, STR } from "partial-json";
 import type {
   ContentBlock,
   Message,
+  PartialToolInput,
   ResultMessage,
   SystemMessage,
+  TextDelta,
 } from "./message-types";
 import type {
   OutputParser,
@@ -16,6 +19,10 @@ export class StreamJsonParser implements OutputParser {
   private sessionId?: string;
   private hasResult = false;
   private resultSuccess = false;
+  private readonly partialToolInputs = new Map<
+    number,
+    { json: string; name?: string }
+  >();
 
   processChunk(chunk: string): ParsedChunk[] {
     this.buffer += chunk;
@@ -59,7 +66,20 @@ export class StreamJsonParser implements OutputParser {
         results.push(parsed);
       }
     } catch {
-      results.push({ displayText: this.buffer });
+      // Try partial-json as fallback for truncated data
+      try {
+        // biome-ignore lint/suspicious/noBitwiseOperators: partial-json uses bitwise flags
+        const partial = parse(this.buffer, STR | OBJ | ARR);
+        if (partial && typeof partial === "object") {
+          results.push({
+            displayText: `[Recovered partial]: ${JSON.stringify(partial)}`,
+          });
+        } else {
+          results.push({ displayText: this.buffer });
+        }
+      } catch {
+        results.push({ displayText: this.buffer });
+      }
     }
 
     this.buffer = "";
@@ -117,6 +137,19 @@ export class StreamJsonParser implements OutputParser {
     // Parse system messages
     if (msg.type === "system") {
       chunk.richMessage = this.parseSystemMessage(msg);
+    }
+
+    // Handle content_block_delta for streaming partial content
+    if (msg.type === "content_block_delta") {
+      const deltaChunk = this.processContentDelta(msg);
+      if (deltaChunk) {
+        return deltaChunk;
+      }
+    }
+
+    // Handle content_block_start for tool name tracking
+    if (msg.type === "content_block_start") {
+      this.processContentBlockStart(msg);
     }
 
     // Extract displayable content based on message type (backwards compat)
@@ -239,6 +272,84 @@ export class StreamJsonParser implements OutputParser {
         break;
       default:
         break;
+    }
+
+    return null;
+  }
+
+  private processContentBlockStart(msg: StreamJsonMessage): void {
+    const index = msg.index as number | undefined;
+    const contentBlock = msg.content_block as
+      | {
+          type?: string;
+          name?: string;
+        }
+      | undefined;
+
+    if (index !== undefined && contentBlock?.type === "tool_use") {
+      this.partialToolInputs.set(index, {
+        json: "",
+        name: contentBlock.name,
+      });
+    }
+  }
+
+  private processContentDelta(msg: StreamJsonMessage): ParsedChunk | null {
+    const delta = msg.delta as
+      | {
+          type?: string;
+          partial_json?: string;
+          text?: string;
+        }
+      | undefined;
+    const index = msg.index as number | undefined;
+
+    if (!delta || index === undefined) {
+      return null;
+    }
+
+    // Handle tool input JSON delta
+    if (delta.type === "input_json_delta" && delta.partial_json) {
+      const existing = this.partialToolInputs.get(index) || { json: "" };
+      const updated = existing.json + delta.partial_json;
+      this.partialToolInputs.set(index, { ...existing, json: updated });
+
+      // Try to parse partial JSON for display
+      try {
+        // biome-ignore lint/suspicious/noBitwiseOperators: partial-json uses bitwise flags
+        const partial = parse(updated, STR | OBJ | ARR) as Record<
+          string,
+          unknown
+        >;
+        const richMessage: PartialToolInput = {
+          type: "partial_tool_input",
+          index,
+          toolName: existing.name,
+          partialInput: partial,
+          timestamp: Date.now(),
+        };
+        return {
+          richMessage,
+          logData: msg,
+        };
+      } catch {
+        // Not enough data to parse yet
+        return null;
+      }
+    }
+
+    // Handle text delta
+    if (delta.type === "text_delta" && delta.text) {
+      const richMessage: TextDelta = {
+        type: "text_delta",
+        text: delta.text,
+        timestamp: Date.now(),
+      };
+      return {
+        displayText: delta.text,
+        richMessage,
+        logData: msg,
+      };
     }
 
     return null;

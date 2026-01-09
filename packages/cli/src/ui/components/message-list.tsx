@@ -2,9 +2,13 @@ import { For, Match, Switch } from "solid-js";
 import type { RichMessage } from "#parsers/message-types";
 import {
   isMessage,
+  isPartialToolInput,
   isResultMessage,
   isSystemMessage,
+  isTextDelta,
 } from "#parsers/message-types";
+import { PartialToolBlock } from "./blocks/partial-tool-block";
+import { TextDeltaBlock } from "./blocks/text-delta-block";
 import { MessageItem } from "./message-item";
 import { ResultMessage } from "./result-message";
 import { SystemMessage } from "./system-message";
@@ -34,6 +38,18 @@ export function MessageList(props: MessageListProps) {
             <Match when={isResultMessage(msg)}>
               <ResultMessage
                 message={msg as import("#parsers/message-types").ResultMessage}
+              />
+            </Match>
+            <Match when={isPartialToolInput(msg)}>
+              <PartialToolBlock
+                message={
+                  msg as import("#parsers/message-types").PartialToolInput
+                }
+              />
+            </Match>
+            <Match when={isTextDelta(msg)}>
+              <TextDeltaBlock
+                message={msg as import("#parsers/message-types").TextDelta}
               />
             </Match>
           </Switch>

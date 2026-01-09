@@ -57,7 +57,26 @@ export interface ResultMessage {
   timestamp: number;
 }
 
-export type RichMessage = Message | SystemMessage | ResultMessage;
+export interface PartialToolInput {
+  type: "partial_tool_input";
+  index: number;
+  toolName?: string;
+  partialInput: Record<string, unknown>;
+  timestamp: number;
+}
+
+export interface TextDelta {
+  type: "text_delta";
+  text: string;
+  timestamp: number;
+}
+
+export type RichMessage =
+  | Message
+  | SystemMessage
+  | ResultMessage
+  | PartialToolInput
+  | TextDelta;
 
 // Type guards
 export function isMessage(msg: RichMessage): msg is Message {
@@ -84,4 +103,12 @@ export function isToolResultBlock(
   block: ContentBlock
 ): block is ToolResultBlock {
   return block.type === "tool_result";
+}
+
+export function isPartialToolInput(msg: RichMessage): msg is PartialToolInput {
+  return msg.type === "partial_tool_input";
+}
+
+export function isTextDelta(msg: RichMessage): msg is TextDelta {
+  return msg.type === "text_delta";
 }

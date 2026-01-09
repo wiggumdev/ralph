@@ -16,9 +16,9 @@ export default defineConfig({
         dark: "./src/assets/ralph-logo-dark.svg",
         replacesTitle: false,
       },
-      social: {
-        github: "https://github.com/wiggumdev/ralph",
-      },
+      social: [
+        { icon: "github", label: "GitHub", href: "https://github.com/wiggumdev/ralph" },
+      ],
       customCss: ["./src/styles/custom.css", "./src/styles/tailwind.css"],
       head: [
         {

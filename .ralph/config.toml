@@ -1,6 +1,6 @@
 # Ralph configuration
 adapter = "claude"
 plansDir = ".plans"
-maxIterations = 2
-verbose = true
+maxIterations = 10
+verbose = false
 tui = true

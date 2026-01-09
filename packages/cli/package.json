@@ -13,6 +13,8 @@
   "scripts": {
     "build": "bun run script/build.ts",
     "dev": "bun run --watch src/index.ts",
+    "install-bin": "bun run script/install.ts",
+    "unlink": "bun run script/unlink.ts",
     "typecheck": "tsgo --noEmit",
     "test": "bun test"
   },
@@ -36,6 +38,7 @@
     "@opentui/core": "^0.1.70",
     "@opentui/solid": "^0.1.70",
     "babel-preset-solid": "1.9.10",
+    "partial-json": "^0.1.7",
     "smol-toml": "^1.6.0",
     "solid-js": "1.9.10",
     "xdg-basedir": "^5.1.0",

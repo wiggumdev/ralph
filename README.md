@@ -149,6 +149,20 @@ ralph run "Rename UserService to AccountService everywhere"
 ralph run "Fix all ESLint errors"
 ```
 
+## Development
+
+```bash
+# Build binary for current platform + symlink to ~/.local/bin/ralph-dev
+cd packages/cli
+bun run build --single
+
+# Copy binary to ~/.local/bin/ralph (manual install)
+bun run install-bin
+
+# Remove both ralph and ralph-dev from ~/.local/bin
+bun run unlink
+```
+
 ## Based On
 
 - [The original Ralph concept](https://ghuntley.com/ralph/) by Geoffrey Huntley
