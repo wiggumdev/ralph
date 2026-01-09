@@ -291,6 +291,7 @@ export const runCommand: CommandModule<object, RunArgs> = {
         outputFormat,
         logFile,
         showUsage: config.showUsage,
+        plansDir: config.plansDir,
       });
     } else {
       result = await runLoopPlain(
