@@ -10,6 +10,10 @@ export class ClaudeAdapter implements CLIAdapter {
   buildArgs(prompt: string, options: AdapterOptions): string[] {
     const args = ["claude", "--permission-mode", "acceptEdits"];
 
+    if (options.model) {
+      args.push("--model", options.model);
+    }
+
     if (options.outputFormat === "stream-json") {
       args.push("--output-format", "stream-json", "--verbose");
     }

@@ -4,6 +4,7 @@ import type { CommandModule } from "yargs";
 import { getAdapter } from "#adapters/index";
 import type { CLIAdapter } from "#adapters/types";
 import { getPromptPath, loadConfig } from "#config/loader";
+import { ALL_MODEL_CHOICES } from "#config/schema";
 import { createParser, type OutputFormat } from "#parsers";
 import type { LoopResult } from "#ui/ralph-app";
 import { runLoopTUI } from "#ui/ralph-app";
@@ -18,6 +19,7 @@ interface RunArgs {
   noTui?: boolean;
   outputFormat?: string;
   logFile?: string;
+  model?: string;
 }
 
 function resolvePrompt(promptArg: string | undefined, cwd: string): string {
@@ -65,9 +67,10 @@ async function runOnce(
   promptContent: string,
   cwd: string,
   verbose?: boolean,
-  outputFormat?: OutputFormat
+  outputFormat?: OutputFormat,
+  model?: string
 ): Promise<number> {
-  const args = adapter.buildArgs(promptContent, { verbose, cwd, outputFormat });
+  const args = adapter.buildArgs(promptContent, { verbose, cwd, outputFormat, model });
   const proc = Bun.spawn(args, {
     cwd,
     stdin: "inherit",
@@ -84,7 +87,8 @@ async function runLoopPlain(
   cwd: string,
   maxIterations: number,
   verbose?: boolean,
-  outputFormat: OutputFormat = "stream-json"
+  outputFormat: OutputFormat = "stream-json",
+  model?: string
 ): Promise<LoopResult> {
   let lastExitCode = 0;
   let iterations = 0;
@@ -99,6 +103,7 @@ async function runLoopPlain(
       verbose,
       cwd,
       outputFormat,
+      model,
     });
     const proc = Bun.spawn(args, {
       cwd,
@@ -224,6 +229,12 @@ export const runCommand: CommandModule<object, RunArgs> = {
         alias: "l",
         type: "string",
         describe: "Write raw stream-json output to file",
+      })
+      .option("model", {
+        alias: "m",
+        type: "string",
+        choices: ALL_MODEL_CHOICES,
+        describe: "Model to use for the adapter",
       }),
 
   handler: async (argv) => {
@@ -256,6 +267,7 @@ export const runCommand: CommandModule<object, RunArgs> = {
     }
 
     const verbose = argv.verbose ?? config.verbose;
+    const model = argv.model ?? config.model;
 
     // Single iteration mode
     if (argv.once) {
@@ -264,7 +276,8 @@ export const runCommand: CommandModule<object, RunArgs> = {
         promptContent,
         cwd,
         verbose,
-        outputFormat
+        outputFormat,
+        model
       );
       process.exit(exitCode);
     }
@@ -290,6 +303,7 @@ export const runCommand: CommandModule<object, RunArgs> = {
         adapter,
         outputFormat,
         logFile,
+        model,
       });
     } else {
       result = await runLoopPlain(
@@ -298,7 +312,8 @@ export const runCommand: CommandModule<object, RunArgs> = {
         cwd,
         maxIterations,
         verbose,
-        outputFormat
+        outputFormat,
+        model
       );
     }
 

@@ -35,6 +35,7 @@ export interface RalphAppProps {
   adapter: CLIAdapter;
   outputFormat?: OutputFormat;
   logFile?: string;
+  model?: string;
   onComplete: (result: LoopResult) => void;
 }
 
@@ -63,9 +64,10 @@ async function runIterationCapture(
   verbose: boolean | undefined,
   outputFormat: OutputFormat,
   onChunk: (chunk: ParsedChunk) => void,
-  logger?: JsonLogger
+  logger?: JsonLogger,
+  model?: string
 ): Promise<AdapterResult> {
-  const args = adapter.buildArgs(promptContent, { verbose, cwd, outputFormat });
+  const args = adapter.buildArgs(promptContent, { verbose, cwd, outputFormat, model });
   ctx.proc = Bun.spawn(args, {
     cwd,
     stdout: "pipe",
@@ -294,7 +296,8 @@ function RalphApp(props: RalphAppProps) {
           props.verbose,
           outputFormat,
           handleChunk,
-          logger
+          logger,
+          props.model
         );
 
         if (ctx.aborted) {

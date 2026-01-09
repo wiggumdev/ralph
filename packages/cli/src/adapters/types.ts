@@ -4,6 +4,7 @@ export interface AdapterOptions {
   verbose?: boolean;
   cwd?: string;
   outputFormat?: OutputFormat;
+  model?: string;
 }
 
 export interface AdapterResult {

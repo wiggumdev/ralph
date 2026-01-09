@@ -9,6 +9,9 @@ export class OpenCodeAdapter implements CLIAdapter {
 
   buildArgs(prompt: string, options: AdapterOptions): string[] {
     const args = ["opencode", "--non-interactive"];
+    if (options.model) {
+      args.push("--model", options.model);
+    }
     if (options.verbose) {
       args.push("--verbose");
     }
