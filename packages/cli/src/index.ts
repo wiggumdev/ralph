@@ -3,6 +3,7 @@
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { checkCommand } from "#commands/check";
+import { configCommand } from "#commands/config";
 import { initCommand } from "#commands/init";
 import { runCommand } from "#commands/run";
 import { Log } from "#log";
@@ -27,6 +28,7 @@ await yargs(hideBin(process.argv))
   .command(initCommand)
   .command(runCommand)
   .command(checkCommand)
+  .command(configCommand)
   .demandCommand(1, "Please specify a command")
   .strict()
   .help("help", "Show help")
