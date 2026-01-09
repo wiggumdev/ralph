@@ -17,6 +17,7 @@ interface RunArgs {
   verbose?: boolean;
   noTui?: boolean;
   outputFormat?: string;
+  logFile?: string;
 }
 
 function resolvePrompt(promptArg: string | undefined, cwd: string): string {
@@ -32,6 +33,31 @@ function resolvePrompt(promptArg: string | undefined, cwd: string): string {
   }
 
   return promptArg;
+}
+
+function resolvePath(filePath: string, cwd: string): string {
+  return path.isAbsolute(filePath) ? filePath : path.resolve(cwd, filePath);
+}
+
+async function validateAdapter(
+  adapter: CLIAdapter,
+  adapterName: string,
+  outputFormat: OutputFormat
+): Promise<void> {
+  const available = await adapter.isAvailable();
+  if (!available) {
+    console.error(`Error: ${adapterName} CLI not found`);
+    console.error(`Make sure '${adapterName}' is installed and in PATH`);
+    process.exit(1);
+  }
+
+  if (!adapter.supportedFormats.includes(outputFormat)) {
+    console.error(
+      `Error: ${adapterName} does not support ${outputFormat} format`
+    );
+    console.error(`Supported formats: ${adapter.supportedFormats.join(", ")}`);
+    process.exit(1);
+  }
 }
 
 async function runOnce(
@@ -193,34 +219,20 @@ export const runCommand: CommandModule<object, RunArgs> = {
         choices: ["stream-json", "text"],
         describe: "Output format from CLI adapter",
         default: "stream-json",
+      })
+      .option("log-file", {
+        alias: "l",
+        type: "string",
+        describe: "Write raw stream-json output to file",
       }),
 
   handler: async (argv) => {
     const cwd = argv.cwd ?? process.cwd();
     const config = await loadConfig({ cwd });
-
-    // Get adapter
-    const adapter = getAdapter(config.adapter);
-    const available = await adapter.isAvailable();
-    if (!available) {
-      console.error(`Error: ${config.adapter} CLI not found`);
-      console.error(`Make sure '${config.adapter}' is installed and in PATH`);
-      process.exit(1);
-    }
-
-    // Get output format
     const outputFormat = (argv.outputFormat as OutputFormat) || "stream-json";
 
-    // Check if adapter supports format
-    if (!adapter.supportedFormats.includes(outputFormat)) {
-      console.error(
-        `Error: ${config.adapter} does not support ${outputFormat} format`
-      );
-      console.error(
-        `Supported formats: ${adapter.supportedFormats.join(", ")}`
-      );
-      process.exit(1);
-    }
+    const adapter = getAdapter(config.adapter);
+    await validateAdapter(adapter, config.adapter, outputFormat);
 
     // Resolve prompt
     let promptContent: string;
@@ -266,6 +278,7 @@ export const runCommand: CommandModule<object, RunArgs> = {
     }
 
     const useTui = config.tui && !argv.noTui;
+    const logFile = argv.logFile ? resolvePath(argv.logFile, cwd) : undefined;
 
     let result: LoopResult;
     if (useTui) {
@@ -276,6 +289,7 @@ export const runCommand: CommandModule<object, RunArgs> = {
         verbose,
         adapter,
         outputFormat,
+        logFile,
       });
     } else {
       result = await runLoopPlain(
@@ -288,7 +302,6 @@ export const runCommand: CommandModule<object, RunArgs> = {
       );
     }
 
-    const exitCode = result.exitReason === "error" ? 1 : 0;
-    process.exit(exitCode);
+    process.exitCode = result.exitReason === "error" ? 1 : 0;
   },
 };

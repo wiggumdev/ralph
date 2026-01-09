@@ -1,3 +1,5 @@
+import type { RichMessage } from "./message-types";
+
 export type OutputFormat = "stream-json" | "text";
 
 export interface StreamJsonMessage {
@@ -15,6 +17,8 @@ export interface ParsedChunk {
   sessionId?: string;
   isResult?: boolean;
   resultSuccess?: boolean;
+  richMessage?: RichMessage;
+  logData?: StreamJsonMessage;
 }
 
 export interface ParserResult {

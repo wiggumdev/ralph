@@ -1,4 +1,4 @@
-import { render, useKeyboard } from "@opentui/solid";
+import { render, useKeyboard, useRenderer } from "@opentui/solid";
 import {
   createEffect,
   createSignal,
@@ -8,10 +8,13 @@ import {
   Show,
 } from "solid-js";
 import type { AdapterResult, CLIAdapter } from "#adapters/types";
-import { createParser, type OutputFormat } from "#parsers";
+import { createParser, type OutputFormat, type ParsedChunk } from "#parsers";
+import type { RichMessage } from "#parsers/message-types";
+import { MessageList } from "#ui/components/message-list";
+import { JsonLogger } from "#utils/json-logger";
 import { readStream } from "#utils/stream";
 
-/** Max lines to keep in output buffer */
+/** Max items to keep in output buffer */
 const OUTPUT_BUFFER_SIZE = 50;
 
 /** Delay to allow TUI to render final state before cleanup */
@@ -31,6 +34,7 @@ export interface RalphAppProps {
   verbose?: boolean;
   adapter: CLIAdapter;
   outputFormat?: OutputFormat;
+  logFile?: string;
   onComplete: (result: LoopResult) => void;
 }
 
@@ -58,7 +62,8 @@ async function runIterationCapture(
   cwd: string,
   verbose: boolean | undefined,
   outputFormat: OutputFormat,
-  onOutput: (line: string) => void
+  onChunk: (chunk: ParsedChunk) => void,
+  logger?: JsonLogger
 ): Promise<AdapterResult> {
   const args = adapter.buildArgs(promptContent, { verbose, cwd, outputFormat });
   ctx.proc = Bun.spawn(args, {
@@ -86,9 +91,10 @@ async function runIterationCapture(
   const handleText = (text: string) => {
     const chunks = parser.processChunk(text);
     for (const chunk of chunks) {
-      if (chunk.displayText) {
-        onOutput(chunk.displayText);
+      if (logger && chunk.logData) {
+        logger.log(chunk.logData);
       }
+      onChunk(chunk);
     }
   };
 
@@ -109,9 +115,10 @@ async function runIterationCapture(
   // Flush any remaining buffered content
   const finalChunks = parser.flush();
   for (const chunk of finalChunks) {
-    if (chunk.displayText) {
-      onOutput(chunk.displayText);
+    if (logger && chunk.logData) {
+      logger.log(chunk.logData);
     }
+    onChunk(chunk);
   }
 
   const exitCode = await ctx.proc.exited;
@@ -123,10 +130,6 @@ async function runIterationCapture(
 
   const result = parser.getResult();
 
-  if (result.sessionId) {
-    onOutput(`[SESSION] ${result.sessionId}`);
-  }
-
   return {
     exitCode,
     complete: result.complete,
@@ -135,9 +138,12 @@ async function runIterationCapture(
 }
 
 function RalphApp(props: RalphAppProps) {
+  const renderer = useRenderer();
   const [iteration, setIteration] = createSignal(0);
-  const [output, setOutput] = createSignal<string[]>([]);
+  const [messages, setMessages] = createSignal<RichMessage[]>([]);
+  const [legacyOutput, setLegacyOutput] = createSignal<string[]>([]);
   const [expanded, setExpanded] = createSignal(false);
+  const [richMode, setRichMode] = createSignal(true);
   const [status, setStatus] = createSignal<
     "running" | "complete" | "error" | "idle"
   >("idle");
@@ -150,9 +156,15 @@ function RalphApp(props: RalphAppProps) {
   // Track current process for cleanup
   const ctx: IterationContext = { proc: null, aborted: false };
 
+  // Initialize logger if logFile provided
+  const logger = props.logFile ? new JsonLogger(props.logFile) : undefined;
+
   useKeyboard((key) => {
     if (key.name === "e" || key.name === "space") {
       setExpanded((prev) => !prev);
+    }
+    if (key.name === "r") {
+      setRichMode((prev) => !prev);
     }
     if (key.name === "q" || key.name === "escape") {
       ctx.aborted = true;
@@ -166,6 +178,7 @@ function RalphApp(props: RalphAppProps) {
         lastExitCode: 130,
         lastSessionId: lastSessionId(),
       });
+      renderer.destroy();
     }
   });
 
@@ -211,6 +224,21 @@ function RalphApp(props: RalphAppProps) {
     }
   };
 
+  const handleChunk = (chunk: ParsedChunk) => {
+    if (chunk.richMessage) {
+      setMessages((prev) => [
+        ...prev.slice(-OUTPUT_BUFFER_SIZE),
+        chunk.richMessage!,
+      ]);
+    }
+    if (chunk.displayText) {
+      setLegacyOutput((prev) => [
+        ...prev.slice(-OUTPUT_BUFFER_SIZE),
+        chunk.displayText!,
+      ]);
+    }
+  };
+
   const handleIterationResult = (
     result: AdapterResult,
     i: number
@@ -220,20 +248,23 @@ function RalphApp(props: RalphAppProps) {
     }
 
     if (result.exitCode !== 0) {
-      setOutput((prev) => [...prev, `[ERROR] Exit code: ${result.exitCode}`]);
+      setLegacyOutput((prev) => [
+        ...prev,
+        `[ERROR] Exit code: ${result.exitCode}`,
+      ]);
       setStatus("error");
       setExitReason("error");
       return { shouldBreak: true, exitCode: result.exitCode };
     }
 
     if (result.complete) {
-      setOutput((prev) => [...prev, "[COMPLETE] Task finished!"]);
+      setLegacyOutput((prev) => [...prev, "[COMPLETE] Task finished!"]);
       setStatus("complete");
       setExitReason("complete");
       return { shouldBreak: true, exitCode: result.exitCode };
     }
 
-    setOutput((prev) => [...prev, `[OK] Iteration ${i} completed`]);
+    setLegacyOutput((prev) => [...prev, `[OK] Iteration ${i} completed`]);
     return { shouldBreak: false, exitCode: result.exitCode };
   };
 
@@ -249,7 +280,7 @@ function RalphApp(props: RalphAppProps) {
 
       setIteration(i);
       setTerminalTitle(`Ralph: ${i}/${props.maxIterations}`);
-      setOutput((prev) => [
+      setLegacyOutput((prev) => [
         ...prev.slice(-OUTPUT_BUFFER_SIZE),
         `--- Iteration ${i}/${props.maxIterations} ---`,
       ]);
@@ -262,8 +293,8 @@ function RalphApp(props: RalphAppProps) {
           props.cwd,
           props.verbose,
           outputFormat,
-          (line) =>
-            setOutput((prev) => [...prev.slice(-OUTPUT_BUFFER_SIZE), line])
+          handleChunk,
+          logger
         );
 
         if (ctx.aborted) {
@@ -276,7 +307,7 @@ function RalphApp(props: RalphAppProps) {
           break;
         }
       } catch (error) {
-        setOutput((prev) => [...prev, `[ERROR] ${error}`]);
+        setLegacyOutput((prev) => [...prev, `[ERROR] ${error}`]);
         setStatus("error");
         setExitReason("error");
         lastExitCode = 1;
@@ -300,64 +331,83 @@ function RalphApp(props: RalphAppProps) {
       lastExitCode,
       lastSessionId: lastSessionId(),
     });
+    renderer.destroy();
   };
 
   onMount(() => {
     runLoop();
   });
 
+  const outputCount = () =>
+    richMode() ? messages().length : legacyOutput().length;
+  const outputLabel = () => (richMode() ? "messages" : "lines");
+
   return (
     <box flexDirection="column" style={{ padding: 1 }}>
       <box>
         <text>
           <strong>Ralph Agent Loop</strong>
-          <span fg="#666666"> | [e/space] toggle output | [q] quit</span>
+          <span style={{ fg: "#666666" }}>
+            {" "}
+            | [e] toggle | [r] {richMode() ? "plain" : "rich"} | [q] quit
+          </span>
         </text>
       </box>
 
       <box style={{ marginTop: 1 }}>
         <text>
-          <span fg={statusColor()}>{statusIcon()} </span>
+          <span style={{ fg: statusColor() }}>{statusIcon()} </span>
           Iteration {iteration()}/{props.maxIterations}{" "}
-          <span fg="#666666">{progressBar()}</span>
+          <span style={{ fg: "#666666" }}>{progressBar()}</span>
         </text>
       </box>
 
       <box style={{ marginTop: 1 }}>
         <Show when={status() === "complete" && exitReason() === "complete"}>
           <text>
-            <span fg="#00ff00">✓ Task marked complete by agent</span>
+            <span style={{ fg: "#00ff00" }}>
+              ✓ Task marked complete by agent
+            </span>
           </text>
         </Show>
         <Show
           when={status() === "complete" && exitReason() === "max_iterations"}
         >
           <text>
-            <span fg="#ffff00">
+            <span style={{ fg: "#ffff00" }}>
               ⚠ Reached max iterations ({props.maxIterations})
             </span>
           </text>
         </Show>
         <Show when={status() === "error"}>
           <text>
-            <span fg="#ff0000">✗ Error in iteration {iteration()}</span>
+            <span style={{ fg: "#ff0000" }}>
+              ✗ Error in iteration {iteration()}
+            </span>
           </text>
         </Show>
       </box>
 
       <Show when={expanded()}>
-        <scrollbox border style={{ marginTop: 1, height: 20, flexGrow: 1 }}>
-          <For each={output().slice(-OUTPUT_BUFFER_SIZE)}>
-            {(line) => <text>{line}</text>}
-          </For>
-        </scrollbox>
+        <Show
+          fallback={
+            <scrollbox border style={{ marginTop: 1, height: 20, flexGrow: 1 }}>
+              <For each={legacyOutput().slice(-OUTPUT_BUFFER_SIZE)}>
+                {(line) => <text>{line}</text>}
+              </For>
+            </scrollbox>
+          }
+          when={richMode()}
+        >
+          <MessageList expanded={expanded()} messages={messages()} />
+        </Show>
       </Show>
 
-      <Show when={!expanded() && output().length > 0}>
+      <Show when={!expanded() && outputCount() > 0}>
         <box style={{ marginTop: 1 }}>
           <text>
-            <span fg="#666666">
-              {output().length} lines captured. Press [e] to view.
+            <span style={{ fg: "#666666" }}>
+              {outputCount()} {outputLabel()} captured. Press [e] to view.
             </span>
           </text>
         </box>
@@ -370,13 +420,22 @@ export function runLoopTUI(
   props: Omit<RalphAppProps, "onComplete">
 ): Promise<LoopResult> {
   return new Promise((res) => {
-    const onComplete = (result: LoopResult) => {
-      setTimeout(() => {
-        res(result);
-      }, TUI_CLEANUP_DELAY_MS);
+    let result: LoopResult | null = null;
+
+    const onComplete = (r: LoopResult) => {
+      result = r;
     };
 
-    render(() => <RalphApp {...props} onComplete={onComplete} />);
+    render(() => <RalphApp {...props} onComplete={onComplete} />, {
+      onDestroy: () => {
+        // Renderer cleanup complete, now safe to resolve
+        setTimeout(() => {
+          if (result) {
+            res(result);
+          }
+        }, TUI_CLEANUP_DELAY_MS);
+      },
+    });
   });
 }
 

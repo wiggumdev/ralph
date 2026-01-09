@@ -1,4 +1,10 @@
 import type {
+  ContentBlock,
+  Message,
+  ResultMessage,
+  SystemMessage,
+} from "./message-types";
+import type {
   OutputParser,
   ParsedChunk,
   ParserResult,
@@ -68,7 +74,9 @@ export class StreamJsonParser implements OutputParser {
   }
 
   private processMessage(msg: StreamJsonMessage): ParsedChunk | null {
-    const chunk: ParsedChunk = {};
+    const chunk: ParsedChunk = {
+      logData: msg,
+    };
 
     // Extract session_id from any message that has it
     if (msg.session_id) {
@@ -78,26 +86,126 @@ export class StreamJsonParser implements OutputParser {
 
     // Check for result message type (completion status)
     // subtype: "success" just means Claude finished - check for completion marker
-    if (msg.type === "result" && msg.subtype === "success") {
+    if (msg.type === "result") {
       this.hasResult = true;
       const resultText = typeof msg.result === "string" ? msg.result : "";
       this.resultSuccess = resultText.includes("<promise>COMPLETE</promise>");
       chunk.isResult = true;
       chunk.resultSuccess = this.resultSuccess;
+
+      // Create rich result message
+      chunk.richMessage = {
+        type: "result",
+        subtype: (msg.subtype as ResultMessage["subtype"]) || "success",
+        result: resultText,
+        complete: this.resultSuccess,
+        duration_ms: msg.duration_ms as number | undefined,
+        total_cost_usd: msg.total_cost_usd as number | undefined,
+        usage: msg.usage as ResultMessage["usage"],
+        timestamp: Date.now(),
+      };
     }
 
-    // Extract displayable content based on message type
+    // Parse rich messages for assistant/user types
+    if (msg.type === "assistant" || msg.type === "user") {
+      const richMessage = this.parseRichMessage(msg);
+      if (richMessage) {
+        chunk.richMessage = richMessage;
+      }
+    }
+
+    // Parse system messages
+    if (msg.type === "system") {
+      chunk.richMessage = this.parseSystemMessage(msg);
+    }
+
+    // Extract displayable content based on message type (backwards compat)
     const displayText = this.extractDisplayText(msg);
     if (displayText) {
       chunk.displayText = displayText;
     }
 
     // Return null if nothing useful extracted
-    if (!(chunk.displayText || chunk.sessionId || chunk.isResult)) {
+    if (
+      !(
+        chunk.displayText ||
+        chunk.sessionId ||
+        chunk.isResult ||
+        chunk.richMessage
+      )
+    ) {
       return null;
     }
 
     return chunk;
+  }
+
+  private parseRichMessage(msg: StreamJsonMessage): Message | null {
+    const message = msg.message as {
+      role?: string;
+      content?: Array<{
+        type: string;
+        text?: string;
+        id?: string;
+        name?: string;
+        input?: Record<string, unknown>;
+        tool_use_id?: string;
+        is_error?: boolean;
+        content?: string | Array<{ type: string; text?: string }>;
+      }>;
+    };
+
+    if (!(message?.content && Array.isArray(message.content))) {
+      return null;
+    }
+
+    const contentBlocks: ContentBlock[] = message.content
+      .map((block): ContentBlock | null => {
+        if (block.type === "text") {
+          return { type: "text", text: block.text || "" };
+        }
+        if (block.type === "tool_use") {
+          return {
+            type: "tool_use",
+            id: block.id || "",
+            name: block.name || "",
+            input: block.input || {},
+          };
+        }
+        if (block.type === "tool_result") {
+          return {
+            type: "tool_result",
+            tool_use_id: block.tool_use_id || "",
+            content: block.content,
+            is_error: block.is_error,
+          };
+        }
+        return null;
+      })
+      .filter((block): block is ContentBlock => block !== null);
+
+    if (contentBlocks.length === 0) {
+      return null;
+    }
+
+    return {
+      type: "message",
+      role: (message.role as Message["role"]) || "assistant",
+      content: contentBlocks,
+      timestamp: Date.now(),
+    };
+  }
+
+  private parseSystemMessage(msg: StreamJsonMessage): SystemMessage {
+    return {
+      type: "system",
+      subtype: msg.subtype,
+      session_id: msg.session_id,
+      model: msg.model as string | undefined,
+      tools: msg.tools as string[] | undefined,
+      cwd: msg.cwd as string | undefined,
+      timestamp: Date.now(),
+    };
   }
 
   private extractDisplayText(msg: StreamJsonMessage): string | null {

@@ -16,7 +16,7 @@
     "@biomejs/biome": "2.3.11",
     "turbo": "^2.5.4",
     "ultracite": "7.0.10",
-    "vitest": "^2.1.0"
+    "vitest": "^4.0.16"
   },
   "peerDependencies": {
     "typescript": "^5"
