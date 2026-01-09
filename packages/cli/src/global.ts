@@ -5,6 +5,9 @@ import { xdgCache, xdgConfig, xdgData, xdgState } from "xdg-basedir";
 
 const app = "ralph";
 
+/** Ralph icon - clockwise closed circle arrow (U+2941) */
+export const RALPH_ICON = "⥁";
+
 const data = path.join(xdgData!, app);
 const cache = path.join(xdgCache!, app);
 const config = path.join(xdgConfig!, app);

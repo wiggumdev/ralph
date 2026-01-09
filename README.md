@@ -1,8 +1,6 @@
-# ralph
+# ⥁ ralph
 
-<p align="center">
-  <img src="docs/public/favicon.svg" alt="ralph logo" width="80" height="80">
-</p>
+<h1 align="center">⥁</h1>
 
 <p align="center">
   <strong>AI-agnostic agentic loop CLI</strong>
@@ -68,10 +66,10 @@ ralph run --prompt TASK.md
 
 ## Features
 
-- **🔄 Context Reset** — Fresh context window each iteration
-- **🧠 State Persistence** — Progress via git, files, and tests
-- **🛑 Smart Exit** — Configurable completion conditions
-- **🔧 Tool Agnostic** — Claude Code, OpenCode, Aider, or any CLI
+- **⥁ Context Reset** — Fresh context window each iteration
+- **⥁ State Persistence** — Progress via git, files, and tests
+- **⥁ Smart Exit** — Configurable completion conditions
+- **⥁ Tool Agnostic** — Claude Code, OpenCode, Aider, or any CLI
 
 ## How It Works
 

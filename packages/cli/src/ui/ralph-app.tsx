@@ -8,6 +8,7 @@ import {
   Show,
 } from "solid-js";
 import type { AdapterResult, CLIAdapter } from "#adapters/types";
+import { RALPH_ICON } from "#global";
 import { createParser, type OutputFormat, type ParsedChunk } from "#parsers";
 import type { RichMessage } from "#parsers/message-types";
 import { MessageList } from "#ui/components/message-list";
@@ -279,7 +280,7 @@ function RalphApp(props: RalphAppProps) {
       }
 
       setIteration(i);
-      setTerminalTitle(`Ralph: ${i}/${props.maxIterations}`);
+      setTerminalTitle(`${RALPH_ICON} Ralph: ${i}/${props.maxIterations}`);
       setLegacyOutput((prev) => [
         ...prev.slice(-OUTPUT_BUFFER_SIZE),
         `--- Iteration ${i}/${props.maxIterations} ---`,
@@ -346,6 +347,7 @@ function RalphApp(props: RalphAppProps) {
     <box flexDirection="column" style={{ padding: 1 }}>
       <box>
         <text>
+          <span style={{ fg: "#00aaff" }}>{RALPH_ICON}</span>{" "}
           <strong>Ralph Agent Loop</strong>
           <span style={{ fg: "#666666" }}>
             {" "}
