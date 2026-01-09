@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const AdapterType = z.enum(["claude", "opencode"]);
+export const AdapterType = z.enum(["amp", "claude", "opencode"]);
 export type AdapterType = z.infer<typeof AdapterType>;
 
 export const ConfigSchema = z.object({
