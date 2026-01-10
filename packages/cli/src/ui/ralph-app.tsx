@@ -1,3 +1,5 @@
+import { existsSync, readFileSync, watch } from "node:fs";
+import { resolve } from "node:path";
 import { render, useKeyboard, useRenderer } from "@opentui/solid";
 import {
   createEffect,
@@ -37,8 +39,11 @@ export interface RalphAppProps {
   outputFormat?: OutputFormat;
   logFile?: string;
   showUsage?: boolean;
+  plansDir?: string;
   onComplete: (result: LoopResult) => void;
 }
+
+type TabView = "output" | "progress";
 
 function setTerminalTitle(title: string): void {
   if (process.stdout.isTTY) {
@@ -158,6 +163,29 @@ function RalphApp(props: RalphAppProps) {
   const [totalCost, setTotalCost] = createSignal(0);
   const spinnerChars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
+  // Tab view state
+  const [currentTab, setCurrentTab] = createSignal<TabView>("output");
+  const [progressContent, setProgressContent] = createSignal<string[]>([]);
+
+  // Progress file path
+  const progressPath = () =>
+    resolve(props.cwd, props.plansDir ?? ".plans", "progress.txt");
+
+  // Read progress file content
+  const readProgressFile = () => {
+    const path = progressPath();
+    if (existsSync(path)) {
+      try {
+        const content = readFileSync(path, "utf-8");
+        setProgressContent(content.split("\n"));
+      } catch {
+        setProgressContent(["[Error reading progress.txt]"]);
+      }
+    } else {
+      setProgressContent(["[No progress.txt found]"]);
+    }
+  };
+
   // Track current process for cleanup
   const ctx: IterationContext = { proc: null, aborted: false };
 
@@ -170,6 +198,12 @@ function RalphApp(props: RalphAppProps) {
     }
     if (key.name === "r") {
       setRichMode((prev) => !prev);
+    }
+    if (key.name === "tab" || key.name === "p") {
+      setCurrentTab((prev) => (prev === "output" ? "progress" : "output"));
+      if (currentTab() === "progress") {
+        readProgressFile();
+      }
     }
     if (key.name === "q" || key.name === "escape") {
       ctx.aborted = true;
@@ -195,6 +229,22 @@ function RalphApp(props: RalphAppProps) {
       setSpinnerFrame((f) => (f + 1) % spinnerChars.length);
     }, 80);
     onCleanup(() => clearInterval(interval));
+  });
+
+  // Watch progress file when progress tab is active
+  createEffect(() => {
+    if (currentTab() !== "progress") {
+      return;
+    }
+    readProgressFile();
+    const path = progressPath();
+    if (!existsSync(path)) {
+      return;
+    }
+    const watcher = watch(path, () => {
+      readProgressFile();
+    });
+    onCleanup(() => watcher.close());
   });
 
   const progressBar = () => {
@@ -384,7 +434,31 @@ function RalphApp(props: RalphAppProps) {
           <strong>Ralph Agent Loop</strong>
           <span style={{ fg: "#666666" }}>
             {" "}
-            | [e] toggle | [r] {richMode() ? "plain" : "rich"} | [q] quit
+            | [e] toggle | [r] {richMode() ? "plain" : "rich"} | [Tab] switch |
+            [q] quit
+          </span>
+        </text>
+      </box>
+
+      {/* Tab bar */}
+      <box style={{ marginTop: 1 }}>
+        <text>
+          <span
+            style={{
+              fg: currentTab() === "output" ? "#00ff00" : "#666666",
+            }}
+          >
+            {currentTab() === "output" ? "▶ " : "  "}
+            Output
+          </span>
+          <span style={{ fg: "#666666" }}> | </span>
+          <span
+            style={{
+              fg: currentTab() === "progress" ? "#00ff00" : "#666666",
+            }}
+          >
+            {currentTab() === "progress" ? "▶ " : "  "}
+            Progress
           </span>
         </text>
       </box>
@@ -440,29 +514,42 @@ function RalphApp(props: RalphAppProps) {
         </Show>
       </box>
 
-      <Show when={expanded()}>
-        <Show
-          fallback={
-            <scrollbox border style={{ marginTop: 1, height: 20, flexGrow: 1 }}>
-              <For each={legacyOutput().slice(-OUTPUT_BUFFER_SIZE)}>
-                {(line) => <text>{line}</text>}
-              </For>
-            </scrollbox>
-          }
-          when={richMode()}
-        >
-          <MessageList expanded={expanded()} messages={messages()} />
+      {/* Output tab view */}
+      <Show when={currentTab() === "output"}>
+        <Show when={expanded()}>
+          <Show
+            fallback={
+              <scrollbox
+                border
+                style={{ marginTop: 1, height: 20, flexGrow: 1 }}
+              >
+                <For each={legacyOutput().slice(-OUTPUT_BUFFER_SIZE)}>
+                  {(line) => <text>{line}</text>}
+                </For>
+              </scrollbox>
+            }
+            when={richMode()}
+          >
+            <MessageList expanded={expanded()} messages={messages()} />
+          </Show>
+        </Show>
+
+        <Show when={!expanded() && outputCount() > 0}>
+          <box style={{ marginTop: 1 }}>
+            <text>
+              <span style={{ fg: "#666666" }}>
+                {outputCount()} {outputLabel()} captured. Press [e] to view.
+              </span>
+            </text>
+          </box>
         </Show>
       </Show>
 
-      <Show when={!expanded() && outputCount() > 0}>
-        <box style={{ marginTop: 1 }}>
-          <text>
-            <span style={{ fg: "#666666" }}>
-              {outputCount()} {outputLabel()} captured. Press [e] to view.
-            </span>
-          </text>
-        </box>
+      {/* Progress tab view */}
+      <Show when={currentTab() === "progress"}>
+        <scrollbox border style={{ marginTop: 1, height: 20, flexGrow: 1 }}>
+          <For each={progressContent()}>{(line) => <text>{line}</text>}</For>
+        </scrollbox>
       </Show>
     </box>
   );
