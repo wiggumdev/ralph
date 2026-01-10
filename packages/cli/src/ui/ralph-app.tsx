@@ -9,7 +9,8 @@ import {
 } from "solid-js";
 import type { AdapterResult, CLIAdapter } from "#adapters/types";
 import { createParser, type OutputFormat, type ParsedChunk } from "#parsers";
-import type { RichMessage } from "#parsers/message-types";
+import type { ResultMessage, RichMessage } from "#parsers/message-types";
+import { isResultMessage } from "#parsers/message-types";
 import { MessageList } from "#ui/components/message-list";
 import { JsonLogger } from "#utils/json-logger";
 import { readStream } from "#utils/stream";
@@ -35,6 +36,7 @@ export interface RalphAppProps {
   adapter: CLIAdapter;
   outputFormat?: OutputFormat;
   logFile?: string;
+  showUsage?: boolean;
   onComplete: (result: LoopResult) => void;
 }
 
@@ -151,6 +153,9 @@ function RalphApp(props: RalphAppProps) {
     createSignal<LoopResult["exitReason"]>("max_iterations");
   const [spinnerFrame, setSpinnerFrame] = createSignal(0);
   const [lastSessionId, setLastSessionId] = createSignal<string | undefined>();
+  const [totalInputTokens, setTotalInputTokens] = createSignal(0);
+  const [totalOutputTokens, setTotalOutputTokens] = createSignal(0);
+  const [totalCost, setTotalCost] = createSignal(0);
   const spinnerChars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
   // Track current process for cleanup
@@ -224,12 +229,42 @@ function RalphApp(props: RalphAppProps) {
     }
   };
 
+  const formatTokens = (count: number): string => {
+    if (count >= 1000) {
+      return `${(count / 1000).toFixed(1)}k`;
+    }
+    return count.toString();
+  };
+
+  const formatCost = (cost: number): string => {
+    if (cost < 0.01) {
+      return `$${cost.toFixed(4)}`;
+    }
+    return `$${cost.toFixed(2)}`;
+  };
+
+  const hasUsageData = () =>
+    props.showUsage &&
+    (totalInputTokens() > 0 || totalOutputTokens() > 0 || totalCost() > 0);
+
   const handleChunk = (chunk: ParsedChunk) => {
     if (chunk.richMessage) {
       setMessages((prev) => [
         ...prev.slice(-OUTPUT_BUFFER_SIZE),
         chunk.richMessage!,
       ]);
+
+      // Aggregate token usage and costs from result messages
+      if (isResultMessage(chunk.richMessage)) {
+        const result = chunk.richMessage as ResultMessage;
+        if (result.usage) {
+          setTotalInputTokens((prev) => prev + result.usage!.input_tokens);
+          setTotalOutputTokens((prev) => prev + result.usage!.output_tokens);
+        }
+        if (result.total_cost_usd !== undefined) {
+          setTotalCost((prev) => prev + result.total_cost_usd!);
+        }
+      }
     }
     if (chunk.displayText) {
       setLegacyOutput((prev) => [
@@ -361,6 +396,23 @@ function RalphApp(props: RalphAppProps) {
           <span style={{ fg: "#666666" }}>{progressBar()}</span>
         </text>
       </box>
+
+      <Show when={hasUsageData()}>
+        <box>
+          <text>
+            <span style={{ fg: "#00aaff" }}>
+              Tokens: {formatTokens(totalInputTokens())} in /{" "}
+              {formatTokens(totalOutputTokens())} out
+            </span>
+            <Show when={totalCost() > 0}>
+              <span style={{ fg: "#ffaa00" }}>
+                {" "}
+                | Cost: {formatCost(totalCost())}
+              </span>
+            </Show>
+          </text>
+        </box>
+      </Show>
 
       <box style={{ marginTop: 1 }}>
         <Show when={status() === "complete" && exitReason() === "complete"}>
