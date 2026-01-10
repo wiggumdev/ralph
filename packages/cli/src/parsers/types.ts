@@ -1,6 +1,6 @@
 import type { RichMessage } from "./message-types";
 
-export type OutputFormat = "stream-json" | "text";
+export type OutputFormat = "stream-json" | "batch-json" | "text";
 
 export interface StreamJsonMessage {
   type: string;

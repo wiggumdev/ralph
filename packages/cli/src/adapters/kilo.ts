@@ -23,9 +23,9 @@ import type { AdapterOptions, CLIAdapter } from "./types";
 export class KiloAdapter implements CLIAdapter {
   readonly name = "kilo";
   readonly completionMarker = "<promise>COMPLETE</promise>";
-  // Kilo supports JSON output but it's batch, not streaming like Claude's stream-json
-  // For now, we primarily support text mode which works more reliably with the TUI
-  readonly supportedFormats: OutputFormat[] = ["text"];
+  // Kilo supports batch JSON output via --json flag
+  // batch-json provides rich messages but not real-time streaming
+  readonly supportedFormats: OutputFormat[] = ["batch-json", "text"];
 
   /**
    * Build command-line arguments for Kilo CLI execution.
@@ -39,6 +39,11 @@ export class KiloAdapter implements CLIAdapter {
 
     // Use code mode by default for general development tasks
     args.push("--mode", "code");
+
+    // Enable JSON output for rich TUI display
+    if (options.outputFormat === "batch-json") {
+      args.push("--json");
+    }
 
     if (options.verbose) {
       // Kilo doesn't have a direct --verbose flag in auto mode

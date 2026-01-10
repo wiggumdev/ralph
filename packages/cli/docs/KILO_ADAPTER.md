@@ -26,8 +26,23 @@ adapter = "kilo"
 |---------|----------|-------------|
 | Autonomous Mode | `--auto` | Non-interactive execution with auto-approval |
 | Mode Selection | `--mode code` | Uses "code" mode for development tasks |
-| JSON Output | `--json` | Structured output (not currently used) |
+| JSON Output | `--json` | Structured batch output for rich TUI display |
 | Timeout | `--timeout N` | Timeout in seconds (future enhancement) |
+
+## Output Formats
+
+The Kilo adapter supports two output formats:
+
+### batch-json (Recommended)
+Uses `--json` flag to get structured JSON output. Provides:
+- Rich message display with tool use visualization
+- Structured content blocks (text, tool_use, tool_result)
+- Session metadata and result tracking
+
+**Limitation**: Output arrives at task completion, not streamed in real-time.
+
+### text
+Plain text output. Simpler but no structured message display.
 
 ## Feature Parity Analysis
 
@@ -37,11 +52,12 @@ adapter = "kilo"
 |---------|--------|----------|------|-------|
 | **Output Formats** |
 | Stream JSON | ✅ | ❌ | ❌ | Claude has native streaming JSON |
+| Batch JSON | ❌ | ❌ | ✅ | Kilo `--json` outputs structured data |
 | Plain Text | ✅ | ✅ | ✅ | All adapters support text output |
-| Batch JSON | ❌ | ❌ | ✅ | Kilo supports `--json` for batch output |
 | **TUI Integration** |
-| Rich Messages | ✅ | ❌ | ❌ | Requires stream-json format |
-| Tool Display | ✅ | ❌ | ❌ | Structured tool use visualization |
+| Rich Messages | ✅ | ❌ | ✅ | Kilo via batch-json, Claude via stream-json |
+| Tool Display | ✅ | ❌ | ✅ | Structured tool use visualization |
+| Real-time Streaming | ✅ | ❌ | ❌ | Only Claude streams incrementally |
 | Progress Tracking | ✅ | ✅ | ✅ | Basic progress works for all |
 | **Permissions** |
 | Auto-accept Edits | ✅ | ✅ | ✅ | Claude: `--permission-mode`, Kilo: `--auto` |
@@ -58,21 +74,21 @@ adapter = "kilo"
 
 ### Feature Gap Details
 
-#### 1. Rich TUI Experience (Gap: Kilo)
+#### 1. Real-time Streaming (Gap: Kilo)
 
 **Impact: Medium**
 
-The Claude adapter leverages `stream-json` output format to provide rich TUI features:
-- Real-time message streaming with structured content blocks
-- Tool use visualization with input/output display
-- Session metadata and result tracking
+The Claude adapter leverages `stream-json` output format to provide real-time TUI features:
+- Incremental message streaming as Claude generates output
+- Live tool input construction display
+- Immediate feedback during execution
 
-Kilo's `--json` flag provides batch JSON output, not streaming. This means:
-- TUI displays plain text output instead of structured messages
-- No real-time tool use visualization
-- Less detailed progress information
+Kilo's `--json` flag provides batch JSON output. With `batch-json` format:
+- Rich messages display **after** task completion, not during
+- Tool use visualization available but not real-time
+- Full structured content blocks supported
 
-**Workaround:** The text parser still captures output and displays it in the TUI, just without the rich formatting.
+**Note:** The `batch-json` format now provides rich TUI display (messages, tools, results). The only gap is real-time streaming during execution.
 
 #### 2. Session ID Tracking (Gap: Kilo)
 
@@ -150,13 +166,15 @@ Any adapter works well for basic iterative development workflows.
 
 ## Future Improvements
 
-1. **Streaming JSON Parser for Kilo**: If Kilo adds streaming JSON output, the adapter can be updated to support it.
+1. **Streaming JSON Support**: If Kilo adds streaming JSON output in the future, the adapter can be updated to provide real-time TUI updates similar to Claude.
 
-2. **Mode Selection CLI Flag**: Add `--kilo-mode` option to Ralph for selecting Kilo's agent modes.
+2. **Mode Selection CLI Flag**: Add `--kilo-mode` option to Ralph for selecting Kilo's agent modes (architect, ask, debug).
 
 3. **Parallel Iteration Support**: Explore using Kilo's `--parallel` mode for concurrent development tasks.
 
 4. **Timeout Configuration**: Expose Kilo's `--timeout` flag through Ralph's configuration.
+
+5. **JSON Schema Refinement**: As Kilo's JSON output format becomes better documented, refine the `KiloJsonParser` for optimal compatibility.
 
 ## References
 
