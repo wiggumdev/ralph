@@ -71,6 +71,7 @@ describe("ConfigSchema", () => {
       verbose: false,
       tui: true,
       showUsage: false,
+      hooks: {},
     };
 
     const result = ConfigSchema.safeParse(config);
@@ -246,6 +247,7 @@ describe("DEFAULT_CONFIG", () => {
     expect(DEFAULT_CONFIG).toHaveProperty("verbose");
     expect(DEFAULT_CONFIG).toHaveProperty("tui");
     expect(DEFAULT_CONFIG).toHaveProperty("showUsage");
+    expect(DEFAULT_CONFIG).toHaveProperty("hooks");
   });
 
   /**

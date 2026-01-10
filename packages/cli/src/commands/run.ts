@@ -4,10 +4,26 @@ import type { CommandModule } from "yargs";
 import { getAdapter } from "#adapters/index";
 import type { CLIAdapter } from "#adapters/types";
 import { getPrdPath, getPromptPath, loadConfig } from "#config/loader";
+import type { Hooks } from "#config/schema";
+import { createHookExecutor } from "#hooks";
 import { createParser, type OutputFormat } from "#parsers";
+import type { Prd } from "#schema/prd";
 import type { LoopResult } from "#ui/ralph-app";
 import { runLoopTUI } from "#ui/ralph-app";
 import { readStream } from "#utils/stream";
+
+function countTasksNotPassing(prdPath: string): number {
+  if (!existsSync(prdPath)) {
+    return 0;
+  }
+  try {
+    const content = readFileSync(prdPath, "utf-8");
+    const prd = JSON.parse(content) as Prd;
+    return prd.filter((feature) => !feature.passes).length;
+  } catch {
+    return 0;
+  }
+}
 
 interface RunArgs {
   maxIterations?: number;
@@ -78,21 +94,53 @@ async function runOnce(
   return await proc.exited;
 }
 
-async function runLoopPlain(
-  adapter: CLIAdapter,
-  promptContent: string,
-  cwd: string,
-  maxIterations: number,
-  verbose?: boolean,
-  outputFormat: OutputFormat = "stream-json"
-): Promise<LoopResult> {
+interface RunLoopPlainOptions {
+  adapter: CLIAdapter;
+  promptContent: string;
+  cwd: string;
+  maxIterations: number;
+  verbose?: boolean;
+  outputFormat?: OutputFormat;
+  hooks?: Hooks;
+  tasksNotPassing?: number;
+}
+
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: loop logic is inherently complex
+async function runLoopPlain(options: RunLoopPlainOptions): Promise<LoopResult> {
+  const {
+    adapter,
+    promptContent,
+    cwd,
+    maxIterations,
+    verbose,
+    outputFormat = "stream-json",
+    hooks,
+    tasksNotPassing = 0,
+  } = options;
+
   let lastExitCode = 0;
   let iterations = 0;
   let exitReason: LoopResult["exitReason"] = "max_iterations";
   let lastSessionId: string | undefined;
 
+  // Initialize hook executor if hooks provided
+  const hookExecutor = hooks
+    ? createHookExecutor({ hooks, cwd, verbose })
+    : undefined;
+
+  // Execute ralph_start hook
+  if (hookExecutor) {
+    await hookExecutor.executeRalphStart(tasksNotPassing, maxIterations);
+  }
+
   for (let i = 1; i <= maxIterations; i++) {
     iterations = i;
+
+    // Execute ralph_loop_start hook
+    if (hookExecutor) {
+      await hookExecutor.executeRalphLoopStart(i);
+    }
+
     console.log(`\n--- Iteration ${i}/${maxIterations} ---`);
 
     const args = adapter.buildArgs(promptContent, {
@@ -160,6 +208,11 @@ async function runLoopPlain(
       console.log(`[SESSION] ${result.sessionId}`);
     }
 
+    // Execute ralph_loop_end hook
+    if (hookExecutor) {
+      await hookExecutor.executeRalphLoopEnd(i);
+    }
+
     if (lastExitCode !== 0) {
       console.error(`\n[ERROR] Exit code: ${lastExitCode}`);
       exitReason = "error";
@@ -169,10 +222,19 @@ async function runLoopPlain(
     if (result.complete) {
       console.log("\n[COMPLETE] Task finished!");
       exitReason = "complete";
+      // Execute ralph_complete hook
+      if (hookExecutor) {
+        await hookExecutor.executeRalphComplete(i);
+      }
       break;
     }
 
     console.log(`\n[OK] Iteration ${i} completed`);
+  }
+
+  // Execute ralph_max_iterations hook if we reached max without completing
+  if (exitReason === "max_iterations" && hookExecutor) {
+    await hookExecutor.executeRalphMaxIterations(iterations);
   }
 
   return { iterations, exitReason, lastExitCode, lastSessionId };
@@ -280,6 +342,7 @@ export const runCommand: CommandModule<object, RunArgs> = {
     const useTui = config.tui && !argv.noTui;
     const logFile = argv.logFile ? resolvePath(argv.logFile, cwd) : undefined;
     const prdPath = getPrdPath(config, cwd);
+    const tasksNotPassing = countTasksNotPassing(prdPath);
 
     let result: LoopResult;
     if (useTui) {
@@ -294,16 +357,20 @@ export const runCommand: CommandModule<object, RunArgs> = {
         showUsage: config.showUsage,
         plansDir: config.plansDir,
         prdPath,
+        hooks: config.hooks,
+        tasksNotPassing,
       });
     } else {
-      result = await runLoopPlain(
+      result = await runLoopPlain({
         adapter,
         promptContent,
         cwd,
         maxIterations,
         verbose,
-        outputFormat
-      );
+        outputFormat,
+        hooks: config.hooks,
+        tasksNotPassing,
+      });
     }
 
     process.exitCode = result.exitReason === "error" ? 1 : 0;
