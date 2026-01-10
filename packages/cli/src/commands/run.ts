@@ -290,6 +290,7 @@ export const runCommand: CommandModule<object, RunArgs> = {
         adapter,
         outputFormat,
         logFile,
+        showUsage: config.showUsage,
       });
     } else {
       result = await runLoopPlain(

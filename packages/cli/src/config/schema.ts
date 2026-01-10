@@ -9,6 +9,7 @@ export const ConfigSchema = z.object({
   maxIterations: z.number().int().positive().default(10),
   verbose: z.boolean().default(false),
   tui: z.boolean().default(true),
+  showUsage: z.boolean().default(false),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
@@ -19,4 +20,5 @@ export const DEFAULT_CONFIG: Config = {
   maxIterations: 10,
   verbose: false,
   tui: true,
+  showUsage: false,
 };

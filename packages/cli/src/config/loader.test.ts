@@ -43,6 +43,7 @@ describe("Config Loader", () => {
         maxIterations: 10,
         verbose: false,
         tui: true,
+        showUsage: false,
       };
 
       const result = getPlansDir(config, "/project");
@@ -61,6 +62,7 @@ describe("Config Loader", () => {
         maxIterations: 10,
         verbose: false,
         tui: true,
+        showUsage: false,
       };
 
       const result = getPlansDir(config, "/project");
@@ -81,6 +83,7 @@ describe("Config Loader", () => {
         maxIterations: 10,
         verbose: false,
         tui: true,
+        showUsage: false,
       };
 
       const result = getPrdPath(config, "/project");
@@ -101,6 +104,7 @@ describe("Config Loader", () => {
         maxIterations: 10,
         verbose: false,
         tui: true,
+        showUsage: false,
       };
 
       const result = getPromptPath(config, "/project");
@@ -121,6 +125,7 @@ describe("Config Loader", () => {
         maxIterations: 10,
         verbose: false,
         tui: true,
+        showUsage: false,
       };
 
       const result = getProgressPath(config, "/project");

@@ -70,6 +70,7 @@ describe("ConfigSchema", () => {
       maxIterations: 10,
       verbose: false,
       tui: true,
+      showUsage: false,
     };
 
     const result = ConfigSchema.safeParse(config);
@@ -92,6 +93,7 @@ describe("ConfigSchema", () => {
       expect(result.data.maxIterations).toBe(10);
       expect(result.data.verbose).toBe(false);
       expect(result.data.tui).toBe(true);
+      expect(result.data.showUsage).toBe(false);
     }
   });
 
@@ -113,6 +115,7 @@ describe("ConfigSchema", () => {
       expect(result.data.plansDir).toBe(".plans");
       expect(result.data.verbose).toBe(false);
       expect(result.data.tui).toBe(true);
+      expect(result.data.showUsage).toBe(false);
     }
   });
 
@@ -242,6 +245,7 @@ describe("DEFAULT_CONFIG", () => {
     expect(DEFAULT_CONFIG).toHaveProperty("maxIterations");
     expect(DEFAULT_CONFIG).toHaveProperty("verbose");
     expect(DEFAULT_CONFIG).toHaveProperty("tui");
+    expect(DEFAULT_CONFIG).toHaveProperty("showUsage");
   });
 
   /**

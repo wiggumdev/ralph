@@ -36,6 +36,7 @@ export interface RalphAppProps {
   adapter: CLIAdapter;
   outputFormat?: OutputFormat;
   logFile?: string;
+  showUsage?: boolean;
   onComplete: (result: LoopResult) => void;
 }
 
@@ -243,7 +244,8 @@ function RalphApp(props: RalphAppProps) {
   };
 
   const hasUsageData = () =>
-    totalInputTokens() > 0 || totalOutputTokens() > 0 || totalCost() > 0;
+    props.showUsage &&
+    (totalInputTokens() > 0 || totalOutputTokens() > 0 || totalCost() > 0);
 
   const handleChunk = (chunk: ParsedChunk) => {
     if (chunk.richMessage) {
