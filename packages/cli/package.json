@@ -16,7 +16,7 @@
     "dev": "bun run --watch src/index.ts",
     "install-bin": "bun run script/install.ts",
     "unlink": "bun run script/unlink.ts",
-    "typecheck": "tsgo --noEmit",
+    "typecheck": "tsc --noEmit",
     "test": "bun test",
     "version": "bun run script/version.ts",
     "publish": "bun run script/publish.ts",

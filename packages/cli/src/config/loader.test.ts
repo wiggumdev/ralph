@@ -44,6 +44,7 @@ describe("Config Loader", () => {
         verbose: false,
         tui: true,
         showUsage: false,
+        hooks: {},
       };
 
       const result = getPlansDir(config, "/project");
@@ -63,6 +64,7 @@ describe("Config Loader", () => {
         verbose: false,
         tui: true,
         showUsage: false,
+        hooks: {},
       };
 
       const result = getPlansDir(config, "/project");
@@ -84,6 +86,7 @@ describe("Config Loader", () => {
         verbose: false,
         tui: true,
         showUsage: false,
+        hooks: {},
       };
 
       const result = getPrdPath(config, "/project");
@@ -105,6 +108,7 @@ describe("Config Loader", () => {
         verbose: false,
         tui: true,
         showUsage: false,
+        hooks: {},
       };
 
       const result = getPromptPath(config, "/project");
@@ -126,6 +130,7 @@ describe("Config Loader", () => {
         verbose: false,
         tui: true,
         showUsage: false,
+        hooks: {},
       };
 
       const result = getProgressPath(config, "/project");

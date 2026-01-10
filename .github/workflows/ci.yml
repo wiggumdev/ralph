@@ -41,7 +41,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Run type check
-        run: bunx tsc --noEmit -p packages/cli/tsconfig.json
+        run: bun turbo typecheck
 
   test:
     name: Test

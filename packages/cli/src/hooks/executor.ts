@@ -57,10 +57,7 @@ export class HookExecutor {
     this.verbose = options.verbose ?? false;
   }
 
-  private async executeHook(
-    hookType: HookType,
-    env: Record<string, string>
-  ): Promise<void> {
+  private async executeHook(hookType: HookType, env: HookEnv): Promise<void> {
     const command = this.hooks[hookType];
     if (!command) {
       return;
