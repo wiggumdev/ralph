@@ -21,7 +21,11 @@ import { RALPH_ICON } from "#global";
 import { createHookExecutor } from "#hooks";
 import { createParser, type OutputFormat, type ParsedChunk } from "#parsers";
 import type { ResultMessage, RichMessage } from "#parsers/message-types";
-import { isResultMessage } from "#parsers/message-types";
+import {
+  isMessage,
+  isResultMessage,
+  isToolUseBlock,
+} from "#parsers/message-types";
 import { type PrdFeature, validatePrd } from "#schema/prd";
 import { MessageList } from "#ui/components/message-list";
 import { type PassFilter, PrdItemsTab } from "#ui/components/prd-items-tab";
@@ -39,6 +43,10 @@ export interface LoopResult {
   exitReason: "complete" | "max_iterations" | "error" | "user_abort";
   lastExitCode: number;
   lastSessionId?: string;
+  totalInputTokens?: number;
+  totalOutputTokens?: number;
+  totalCost?: number;
+  toolCallCount?: number;
 }
 
 export interface RalphAppProps {
@@ -209,6 +217,7 @@ function RalphApp(props: RalphAppProps) {
   const [totalInputTokens, setTotalInputTokens] = createSignal(0);
   const [totalOutputTokens, setTotalOutputTokens] = createSignal(0);
   const [totalCost, setTotalCost] = createSignal(0);
+  const [toolCallCount, setToolCallCount] = createSignal(0);
   const spinnerChars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
   // Tab view state
@@ -319,6 +328,10 @@ function RalphApp(props: RalphAppProps) {
       exitReason: "user_abort",
       lastExitCode: 130,
       lastSessionId: lastSessionId(),
+      totalInputTokens: totalInputTokens(),
+      totalOutputTokens: totalOutputTokens(),
+      totalCost: totalCost(),
+      toolCallCount: toolCallCount(),
     });
     renderer.destroy();
   };
@@ -428,24 +441,31 @@ function RalphApp(props: RalphAppProps) {
     props.showUsage &&
     (totalInputTokens() > 0 || totalOutputTokens() > 0 || totalCost() > 0);
 
+  const processRichMessage = (message: RichMessage) => {
+    setMessages((prev) => [...prev.slice(-OUTPUT_BUFFER_SIZE), message]);
+
+    if (isMessage(message)) {
+      const toolCalls = message.content.filter(isToolUseBlock);
+      if (toolCalls.length > 0) {
+        setToolCallCount((prev) => prev + toolCalls.length);
+      }
+    }
+
+    if (isResultMessage(message)) {
+      const result = message as ResultMessage;
+      if (result.usage) {
+        setTotalInputTokens((prev) => prev + result.usage!.input_tokens);
+        setTotalOutputTokens((prev) => prev + result.usage!.output_tokens);
+      }
+      if (result.total_cost_usd !== undefined) {
+        setTotalCost((prev) => prev + result.total_cost_usd!);
+      }
+    }
+  };
+
   const handleChunk = (chunk: ParsedChunk) => {
     if (chunk.richMessage) {
-      setMessages((prev) => [
-        ...prev.slice(-OUTPUT_BUFFER_SIZE),
-        chunk.richMessage!,
-      ]);
-
-      // Aggregate token usage and costs from result messages
-      if (isResultMessage(chunk.richMessage)) {
-        const result = chunk.richMessage as ResultMessage;
-        if (result.usage) {
-          setTotalInputTokens((prev) => prev + result.usage!.input_tokens);
-          setTotalOutputTokens((prev) => prev + result.usage!.output_tokens);
-        }
-        if (result.total_cost_usd !== undefined) {
-          setTotalCost((prev) => prev + result.total_cost_usd!);
-        }
-      }
+      processRichMessage(chunk.richMessage);
     }
     if (chunk.displayText) {
       setLegacyOutput((prev) => [
@@ -573,6 +593,10 @@ function RalphApp(props: RalphAppProps) {
       exitReason: exitReason(),
       lastExitCode,
       lastSessionId: lastSessionId(),
+      totalInputTokens: totalInputTokens(),
+      totalOutputTokens: totalOutputTokens(),
+      totalCost: totalCost(),
+      toolCallCount: toolCallCount(),
     });
     renderer.destroy();
   };
