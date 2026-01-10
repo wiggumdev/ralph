@@ -7,6 +7,12 @@ import { getPrdPath, getPromptPath, loadConfig } from "#config/loader";
 import type { Hooks } from "#config/schema";
 import { createHookExecutor } from "#hooks";
 import { createParser, type OutputFormat } from "#parsers";
+import type { ResultMessage } from "#parsers/message-types";
+import {
+  isMessage,
+  isResultMessage,
+  isToolUseBlock,
+} from "#parsers/message-types";
 import type { Prd } from "#schema/prd";
 import type { LoopResult } from "#ui/ralph-app";
 import { runLoopTUI } from "#ui/ralph-app";
@@ -122,6 +128,10 @@ async function runLoopPlain(options: RunLoopPlainOptions): Promise<LoopResult> {
   let iterations = 0;
   let exitReason: LoopResult["exitReason"] = "max_iterations";
   let lastSessionId: string | undefined;
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+  let totalCost = 0;
+  let toolCallCount = 0;
 
   // Initialize hook executor if hooks provided
   const hookExecutor = hooks
@@ -172,11 +182,29 @@ async function runLoopPlain(options: RunLoopPlainOptions): Promise<LoopResult> {
     const stdoutReader = stdout.getReader();
     const stderrReader = stderr.getReader();
 
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: stream processing requires nested conditionals
     const handleText = (text: string) => {
       const chunks = parser.processChunk(text);
       for (const chunk of chunks) {
         if (chunk.displayText) {
           process.stdout.write(`${chunk.displayText}\n`);
+        }
+        // Track tool calls and token usage
+        if (chunk.richMessage) {
+          if (isMessage(chunk.richMessage)) {
+            const toolCalls = chunk.richMessage.content.filter(isToolUseBlock);
+            toolCallCount += toolCalls.length;
+          }
+          if (isResultMessage(chunk.richMessage)) {
+            const result = chunk.richMessage as ResultMessage;
+            if (result.usage) {
+              totalInputTokens += result.usage.input_tokens;
+              totalOutputTokens += result.usage.output_tokens;
+            }
+            if (result.total_cost_usd !== undefined) {
+              totalCost += result.total_cost_usd;
+            }
+          }
         }
       }
     };
@@ -196,6 +224,23 @@ async function runLoopPlain(options: RunLoopPlainOptions): Promise<LoopResult> {
     for (const chunk of finalChunks) {
       if (chunk.displayText) {
         process.stdout.write(`${chunk.displayText}\n`);
+      }
+      // Track tool calls and token usage from final chunks
+      if (chunk.richMessage) {
+        if (isMessage(chunk.richMessage)) {
+          const toolCalls = chunk.richMessage.content.filter(isToolUseBlock);
+          toolCallCount += toolCalls.length;
+        }
+        if (isResultMessage(chunk.richMessage)) {
+          const result = chunk.richMessage as ResultMessage;
+          if (result.usage) {
+            totalInputTokens += result.usage.input_tokens;
+            totalOutputTokens += result.usage.output_tokens;
+          }
+          if (result.total_cost_usd !== undefined) {
+            totalCost += result.total_cost_usd;
+          }
+        }
       }
     }
 
@@ -237,7 +282,89 @@ async function runLoopPlain(options: RunLoopPlainOptions): Promise<LoopResult> {
     await hookExecutor.executeRalphMaxIterations(iterations);
   }
 
-  return { iterations, exitReason, lastExitCode, lastSessionId };
+  return {
+    iterations,
+    exitReason,
+    lastExitCode,
+    lastSessionId,
+    totalInputTokens,
+    totalOutputTokens,
+    totalCost,
+    toolCallCount,
+  };
+}
+
+function formatTokens(count: number): string {
+  if (count >= 1000) {
+    return `${(count / 1000).toFixed(1)}k`;
+  }
+  return count.toString();
+}
+
+function formatCost(cost: number): string {
+  if (cost < 0.01) {
+    return `$${cost.toFixed(4)}`;
+  }
+  return `$${cost.toFixed(2)}`;
+}
+
+function getOutcomeIcon(exitReason: LoopResult["exitReason"]): string {
+  if (exitReason === "complete") {
+    return "\u2713";
+  }
+  if (exitReason === "error" || exitReason === "user_abort") {
+    return "\u2717";
+  }
+  return "\u26A0";
+}
+
+function getOutcomeLabel(exitReason: LoopResult["exitReason"]): string {
+  if (exitReason === "complete") {
+    return "Task completed successfully";
+  }
+  if (exitReason === "error") {
+    return "Task failed with error";
+  }
+  if (exitReason === "user_abort") {
+    return "Task aborted by user";
+  }
+  return "Reached maximum iterations";
+}
+
+function printSummary(result: LoopResult): void {
+  console.log(`\n${"=".repeat(50)}`);
+  console.log("                    SUMMARY");
+  console.log("=".repeat(50));
+
+  const outcomeIcon = getOutcomeIcon(result.exitReason);
+  const outcomeLabel = getOutcomeLabel(result.exitReason);
+
+  console.log(`\n  Outcome:     ${outcomeIcon} ${outcomeLabel}`);
+  console.log(`  Iterations:  ${result.iterations}`);
+
+  if (result.toolCallCount !== undefined && result.toolCallCount > 0) {
+    console.log(`  Tool calls:  ${result.toolCallCount}`);
+  }
+
+  const hasTokenData =
+    (result.totalInputTokens && result.totalInputTokens > 0) ||
+    (result.totalOutputTokens && result.totalOutputTokens > 0);
+
+  if (hasTokenData) {
+    console.log(
+      `  Tokens:      ${formatTokens(result.totalInputTokens || 0)} in / ${formatTokens(result.totalOutputTokens || 0)} out`
+    );
+  }
+
+  if (result.totalCost !== undefined && result.totalCost > 0) {
+    console.log(`  Total cost:  ${formatCost(result.totalCost)}`);
+  }
+
+  if (result.lastSessionId) {
+    console.log(`  Session:     ${result.lastSessionId}`);
+  }
+
+  console.log(`\n${"=".repeat(50)}`);
 }
 
 export const runCommand: CommandModule<object, RunArgs> = {
@@ -373,6 +500,7 @@ export const runCommand: CommandModule<object, RunArgs> = {
       });
     }
 
+    printSummary(result);
     process.exitCode = result.exitReason === "error" ? 1 : 0;
   },
 };
