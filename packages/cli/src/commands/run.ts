@@ -3,7 +3,7 @@ import path from "node:path";
 import type { CommandModule } from "yargs";
 import { getAdapter } from "#adapters/index";
 import type { CLIAdapter } from "#adapters/types";
-import { getPromptPath, loadConfig } from "#config/loader";
+import { getPrdPath, getPromptPath, loadConfig } from "#config/loader";
 import { createParser, type OutputFormat } from "#parsers";
 import type { LoopResult } from "#ui/ralph-app";
 import { runLoopTUI } from "#ui/ralph-app";
@@ -279,6 +279,7 @@ export const runCommand: CommandModule<object, RunArgs> = {
 
     const useTui = config.tui && !argv.noTui;
     const logFile = argv.logFile ? resolvePath(argv.logFile, cwd) : undefined;
+    const prdPath = getPrdPath(config, cwd);
 
     let result: LoopResult;
     if (useTui) {
@@ -292,6 +293,7 @@ export const runCommand: CommandModule<object, RunArgs> = {
         logFile,
         showUsage: config.showUsage,
         plansDir: config.plansDir,
+        prdPath,
       });
     } else {
       result = await runLoopPlain(
