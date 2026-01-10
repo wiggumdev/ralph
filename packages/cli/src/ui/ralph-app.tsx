@@ -16,7 +16,9 @@ import {
   Show,
 } from "solid-js";
 import type { AdapterResult, CLIAdapter } from "#adapters/types";
+import type { Hooks } from "#config/schema";
 import { RALPH_ICON } from "#global";
+import { createHookExecutor } from "#hooks";
 import { createParser, type OutputFormat, type ParsedChunk } from "#parsers";
 import type { ResultMessage, RichMessage } from "#parsers/message-types";
 import { isResultMessage } from "#parsers/message-types";
@@ -50,6 +52,8 @@ export interface RalphAppProps {
   showUsage?: boolean;
   plansDir?: string;
   prdPath?: string;
+  hooks?: Hooks;
+  tasksNotPassing?: number;
   onComplete: (result: LoopResult) => void;
 }
 
@@ -261,6 +265,15 @@ function RalphApp(props: RalphAppProps) {
       });
     }
   });
+
+  // Initialize hook executor if hooks provided
+  const hookExecutor = props.hooks
+    ? createHookExecutor({
+        hooks: props.hooks,
+        cwd: props.cwd,
+        verbose: props.verbose,
+      })
+    : undefined;
 
   const handleSearchModeKey = (key: { name?: string; sequence?: string }) => {
     if (key.name === "escape" || key.name === "return") {
@@ -476,9 +489,22 @@ function RalphApp(props: RalphAppProps) {
     let lastExitCode = 0;
     const outputFormat = props.outputFormat || "stream-json";
 
+    // Execute ralph_start hook
+    if (hookExecutor) {
+      await hookExecutor.executeRalphStart(
+        props.tasksNotPassing ?? 0,
+        props.maxIterations
+      );
+    }
+
     for (let i = 1; i <= props.maxIterations; i++) {
       if (ctx.aborted) {
         break;
+      }
+
+      // Execute ralph_loop_start hook
+      if (hookExecutor) {
+        await hookExecutor.executeRalphLoopStart(i);
       }
 
       setIteration(i);
@@ -504,9 +530,18 @@ function RalphApp(props: RalphAppProps) {
           break;
         }
 
+        // Execute ralph_loop_end hook
+        if (hookExecutor) {
+          await hookExecutor.executeRalphLoopEnd(i);
+        }
+
         const handled = handleIterationResult(result, i);
         lastExitCode = handled.exitCode;
         if (handled.shouldBreak) {
+          // Execute appropriate completion hook
+          if (hookExecutor && exitReason() === "complete") {
+            await hookExecutor.executeRalphComplete(i);
+          }
           break;
         }
       } catch (error) {
@@ -525,6 +560,10 @@ function RalphApp(props: RalphAppProps) {
     if (status() === "running") {
       setStatus("complete");
       setExitReason("max_iterations");
+      // Execute ralph_max_iterations hook
+      if (hookExecutor) {
+        await hookExecutor.executeRalphMaxIterations(iteration());
+      }
     }
 
     clearTerminalTitle();

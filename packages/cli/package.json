@@ -28,6 +28,8 @@
     "#adapters/*": "./src/adapters/*.ts",
     "#config/*": "./src/config/*.ts",
     "#schema/*": "./src/schema/*.ts",
+    "#hooks": "./src/hooks/index.ts",
+    "#hooks/*": "./src/hooks/*.ts",
     "#ui/*": "./src/ui/*.tsx",
     "#ui/components/*": "./src/ui/components/*.tsx",
     "#ui/components/blocks/*": "./src/ui/components/blocks/*.tsx",
