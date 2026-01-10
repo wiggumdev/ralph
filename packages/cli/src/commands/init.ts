@@ -74,9 +74,17 @@ async function selectAdapter(): Promise<AdapterType> {
   console.log("\nSelect AI CLI adapter:");
   console.log("  1. claude (Claude Code CLI)");
   console.log("  2. opencode (OpenCode CLI)");
+  console.log("  3. kilo (Kilo Code CLI)");
 
   const choice = await prompt("Choice", "1");
-  return choice === "2" ? "opencode" : "claude";
+  switch (choice) {
+    case "2":
+      return "opencode";
+    case "3":
+      return "kilo";
+    default:
+      return "claude";
+  }
 }
 
 interface InitArgs {
