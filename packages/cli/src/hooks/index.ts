@@ -8,4 +8,5 @@ export type {
   RalphMaxIterationsEnv,
   RalphStartEnv,
 } from "./executor";
+// biome-ignore lint/performance/noBarrelFile: barrel file for clean imports
 export { createHookExecutor, HookExecutor } from "./executor";

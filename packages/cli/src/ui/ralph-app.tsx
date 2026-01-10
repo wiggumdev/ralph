@@ -484,6 +484,7 @@ function RalphApp(props: RalphAppProps) {
     return { shouldBreak: false, exitCode: result.exitCode };
   };
 
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: loop logic is inherently complex
   const runLoop = async () => {
     setStatus("running");
     let lastExitCode = 0;

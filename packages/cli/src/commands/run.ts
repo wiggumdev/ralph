@@ -105,6 +105,7 @@ interface RunLoopPlainOptions {
   tasksNotPassing?: number;
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: loop logic is inherently complex
 async function runLoopPlain(options: RunLoopPlainOptions): Promise<LoopResult> {
   const {
     adapter,
