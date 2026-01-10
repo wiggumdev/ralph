@@ -13,9 +13,17 @@
 
 import { describe, expect, test } from "bun:test";
 import {
+  EXAMPLE_PRD,
+  EXAMPLE_PRD_FEATURE,
+  MINIMAL_PRD_FEATURE,
+  PRD_FIELD_DOCS,
   type PrdFeature,
   PrdFeatureSchema,
   PrdSchema,
+  type Priority,
+  PrioritySchema,
+  getPrdFeatureJsonSchema,
+  getPrdJsonSchema,
   validatePrd,
 } from "./prd";
 
@@ -225,6 +233,191 @@ describe("PrdFeatureSchema", () => {
       }
     });
   });
+
+  describe("optional fields", () => {
+    const baseFeature = {
+      category: "Category",
+      title: "Feature",
+      description: "Desc",
+      passes: false,
+      acceptance: ["Criterion"],
+    };
+
+    /**
+     * Tests that optional id field is accepted with valid format.
+     * IDs should be lowercase alphanumeric with hyphens.
+     */
+    test("accepts valid id", () => {
+      const result = PrdFeatureSchema.safeParse({
+        ...baseFeature,
+        id: "user-auth-login",
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.id).toBe("user-auth-login");
+      }
+    });
+
+    /**
+     * Tests that id rejects invalid formats.
+     * IDs must be lowercase alphanumeric with hyphens only.
+     */
+    test("rejects invalid id format", () => {
+      const result = PrdFeatureSchema.safeParse({
+        ...baseFeature,
+        id: "User_Auth", // Invalid: uppercase and underscore
+      });
+      expect(result.success).toBe(false);
+    });
+
+    /**
+     * Tests that priority accepts valid enum values.
+     */
+    test("accepts valid priority values", () => {
+      const priorities: Priority[] = ["critical", "high", "medium", "low"];
+      for (const priority of priorities) {
+        const result = PrdFeatureSchema.safeParse({
+          ...baseFeature,
+          priority,
+        });
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.priority).toBe(priority);
+        }
+      }
+    });
+
+    /**
+     * Tests that priority rejects invalid values.
+     */
+    test("rejects invalid priority", () => {
+      const result = PrdFeatureSchema.safeParse({
+        ...baseFeature,
+        priority: "urgent", // Not a valid enum value
+      });
+      expect(result.success).toBe(false);
+    });
+
+    /**
+     * Tests that dependencies array is accepted.
+     */
+    test("accepts dependencies array", () => {
+      const result = PrdFeatureSchema.safeParse({
+        ...baseFeature,
+        dependencies: ["feature-a", "feature-b"],
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.dependencies).toEqual(["feature-a", "feature-b"]);
+      }
+    });
+
+    /**
+     * Tests that technicalNotes string is accepted.
+     */
+    test("accepts technicalNotes", () => {
+      const result = PrdFeatureSchema.safeParse({
+        ...baseFeature,
+        technicalNotes: "Use existing AuthService class",
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.technicalNotes).toBe("Use existing AuthService class");
+      }
+    });
+
+    /**
+     * Tests that testStrategy string is accepted.
+     */
+    test("accepts testStrategy", () => {
+      const result = PrdFeatureSchema.safeParse({
+        ...baseFeature,
+        testStrategy: "Unit tests for validation logic",
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.testStrategy).toBe("Unit tests for validation logic");
+      }
+    });
+
+    /**
+     * Tests that suggestedFiles array is accepted.
+     */
+    test("accepts suggestedFiles array", () => {
+      const result = PrdFeatureSchema.safeParse({
+        ...baseFeature,
+        suggestedFiles: ["src/auth.ts", "src/routes/**/*.ts"],
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.suggestedFiles).toEqual([
+          "src/auth.ts",
+          "src/routes/**/*.ts",
+        ]);
+      }
+    });
+
+    /**
+     * Tests that outOfScope array is accepted.
+     */
+    test("accepts outOfScope array", () => {
+      const result = PrdFeatureSchema.safeParse({
+        ...baseFeature,
+        outOfScope: ["OAuth support", "Password reset"],
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.outOfScope).toEqual(["OAuth support", "Password reset"]);
+      }
+    });
+
+    /**
+     * Tests that a fully populated feature with all optional fields is accepted.
+     */
+    test("accepts feature with all optional fields", () => {
+      const fullFeature: PrdFeature = {
+        id: "full-feature",
+        category: "Testing",
+        title: "Full Feature",
+        description: "A feature with all fields populated",
+        passes: false,
+        acceptance: ["Criterion 1", "Criterion 2"],
+        priority: "high",
+        dependencies: ["dep-1", "dep-2"],
+        technicalNotes: "Technical notes here",
+        testStrategy: "Test strategy here",
+        suggestedFiles: ["src/file1.ts", "src/file2.ts"],
+        outOfScope: ["Scope exclusion 1"],
+      };
+      const result = PrdFeatureSchema.safeParse(fullFeature);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(fullFeature);
+      }
+    });
+  });
+});
+
+describe("PrioritySchema", () => {
+  /**
+   * Tests that all valid priority values are accepted.
+   */
+  test("accepts valid priorities", () => {
+    expect(PrioritySchema.safeParse("critical").success).toBe(true);
+    expect(PrioritySchema.safeParse("high").success).toBe(true);
+    expect(PrioritySchema.safeParse("medium").success).toBe(true);
+    expect(PrioritySchema.safeParse("low").success).toBe(true);
+  });
+
+  /**
+   * Tests that invalid priority values are rejected.
+   */
+  test("rejects invalid priorities", () => {
+    expect(PrioritySchema.safeParse("urgent").success).toBe(false);
+    expect(PrioritySchema.safeParse("CRITICAL").success).toBe(false);
+    expect(PrioritySchema.safeParse("").success).toBe(false);
+    expect(PrioritySchema.safeParse(1).success).toBe(false);
+  });
 });
 
 describe("PrdSchema", () => {
@@ -415,5 +608,175 @@ describe("validatePrd", () => {
     const result = validatePrd(prd);
     expect(result.valid).toBe(true);
     expect(result.data).toEqual(prd);
+  });
+});
+
+describe("exported examples", () => {
+  /**
+   * Tests that EXAMPLE_PRD_FEATURE passes validation.
+   * This ensures the documented example is always valid.
+   */
+  test("EXAMPLE_PRD_FEATURE is valid", () => {
+    const result = PrdFeatureSchema.safeParse(EXAMPLE_PRD_FEATURE);
+    expect(result.success).toBe(true);
+  });
+
+  /**
+   * Tests that MINIMAL_PRD_FEATURE passes validation.
+   * This ensures the minimal example is always valid.
+   */
+  test("MINIMAL_PRD_FEATURE is valid", () => {
+    const result = PrdFeatureSchema.safeParse(MINIMAL_PRD_FEATURE);
+    expect(result.success).toBe(true);
+  });
+
+  /**
+   * Tests that EXAMPLE_PRD passes validation.
+   * This ensures the full PRD example is always valid.
+   */
+  test("EXAMPLE_PRD is valid", () => {
+    const result = PrdSchema.safeParse(EXAMPLE_PRD);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.length).toBe(3);
+    }
+  });
+
+  /**
+   * Tests that EXAMPLE_PRD_FEATURE has all optional fields populated.
+   * This ensures it serves as a comprehensive example.
+   */
+  test("EXAMPLE_PRD_FEATURE has all optional fields", () => {
+    expect(EXAMPLE_PRD_FEATURE.id).toBeDefined();
+    expect(EXAMPLE_PRD_FEATURE.priority).toBeDefined();
+    expect(EXAMPLE_PRD_FEATURE.dependencies).toBeDefined();
+    expect(EXAMPLE_PRD_FEATURE.technicalNotes).toBeDefined();
+    expect(EXAMPLE_PRD_FEATURE.testStrategy).toBeDefined();
+    expect(EXAMPLE_PRD_FEATURE.suggestedFiles).toBeDefined();
+    expect(EXAMPLE_PRD_FEATURE.outOfScope).toBeDefined();
+  });
+
+  /**
+   * Tests that MINIMAL_PRD_FEATURE has no optional fields.
+   * This ensures it serves as a minimal example.
+   */
+  test("MINIMAL_PRD_FEATURE has no optional fields", () => {
+    expect(MINIMAL_PRD_FEATURE.id).toBeUndefined();
+    expect(MINIMAL_PRD_FEATURE.priority).toBeUndefined();
+    expect(MINIMAL_PRD_FEATURE.dependencies).toBeUndefined();
+    expect(MINIMAL_PRD_FEATURE.technicalNotes).toBeUndefined();
+    expect(MINIMAL_PRD_FEATURE.testStrategy).toBeUndefined();
+    expect(MINIMAL_PRD_FEATURE.suggestedFiles).toBeUndefined();
+    expect(MINIMAL_PRD_FEATURE.outOfScope).toBeUndefined();
+  });
+});
+
+describe("PRD_FIELD_DOCS", () => {
+  /**
+   * Tests that PRD_FIELD_DOCS covers all schema fields.
+   */
+  test("documents all schema fields", () => {
+    const documentedFields = Object.keys(PRD_FIELD_DOCS);
+    const expectedFields = [
+      "id",
+      "category",
+      "title",
+      "description",
+      "passes",
+      "acceptance",
+      "priority",
+      "dependencies",
+      "technicalNotes",
+      "testStrategy",
+      "suggestedFiles",
+      "outOfScope",
+    ];
+    expect(documentedFields.sort()).toEqual(expectedFields.sort());
+  });
+
+  /**
+   * Tests that each field doc has required properties.
+   */
+  test("each field has required doc properties", () => {
+    for (const [field, doc] of Object.entries(PRD_FIELD_DOCS)) {
+      expect(doc).toHaveProperty("required");
+      expect(doc).toHaveProperty("description");
+      expect(doc).toHaveProperty("example");
+      expect(doc).toHaveProperty("llmValue");
+      expect(typeof doc.required).toBe("boolean");
+      expect(typeof doc.description).toBe("string");
+      expect(typeof doc.llmValue).toBe("string");
+    }
+  });
+});
+
+describe("JSON Schema export", () => {
+  /**
+   * Tests that getPrdJsonSchema returns valid JSON Schema.
+   */
+  test("getPrdJsonSchema returns valid schema", () => {
+    const schema = getPrdJsonSchema();
+    expect(schema).toHaveProperty("$schema");
+    expect(schema).toHaveProperty("type", "array");
+    expect(schema).toHaveProperty("items");
+    expect(schema).toHaveProperty("description");
+  });
+
+  /**
+   * Tests that getPrdFeatureJsonSchema returns valid JSON Schema.
+   */
+  test("getPrdFeatureJsonSchema returns valid schema", () => {
+    const schema = getPrdFeatureJsonSchema();
+    expect(schema).toHaveProperty("$schema");
+    expect(schema).toHaveProperty("type", "object");
+    expect(schema).toHaveProperty("properties");
+    expect(schema).toHaveProperty("required");
+  });
+
+  /**
+   * Tests that the JSON Schema includes field descriptions.
+   * This is critical for LLM understanding.
+   */
+  test("JSON Schema includes field descriptions", () => {
+    const schema = getPrdFeatureJsonSchema() as {
+      properties: Record<string, { description?: string }>;
+    };
+    const properties = schema.properties;
+
+    // Check that key fields have descriptions
+    expect(properties.id?.description).toBeDefined();
+    expect(properties.category?.description).toBeDefined();
+    expect(properties.title?.description).toBeDefined();
+    expect(properties.description?.description).toBeDefined();
+    expect(properties.passes?.description).toBeDefined();
+    expect(properties.acceptance?.description).toBeDefined();
+    expect(properties.priority?.description).toBeDefined();
+  });
+
+  /**
+   * Tests that required fields are correctly marked in JSON Schema.
+   */
+  test("JSON Schema marks required fields correctly", () => {
+    const schema = getPrdFeatureJsonSchema() as { required: string[] };
+    expect(schema.required).toContain("category");
+    expect(schema.required).toContain("title");
+    expect(schema.required).toContain("description");
+    expect(schema.required).toContain("passes");
+    expect(schema.required).toContain("acceptance");
+    // Optional fields should not be in required
+    expect(schema.required).not.toContain("id");
+    expect(schema.required).not.toContain("priority");
+    expect(schema.required).not.toContain("dependencies");
+  });
+
+  /**
+   * Tests that priority enum values are included in JSON Schema.
+   */
+  test("JSON Schema includes priority enum values", () => {
+    const schema = getPrdFeatureJsonSchema() as {
+      properties: { priority: { enum?: string[] } };
+    };
+    const prioritySchema = schema.properties.priority;
+    expect(prioritySchema.enum).toEqual(["critical", "high", "medium", "low"]);
   });
 });
