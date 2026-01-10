@@ -13,10 +13,10 @@
 
 import { describe, expect, test } from "bun:test";
 import {
-  PrdSchema,
-  PrdFeatureSchema,
-  validatePrd,
   type PrdFeature,
+  PrdFeatureSchema,
+  PrdSchema,
+  validatePrd,
 } from "./prd";
 
 describe("PrdFeatureSchema", () => {

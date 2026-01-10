@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import path from "node:path";
 /**
  * Version management script for ralph CLI
  *
@@ -16,10 +17,10 @@
  *   bun run script/version.ts preview           # Bump to next preview
  */
 import { fileURLToPath } from "node:url";
-import path from "node:path";
 
 const dir = fileURLToPath(new URL("..", import.meta.url));
 const pkgPath = path.join(dir, "package.json");
+const VERSION_REGEX = /^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/;
 
 const pkg = await Bun.file(pkgPath).json();
 const currentVersion = pkg.version;
@@ -31,18 +32,30 @@ if (!arg) {
   process.exit(0);
 }
 
-function parseVersion(v: string): { major: number; minor: number; patch: number; prerelease?: string } {
-  const match = v.match(/^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/);
-  if (!match) throw new Error(`Invalid version: ${v}`);
+function parseVersion(v: string): {
+  major: number;
+  minor: number;
+  patch: number;
+  prerelease?: string;
+} {
+  const match = v.match(VERSION_REGEX);
+  if (!match) {
+    throw new Error(`Invalid version: ${v}`);
+  }
   return {
-    major: parseInt(match[1], 10),
-    minor: parseInt(match[2], 10),
-    patch: parseInt(match[3], 10),
+    major: Number.parseInt(match[1]!, 10),
+    minor: Number.parseInt(match[2]!, 10),
+    patch: Number.parseInt(match[3]!, 10),
     prerelease: match[4],
   };
 }
 
-function formatVersion(v: { major: number; minor: number; patch: number; prerelease?: string }): string {
+function formatVersion(v: {
+  major: number;
+  minor: number;
+  patch: number;
+  prerelease?: string;
+}): string {
   const base = `${v.major}.${v.minor}.${v.patch}`;
   return v.prerelease ? `${base}-${v.prerelease}` : base;
 }
@@ -77,7 +90,7 @@ switch (arg) {
   case "preview": {
     const v = parseVersion(currentVersion);
     if (v.prerelease?.startsWith("preview.")) {
-      const num = parseInt(v.prerelease.split(".")[1], 10);
+      const num = Number.parseInt(v.prerelease.split(".")[1]!, 10);
       v.prerelease = `preview.${num + 1}`;
     } else {
       // Strip any existing prerelease and add preview.1
@@ -98,6 +111,6 @@ switch (arg) {
 }
 
 pkg.version = newVersion;
-await Bun.file(pkgPath).write(JSON.stringify(pkg, null, 2) + "\n");
+await Bun.file(pkgPath).write(`${JSON.stringify(pkg, null, 2)}\n`);
 
 console.log(`Version updated: ${currentVersion} -> ${newVersion}`);

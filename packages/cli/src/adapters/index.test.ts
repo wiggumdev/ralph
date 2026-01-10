@@ -12,8 +12,8 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { getAdapter } from "./index";
 import { ClaudeAdapter } from "./claude";
+import { getAdapter } from "./index";
 import { OpenCodeAdapter } from "./opencode";
 
 describe("getAdapter factory", () => {

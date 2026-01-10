@@ -44,15 +44,13 @@ const npmTag = getNpmTag(version);
 
 console.log(`\n📦 Publishing ralph v${version}`);
 console.log(`   npm tag: ${npmTag}`);
-console.log(`   publish: ${publishFlag ? "yes" : "no (use --publish to publish)"}`);
+console.log(
+  `   publish: ${publishFlag ? "yes" : "no (use --publish to publish)"}`
+);
 console.log("");
 
 // Build all platform binaries
-if (!skipBuild) {
-  console.log("🔨 Building all platforms...\n");
-  const { binaries } = await import("./build.ts");
-  globalThis.__binaries = binaries;
-} else {
+if (skipBuild) {
   // Read binaries from existing dist directory
   const fs = await import("node:fs");
   const distDirs = fs.readdirSync("dist").filter((d) => d.startsWith("ralph-"));
@@ -60,6 +58,10 @@ if (!skipBuild) {
   for (const dir of distDirs) {
     binaries[dir] = version;
   }
+  globalThis.__binaries = binaries;
+} else {
+  console.log("🔨 Building all platforms...\n");
+  const { binaries } = await import("./build.ts");
   globalThis.__binaries = binaries;
 }
 
@@ -95,7 +97,7 @@ await $`cp ./script/postinstall.mjs ./dist/${pkg.name}/postinstall.mjs`;
 
 const metaPkg = {
   name: `${pkg.name}-ai`,
-  version: version,
+  version,
   description: "AI-agnostic agentic loop CLI",
   bin: {
     [pkg.name]: `./bin/${pkg.name}`,
@@ -154,13 +156,17 @@ if (publishFlag && !dryRunFlag) {
   // Publish platform packages first
   for (const name of Object.keys(binaries)) {
     console.log(`   Publishing ${name}...`);
-    await $`npm publish *.tgz --access public --tag ${npmTag}`.cwd(`./dist/${name}`);
+    await $`npm publish *.tgz --access public --tag ${npmTag}`.cwd(
+      `./dist/${name}`
+    );
     console.log(`   ✓ Published ${name}`);
   }
 
   // Publish meta package
   console.log(`   Publishing ${pkg.name}-ai...`);
-  await $`npm publish *.tgz --access public --tag ${npmTag}`.cwd(`./dist/${pkg.name}`);
+  await $`npm publish *.tgz --access public --tag ${npmTag}`.cwd(
+    `./dist/${pkg.name}`
+  );
   console.log(`   ✓ Published ${pkg.name}-ai\n`);
 
   console.log(`✅ Successfully published ralph v${version} to npm!`);
@@ -168,17 +174,21 @@ if (publishFlag && !dryRunFlag) {
 } else if (dryRunFlag) {
   console.log("🔍 Dry run - would publish:");
   for (const name of Object.keys(binaries)) {
-    console.log(`   npm publish dist/${name}/*.tgz --access public --tag ${npmTag}`);
+    console.log(
+      `   npm publish dist/${name}/*.tgz --access public --tag ${npmTag}`
+    );
   }
-  console.log(`   npm publish dist/${pkg.name}/*.tgz --access public --tag ${npmTag}\n`);
+  console.log(
+    `   npm publish dist/${pkg.name}/*.tgz --access public --tag ${npmTag}\n`
+  );
 } else {
   console.log("📝 Packages ready for publishing.");
-  console.log(`   Run with --publish flag to publish to npm.\n`);
+  console.log("   Run with --publish flag to publish to npm.\n");
 }
 
 // Summary of created artifacts
 console.log("📄 Created artifacts:");
-console.log(`   dist/*.tar.gz, dist/*.zip  - GitHub release archives`);
-console.log(`   dist/*/*.tgz               - npm packages\n`);
+console.log("   dist/*.tar.gz, dist/*.zip  - GitHub release archives");
+console.log("   dist/*/*.tgz               - npm packages\n");
 
 export { binaries };

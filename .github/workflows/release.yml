@@ -65,16 +65,27 @@ jobs:
 
       - name: Build all platforms
         working-directory: packages/cli
-        run: bun run script/publish.ts --skip-build=false
+        run: bun run script/publish.ts
 
-      - name: Upload artifacts
+      - name: Move artifacts to staging
+        working-directory: packages/cli
+        run: |
+          mkdir -p staging/archives staging/npm
+          mv dist/*.tar.gz dist/*.zip staging/archives/ 2>/dev/null || true
+          mv dist/*/*.tgz staging/npm/ 2>/dev/null || true
+
+      - name: Upload release archives
         uses: actions/upload-artifact@v4
         with:
-          name: release-artifacts
-          path: |
-            packages/cli/dist/*.tar.gz
-            packages/cli/dist/*.zip
-            packages/cli/dist/*/*.tgz
+          name: release-archives
+          path: packages/cli/staging/archives/
+          retention-days: 7
+
+      - name: Upload npm packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-packages
+          path: packages/cli/staging/npm/
           retention-days: 7
 
   # Smoke test on native platforms
@@ -95,20 +106,20 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: release-artifacts
-          path: artifacts
+          name: release-archives
+          path: archives
 
       - name: Extract and test (Linux)
         if: runner.os == 'Linux'
         run: |
-          tar -xzf artifacts/${{ matrix.artifact }}
+          tar -xzf archives/${{ matrix.artifact }}
           chmod +x ralph
           ./ralph --version
 
       - name: Extract and test (macOS)
         if: runner.os == 'macOS'
         run: |
-          unzip artifacts/${{ matrix.artifact }}
+          unzip archives/${{ matrix.artifact }}
           chmod +x ralph
           ./ralph --version
 
@@ -116,7 +127,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          Expand-Archive -Path artifacts/${{ matrix.artifact }} -DestinationPath .
+          Expand-Archive -Path archives/${{ matrix.artifact }} -DestinationPath .
           ./ralph.exe --version
 
   publish-npm:
@@ -125,16 +136,10 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !inputs.dry_run }}
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: ${{ env.BUN_VERSION }}
-
       - uses: actions/download-artifact@v4
         with:
-          name: release-artifacts
-          path: packages/cli/dist
+          name: npm-packages
+          path: npm-packages
 
       - name: Setup npm auth
         run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
@@ -150,24 +155,17 @@ jobs:
           fi
 
       - name: Publish packages
-        working-directory: packages/cli/dist
         run: |
           TAG="${{ steps.npm_tag.outputs.tag }}"
           echo "Publishing with tag: $TAG"
 
-          # Publish platform packages
-          for pkg in ralph-*/; do
-            if [ -f "$pkg"*.tgz ]; then
+          # Publish all packages
+          for pkg in npm-packages/*.tgz; do
+            if [ -f "$pkg" ]; then
               echo "Publishing $pkg..."
-              npm publish "$pkg"*.tgz --access public --tag "$TAG"
+              npm publish "$pkg" --access public --tag "$TAG"
             fi
           done
-
-          # Publish meta package
-          if [ -f ralph/*.tgz ]; then
-            echo "Publishing ralph-ai..."
-            npm publish ralph/*.tgz --access public --tag "$TAG"
-          fi
 
   publish-docker:
     name: Publish Docker Image
@@ -179,8 +177,16 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: release-artifacts
-          path: packages/cli/dist
+          name: release-archives
+          path: archives
+
+      - name: Prepare binaries for Docker
+        run: |
+          mkdir -p packages/cli/dist/ralph-linux-x64/bin
+          mkdir -p packages/cli/dist/ralph-linux-arm64/bin
+          tar -xzf archives/ralph-linux-x64.tar.gz -C packages/cli/dist/ralph-linux-x64/bin
+          tar -xzf archives/ralph-linux-arm64.tar.gz -C packages/cli/dist/ralph-linux-arm64/bin
+          chmod +x packages/cli/dist/ralph-linux-*/bin/ralph
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -227,8 +233,8 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: release-artifacts
-          path: artifacts
+          name: release-archives
+          path: archives
 
       - name: Create release
         uses: softprops/action-gh-release@v2
@@ -238,7 +244,7 @@ jobs:
           prerelease: ${{ needs.build.outputs.is_prerelease == 'true' }}
           generate_release_notes: true
           files: |
-            artifacts/*.tar.gz
-            artifacts/*.zip
+            archives/*.tar.gz
+            archives/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

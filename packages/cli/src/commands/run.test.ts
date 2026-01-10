@@ -189,8 +189,8 @@ describe("run command expected yargs options", () => {
       },
     };
 
-    expect(expectedOptions["once"].type).toBe("boolean");
-    expect(expectedOptions["once"].alias).toBe("o");
+    expect(expectedOptions.once.type).toBe("boolean");
+    expect(expectedOptions.once.alias).toBe("o");
   });
 
   test("--verbose should be a boolean", () => {
@@ -202,7 +202,7 @@ describe("run command expected yargs options", () => {
       },
     };
 
-    expect(expectedOptions["verbose"].type).toBe("boolean");
-    expect(expectedOptions["verbose"].alias).toBe("v");
+    expect(expectedOptions.verbose.type).toBe("boolean");
+    expect(expectedOptions.verbose.alias).toBe("v");
   });
 });

@@ -11,7 +11,7 @@
  * and interpret its output for the agent loop.
  */
 
-import { describe, expect, test, beforeEach } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
 import { ClaudeAdapter } from "./claude";
 
 describe("ClaudeAdapter", () => {
@@ -143,7 +143,7 @@ describe("ClaudeAdapter", () => {
      * Prompts may contain quotes, newlines, etc.
      */
     test("preserves special characters in prompt", () => {
-      const prompt = 'Do "this" and \'that\'\nWith newlines';
+      const prompt = "Do \"this\" and 'that'\nWith newlines";
       const args = adapter.buildArgs(prompt, {});
 
       const promptIndex = args.indexOf("-p");
