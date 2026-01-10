@@ -97,9 +97,11 @@ const targets = singleFlag
 await $`rm -rf dist`;
 
 const binaries: Record<string, string> = {};
+
 if (!skipInstall) {
   await $`bun install --os="*" --cpu="*" @opentui/core@${pkg.dependencies["@opentui/core"]}`;
 }
+
 for (const item of targets) {
   const name = [
     pkg.name,
@@ -111,11 +113,12 @@ for (const item of targets) {
   ]
     .filter(Boolean)
     .join("-");
+
   console.log(`building ${name}`);
   await $`mkdir -p dist/${name}/bin`;
 
   await Bun.build({
-    conditions: ["browser"],
+    target: "bun",
     tsconfig: "./tsconfig.json",
     plugins: [solidPlugin],
     sourcemap: "external",
@@ -131,6 +134,23 @@ for (const item of targets) {
     },
     entrypoints: ["./src/index.ts"],
   });
+
+  // Generate platform-specific package.json for npm publishing
+  const platformPkg = {
+    name,
+    version: pkg.version,
+    os: [item.os === "win32" ? "win32" : item.os],
+    cpu: [item.arch],
+    bin: {
+      ralph: item.os === "win32" ? "./bin/ralph.exe" : "./bin/ralph",
+    },
+  };
+  await Bun.file(`dist/${name}/package.json`).write(
+    JSON.stringify(platformPkg, null, 2)
+  );
+
+  // Track for optional dependencies
+  binaries[name] = pkg.version;
 }
 
 // Auto-symlink ralph-dev to ~/.local/bin when building for current platform

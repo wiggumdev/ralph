@@ -12,7 +12,7 @@
  * and interpret its output for the agent loop.
  */
 
-import { describe, expect, test, beforeEach } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
 import { OpenCodeAdapter } from "./opencode";
 
 describe("OpenCodeAdapter", () => {

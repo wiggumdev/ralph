@@ -12,7 +12,7 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { ConfigSchema, AdapterType, DEFAULT_CONFIG } from "./schema";
+import { AdapterType, ConfigSchema, DEFAULT_CONFIG } from "./schema";
 
 describe("AdapterType", () => {
   /**
@@ -65,7 +65,7 @@ describe("ConfigSchema", () => {
    */
   test("accepts valid complete config", () => {
     const config = {
-      adapter: "claude",
+      adapter: "claude" as const,
       plansDir: ".plans",
       maxIterations: 10,
       verbose: false,

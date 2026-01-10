@@ -69,7 +69,7 @@ export namespace Log {
       Global.Path.log,
       options.dev
         ? "dev.log"
-        : `${new Date().toISOString().split(".")[0].replace(/:/g, "")}.log`
+        : `${new Date().toISOString().split(".")[0]!.replace(/:/g, "")}.log`
     );
     const logfile = Bun.file(logpath);
     await fs.truncate(logpath).catch(() => {});

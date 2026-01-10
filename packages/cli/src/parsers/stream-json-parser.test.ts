@@ -13,7 +13,7 @@
  * and correctly detect when the agent completes its task.
  */
 
-import { describe, expect, test, beforeEach } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
 import { StreamJsonParser } from "./stream-json-parser";
 
 describe("StreamJsonParser", () => {
@@ -29,11 +29,12 @@ describe("StreamJsonParser", () => {
      * This is the primary path for normal Claude output processing.
      */
     test("parses valid JSON line", () => {
-      const chunk = '{"type":"system","subtype":"init","session_id":"abc123"}\n';
+      const chunk =
+        '{"type":"system","subtype":"init","session_id":"abc123"}\n';
       const results = parser.processChunk(chunk);
 
       expect(results.length).toBeGreaterThan(0);
-      expect(results[0].sessionId).toBe("abc123");
+      expect(results[0]!.sessionId).toBe("abc123");
     });
 
     /**
@@ -74,7 +75,7 @@ describe("StreamJsonParser", () => {
 
       const results2 = parser.processChunk(chunk2);
       expect(results2.length).toBeGreaterThan(0);
-      expect(results2[0].sessionId).toBe("test");
+      expect(results2[0]!.sessionId).toBe("test");
     });
 
     /**
@@ -86,7 +87,7 @@ describe("StreamJsonParser", () => {
       const results = parser.processChunk(chunk);
 
       expect(results.length).toBe(1);
-      expect(results[0].displayText).toBe("This is plain text output");
+      expect(results[0]!.displayText).toBe("This is plain text output");
     });
   });
 
@@ -96,10 +97,11 @@ describe("StreamJsonParser", () => {
      * Session ID is used to track and resume sessions.
      */
     test("extracts session_id from system message", () => {
-      const chunk = '{"type":"system","subtype":"init","session_id":"test-session-123"}\n';
+      const chunk =
+        '{"type":"system","subtype":"init","session_id":"test-session-123"}\n';
       const results = parser.processChunk(chunk);
 
-      expect(results[0].sessionId).toBe("test-session-123");
+      expect(results[0]!.sessionId).toBe("test-session-123");
     });
 
     /**
@@ -120,7 +122,8 @@ describe("StreamJsonParser", () => {
      * This is how the agent signals it has finished its task.
      */
     test("detects completion from result message with marker", () => {
-      const chunk = '{"type":"result","subtype":"success","result":"<promise>COMPLETE</promise>"}\n';
+      const chunk =
+        '{"type":"result","subtype":"success","result":"<promise>COMPLETE</promise>"}\n';
       parser.processChunk(chunk);
       const result = parser.getResult();
 
@@ -132,7 +135,8 @@ describe("StreamJsonParser", () => {
      * Claude may return successfully but not have completed the task.
      */
     test("result without marker is not complete", () => {
-      const chunk = '{"type":"result","subtype":"success","result":"Task in progress"}\n';
+      const chunk =
+        '{"type":"result","subtype":"success","result":"Task in progress"}\n';
       parser.processChunk(chunk);
       const result = parser.getResult();
 
@@ -155,18 +159,18 @@ describe("StreamJsonParser", () => {
      * Text content is the most common message type.
      */
     test("parses assistant message with text content", () => {
-      const chunk = JSON.stringify({
+      const chunk = `${JSON.stringify({
         type: "assistant",
         message: {
           role: "assistant",
           content: [{ type: "text", text: "Hello, I can help you." }],
         },
-      }) + "\n";
+      })}\n`;
 
       const results = parser.processChunk(chunk);
       expect(results.length).toBe(1);
-      expect(results[0].richMessage).toBeDefined();
-      expect(results[0].richMessage?.type).toBe("message");
+      expect(results[0]!.richMessage).toBeDefined();
+      expect(results[0]!.richMessage?.type).toBe("message");
     });
 
     /**
@@ -174,7 +178,7 @@ describe("StreamJsonParser", () => {
      * Tool use messages contain tool name, id, and input.
      */
     test("parses assistant message with tool use", () => {
-      const chunk = JSON.stringify({
+      const chunk = `${JSON.stringify({
         type: "assistant",
         message: {
           role: "assistant",
@@ -187,11 +191,11 @@ describe("StreamJsonParser", () => {
             },
           ],
         },
-      }) + "\n";
+      })}\n`;
 
       const results = parser.processChunk(chunk);
       expect(results.length).toBe(1);
-      expect(results[0].richMessage).toBeDefined();
+      expect(results[0]!.richMessage).toBeDefined();
     });
 
     /**
@@ -199,18 +203,18 @@ describe("StreamJsonParser", () => {
      * System messages contain model info, tools, etc.
      */
     test("parses system message", () => {
-      const chunk = JSON.stringify({
+      const chunk = `${JSON.stringify({
         type: "system",
         subtype: "init",
         session_id: "sess-1",
         model: "claude-3-opus",
         tools: ["read", "write"],
         cwd: "/project",
-      }) + "\n";
+      })}\n`;
 
       const results = parser.processChunk(chunk);
       expect(results.length).toBe(1);
-      const msg = results[0].richMessage;
+      const msg = results[0]!.richMessage;
       expect(msg?.type).toBe("system");
     });
   });
@@ -221,7 +225,7 @@ describe("StreamJsonParser", () => {
      * Usage stats help track API costs and token consumption.
      */
     test("parses result message with usage", () => {
-      const chunk = JSON.stringify({
+      const chunk = `${JSON.stringify({
         type: "result",
         subtype: "success",
         result: "Done",
@@ -231,12 +235,12 @@ describe("StreamJsonParser", () => {
           input_tokens: 1000,
           output_tokens: 500,
         },
-      }) + "\n";
+      })}\n`;
 
       const results = parser.processChunk(chunk);
       expect(results.length).toBe(1);
-      expect(results[0].isResult).toBe(true);
-      expect(results[0].richMessage?.type).toBe("result");
+      expect(results[0]!.isResult).toBe(true);
+      expect(results[0]!.richMessage?.type).toBe("result");
     });
 
     /**
@@ -244,13 +248,13 @@ describe("StreamJsonParser", () => {
      * This indicates if the result contains the completion marker.
      */
     test("tracks result success status", () => {
-      const completeChunk = JSON.stringify({
+      const completeChunk = `${JSON.stringify({
         type: "result",
         result: "<promise>COMPLETE</promise>",
-      }) + "\n";
+      })}\n`;
 
       const results = parser.processChunk(completeChunk);
-      expect(results[0].resultSuccess).toBe(true);
+      expect(results[0]!.resultSuccess).toBe(true);
     });
   });
 
@@ -260,19 +264,19 @@ describe("StreamJsonParser", () => {
      * Text deltas are used for streaming text output.
      */
     test("processes text_delta messages", () => {
-      const chunk = JSON.stringify({
+      const chunk = `${JSON.stringify({
         type: "content_block_delta",
         index: 0,
         delta: {
           type: "text_delta",
           text: "Hello",
         },
-      }) + "\n";
+      })}\n`;
 
       const results = parser.processChunk(chunk);
       expect(results.length).toBe(1);
-      expect(results[0].displayText).toBe("Hello");
-      expect(results[0].richMessage?.type).toBe("text_delta");
+      expect(results[0]!.displayText).toBe("Hello");
+      expect(results[0]!.richMessage?.type).toBe("text_delta");
     });
 
     /**
@@ -282,25 +286,25 @@ describe("StreamJsonParser", () => {
     test("accumulates partial tool input JSON", () => {
       // First, start a tool block
       parser.processChunk(
-        JSON.stringify({
+        `${JSON.stringify({
           type: "content_block_start",
           index: 0,
           content_block: {
             type: "tool_use",
             name: "read_file",
           },
-        }) + "\n"
+        })}\n`
       );
 
       // Then send partial JSON
-      const deltaChunk = JSON.stringify({
+      const deltaChunk = `${JSON.stringify({
         type: "content_block_delta",
         index: 0,
         delta: {
           type: "input_json_delta",
           partial_json: '{"path": "/test',
         },
-      }) + "\n";
+      })}\n`;
 
       const results = parser.processChunk(deltaChunk);
       // May or may not have a result depending on if JSON is parseable
@@ -350,7 +354,7 @@ describe("StreamJsonParser", () => {
      * Display text is used for plain output mode.
      */
     test("extracts text from assistant message content", () => {
-      const chunk = JSON.stringify({
+      const chunk = `${JSON.stringify({
         type: "assistant",
         message: {
           content: [
@@ -358,10 +362,10 @@ describe("StreamJsonParser", () => {
             { type: "text", text: "Second part." },
           ],
         },
-      }) + "\n";
+      })}\n`;
 
       const results = parser.processChunk(chunk);
-      expect(results[0].displayText).toBe("First part. Second part.");
+      expect(results[0]!.displayText).toBe("First part. Second part.");
     });
 
     /**
@@ -369,13 +373,13 @@ describe("StreamJsonParser", () => {
      * Errors should be clearly identified in output.
      */
     test("formats error messages with prefix", () => {
-      const chunk = JSON.stringify({
+      const chunk = `${JSON.stringify({
         type: "error",
         message: "Something went wrong",
-      }) + "\n";
+      })}\n`;
 
       const results = parser.processChunk(chunk);
-      expect(results[0].displayText).toBe("[ERROR] Something went wrong");
+      expect(results[0]!.displayText).toBe("[ERROR] Something went wrong");
     });
   });
 });

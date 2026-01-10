@@ -13,7 +13,7 @@
  * - Maintaining full output for completion checking
  */
 
-import { describe, expect, test, beforeEach } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
 import { TextParser } from "./text-parser";
 
 describe("TextParser", () => {
@@ -33,7 +33,7 @@ describe("TextParser", () => {
       const results = parser.processChunk("Hello world\n");
 
       expect(results).toHaveLength(1);
-      expect(results[0].displayText).toBe("Hello world");
+      expect(results[0]!.displayText).toBe("Hello world");
     });
 
     /**
@@ -44,9 +44,9 @@ describe("TextParser", () => {
       const results = parser.processChunk("Line 1\nLine 2\nLine 3\n");
 
       expect(results).toHaveLength(3);
-      expect(results[0].displayText).toBe("Line 1");
-      expect(results[1].displayText).toBe("Line 2");
-      expect(results[2].displayText).toBe("Line 3");
+      expect(results[0]!.displayText).toBe("Line 1");
+      expect(results[1]!.displayText).toBe("Line 2");
+      expect(results[2]!.displayText).toBe("Line 3");
     });
 
     /**
@@ -57,8 +57,8 @@ describe("TextParser", () => {
       const results = parser.processChunk("Line 1\n\n\nLine 2\n");
 
       expect(results).toHaveLength(2);
-      expect(results[0].displayText).toBe("Line 1");
-      expect(results[1].displayText).toBe("Line 2");
+      expect(results[0]!.displayText).toBe("Line 1");
+      expect(results[1]!.displayText).toBe("Line 2");
     });
 
     /**
@@ -69,8 +69,8 @@ describe("TextParser", () => {
       const results = parser.processChunk("Content\n   \n\t\nMore content\n");
 
       expect(results).toHaveLength(2);
-      expect(results[0].displayText).toBe("Content");
-      expect(results[1].displayText).toBe("More content");
+      expect(results[0]!.displayText).toBe("Content");
+      expect(results[1]!.displayText).toBe("More content");
     });
 
     /**
@@ -81,7 +81,7 @@ describe("TextParser", () => {
       const results = parser.processChunk("No newline");
 
       expect(results).toHaveLength(1);
-      expect(results[0].displayText).toBe("No newline");
+      expect(results[0]!.displayText).toBe("No newline");
     });
 
     /**
@@ -260,8 +260,8 @@ describe("TextParser", () => {
       const results = parser.processChunk("Output: ✓ Success! 🎉\n");
 
       expect(results).toHaveLength(1);
-      expect(results[0].displayText).toContain("✓");
-      expect(results[0].displayText).toContain("🎉");
+      expect(results[0]!.displayText).toContain("✓");
+      expect(results[0]!.displayText).toContain("🎉");
     });
 
     /**
@@ -269,11 +269,11 @@ describe("TextParser", () => {
      * Output may include large text blocks.
      */
     test("handles very long lines", () => {
-      const longLine = "x".repeat(10000);
-      const results = parser.processChunk(longLine + "\n");
+      const longLine = "x".repeat(10_000);
+      const results = parser.processChunk(`${longLine}\n`);
 
       expect(results).toHaveLength(1);
-      expect(results[0].displayText).toBe(longLine);
+      expect(results[0]!.displayText).toBe(longLine);
     });
   });
 });

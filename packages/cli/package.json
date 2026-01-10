@@ -12,11 +12,16 @@
   },
   "scripts": {
     "build": "bun run script/build.ts",
+    "build:single": "bun run script/build.ts --single",
     "dev": "bun run --watch src/index.ts",
     "install-bin": "bun run script/install.ts",
     "unlink": "bun run script/unlink.ts",
     "typecheck": "tsgo --noEmit",
-    "test": "bun test"
+    "test": "bun test",
+    "version": "bun run script/version.ts",
+    "publish": "bun run script/publish.ts",
+    "publish:npm": "bun run script/publish.ts --publish",
+    "publish:dry-run": "bun run script/publish.ts --dry-run"
   },
   "imports": {
     "#commands/*": "./src/commands/*.ts",
