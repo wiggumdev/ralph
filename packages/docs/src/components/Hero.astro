@@ -1,289 +1,396 @@
 ---
-// Custom Hero component with Ralph Wiggum personality
+// Hero component - Clean with subtle quirk
 ---
 
-<div class="hero-container">
-  <div class="hero-content">
+<section class="hero" aria-label="Ralph introduction">
+  <div class="hero-inner">
+    <!-- Badge -->
     <div class="hero-badge">
-      <span class="badge-icon">↻</span>
+      <span class="badge-loop" aria-hidden="true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-dasharray="4 4" />
+          <path d="M12 8v4l2 2" />
+        </svg>
+      </span>
       AI-Agnostic Agentic Loops
     </div>
 
+    <!-- Title -->
     <h1 class="hero-title">
-      <span class="title-main">ralph</span>
-      <span class="title-accent">keeps going.</span>
+      <span class="title-word title-ralph">ralph</span>
+      <span class="title-word title-keeps">keeps going.</span>
     </h1>
 
-    <p class="hero-description">
+    <!-- Description -->
+    <p class="hero-desc">
       Reset the context. Feed the learnings. Watch it ship.
-      <br />
-      <span class="hero-subtext">
-        A CLI tool for running AI coding agents for hours, not minutes.
-      </span>
+    </p>
+    <p class="hero-subdesc">
+      A CLI tool that runs AI coding agents for hours, not minutes.
     </p>
 
-    <div class="hero-terminal">
-      <div class="terminal-header">
-        <span class="terminal-dot red"></span>
-        <span class="terminal-dot yellow"></span>
-        <span class="terminal-dot green"></span>
-        <span class="terminal-title">terminal</span>
-      </div>
-      <div class="terminal-body">
-        <div class="terminal-line">
-          <span class="terminal-prompt">$</span>
-          <span class="terminal-command">ralph run</span>
-          <span class="terminal-args">"Add tests for all auth modules"</span>
+    <!-- Terminal Demo -->
+    <div class="terminal-wrapper">
+      <div class="terminal">
+        <div class="terminal-chrome">
+          <div class="terminal-dots">
+            <span class="dot dot-red"></span>
+            <span class="dot dot-yellow"></span>
+            <span class="dot dot-green"></span>
+          </div>
+          <span class="terminal-title">terminal</span>
+          <div class="terminal-spacer"></div>
         </div>
-        <div class="terminal-output">
-          <span class="output-icon">↻</span> Loop 1: Found 12 auth modules, added tests for UserAuth...
-        </div>
-        <div class="terminal-output">
-          <span class="output-icon">↻</span> Loop 2: Added tests for SessionManager, TokenService...
-        </div>
-        <div class="terminal-output">
-          <span class="output-icon">↻</span> Loop 3: Added tests for OAuth, SAML providers...
-        </div>
-        <div class="terminal-output success">
-          <span class="output-icon">✓</span> Done. 47 test files created. All passing.
+        <div class="terminal-body">
+          <div class="terminal-line line-1">
+            <span class="prompt">$</span>
+            <span class="cmd">ralph run</span>
+            <span class="arg">"Add tests for all auth modules"</span>
+          </div>
+          <div class="terminal-line line-2">
+            <span class="loop-icon">↻</span>
+            <span class="output">Loop 1: Found 12 auth modules, added tests for UserAuth...</span>
+          </div>
+          <div class="terminal-line line-3">
+            <span class="loop-icon">↻</span>
+            <span class="output">Loop 2: Added tests for SessionManager, TokenService...</span>
+          </div>
+          <div class="terminal-line line-4">
+            <span class="loop-icon">↻</span>
+            <span class="output">Loop 3: Added tests for OAuth, SAML providers...</span>
+          </div>
+          <div class="terminal-line line-5 success">
+            <span class="check-icon">✓</span>
+            <span class="output">Done. 47 test files created. All passing.</span>
+          </div>
         </div>
       </div>
     </div>
 
+    <!-- CTA Buttons -->
     <div class="hero-actions">
-      <a href="/guides/quickstart/" class="btn-primary">
+      <a href="/guides/quickstart/" class="btn btn-primary">
         Get Started
-        <span class="btn-arrow">→</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="btn-arrow">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
       </a>
-      <a href="/concepts/the-loop/" class="btn-secondary">
+      <a href="/concepts/the-loop/" class="btn btn-ghost">
         How it works
       </a>
     </div>
-
-    <div class="hero-quote">
-      <blockquote>
-        "Me fail English? That's unpossible!"
-        <footer>— The philosophy: keep trying until it works</footer>
-      </blockquote>
-    </div>
   </div>
 
-  <div class="hero-features">
-    <div class="feature-item">
-      <div class="feature-icon">🔄</div>
-      <div class="feature-text">
+  <!-- Feature highlights -->
+  <div class="features">
+    <div class="feature">
+      <div class="feature-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-dasharray="4 4" />
+          <path d="M12 8v4l2 2" />
+        </svg>
+      </div>
+      <div class="feature-content">
         <strong>Context Reset</strong>
-        <span>Fresh context window each iteration</span>
+        <span>Fresh context window each iteration: Each loop iteration starts fresh. No accumulated confusion. The model reads your updated files and continues from where it left off.</span>
       </div>
     </div>
-    <div class="feature-item">
-      <div class="feature-icon">🧠</div>
-      <div class="feature-text">
+    <div class="feature">
+      <div class="feature-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div class="feature-content">
         <strong>State Persistence</strong>
-        <span>Learnings carry forward via git</span>
+        <span>Learning is carry forward: Progress persists through your codebase. The AI reads vcs (git, jj etc) history, modified files, and test results to orient itself each iteration.</span>
       </div>
     </div>
-    <div class="feature-item">
-      <div class="feature-icon">🛑</div>
-      <div class="feature-text">
+    <div class="feature">
+      <div class="feature-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <path d="M9 9l6 6M15 9l-6 6"/>
+        </svg>
+      </div>
+      <div class="feature-content">
         <strong>Exit Conditions</strong>
-        <span>Smart stopping when done</span>
+        <span>Smart stopping when done: Define when to stop: tests passing, no more TODOs, specific markers. ralph knows when the job is done.</span>
       </div>
     </div>
-    <div class="feature-item">
-      <div class="feature-icon">🔧</div>
-      <div class="feature-text">
+    <div class="feature">
+      <div class="feature-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
+        </svg>
+      </div>
+      <div class="feature-content">
         <strong>Tool Agnostic</strong>
-        <span>Claude, OpenCode, any CLI</span>
+        <span>Works with Claude Code, OpenCode, other cli tool adapters coming soon.</span>
       </div>
     </div>
   </div>
-</div>
+</section>
 
 <style>
-  .hero-container {
+  .hero {
     max-width: 64rem;
     margin: 0 auto;
-    padding: 3rem 1.5rem 4rem;
+    padding: 2.5rem 1.5rem 3.5rem;
   }
 
-  .hero-content {
+  .hero-inner {
     text-align: center;
+    max-width: 40rem;
+    margin: 0 auto;
   }
 
+  /* Badge */
   .hero-badge {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
     padding: 0.5rem 1rem;
-    background: linear-gradient(135deg, rgba(255, 217, 61, 0.15) 0%, rgba(255, 159, 28, 0.15) 100%);
-    border: 1px solid rgba(255, 217, 61, 0.3);
+    background: var(--sl-color-accent-low);
+    border: 1px solid hsla(45, 100%, 62%, 0.3);
     border-radius: 9999px;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     font-weight: 600;
     color: var(--sl-color-accent);
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.75rem;
+    animation: fadeSlideDown 0.5s ease-out;
   }
 
-  .badge-icon {
-    font-size: 1rem;
-    animation: spin 4s linear infinite;
+  .badge-loop {
+    display: flex;
+    animation: spin 6s linear infinite;
   }
 
   @keyframes spin {
-    from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
   }
 
+  @keyframes fadeSlideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Title */
   .hero-title {
-    font-size: clamp(2.5rem, 8vw, 4.5rem);
+    font-size: clamp(2.75rem, 10vw, 4.25rem);
     font-weight: 800;
-    line-height: 1.1;
-    letter-spacing: -0.03em;
+    line-height: 1.05;
+    letter-spacing: -0.035em;
     margin: 0 0 1.5rem;
   }
 
-  .title-main {
+  .title-word {
     display: block;
-    background: linear-gradient(135deg, var(--sl-color-white) 0%, var(--sl-color-gray-2) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    animation: fadeSlideUp 0.6s ease-out backwards;
   }
 
-  :root:not([data-theme='dark']) .title-main {
-    background: linear-gradient(135deg, var(--sl-color-black) 0%, var(--sl-color-gray-4) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+  .title-ralph {
+    animation-delay: 0.1s;
   }
 
-  .title-accent {
-    display: block;
+  .title-keeps {
     color: var(--sl-color-accent);
+    animation-delay: 0.2s;
   }
 
-  .hero-description {
-    font-size: 1.25rem;
-    color: var(--sl-color-gray-2);
-    max-width: 32rem;
+  @keyframes fadeSlideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Description */
+  .hero-desc {
+    font-size: 1.375rem;
+    font-weight: 500;
+    margin: 0 0 0.5rem;
+    color: var(--sl-color-gray-1);
+    animation: fadeSlideUp 0.6s ease-out 0.3s backwards;
+  }
+
+  :root:not([data-theme='dark']) .hero-desc {
+    color: var(--sl-color-gray-5);
+  }
+
+  .hero-subdesc {
+    font-size: 1.0625rem;
+    color: var(--sl-color-gray-3);
+    margin: 0 0 2rem;
+    animation: fadeSlideUp 0.6s ease-out 0.4s backwards;
+  }
+
+  /* Terminal */
+  .terminal-wrapper {
     margin: 0 auto 2rem;
-    line-height: 1.6;
+    max-width: 34rem;
+    animation: fadeSlideUp 0.7s ease-out 0.5s backwards;
   }
 
-  :root:not([data-theme='dark']) .hero-description {
-    color: var(--sl-color-gray-4);
-  }
-
-  .hero-subtext {
-    font-size: 1rem;
-    opacity: 0.8;
-  }
-
-  .hero-terminal {
-    background: #0D1117;
+  .terminal {
+    background: hsl(220 13% 8%);
     border-radius: 0.75rem;
     overflow: hidden;
-    max-width: 36rem;
-    margin: 0 auto 2rem;
     text-align: left;
     box-shadow:
-      0 4px 6px -1px rgba(0, 0, 0, 0.1),
-      0 2px 4px -1px rgba(0, 0, 0, 0.06),
-      0 0 0 1px rgba(255, 255, 255, 0.05);
+      0 4px 6px -1px hsla(0, 0%, 0%, 0.1),
+      0 10px 20px -5px hsla(0, 0%, 0%, 0.15),
+      0 0 0 1px hsla(0, 0%, 100%, 0.05);
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
   }
 
-  .terminal-header {
+  .terminal:hover {
+    box-shadow:
+      0 4px 6px -1px hsla(0, 0%, 0%, 0.1),
+      0 10px 20px -5px hsla(0, 0%, 0%, 0.15),
+      0 0 0 1px hsla(45, 100%, 62%, 0.2),
+      0 0 30px hsla(45, 100%, 62%, 0.1);
+    transform: translateY(-2px);
+  }
+
+  .terminal-chrome {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
     padding: 0.75rem 1rem;
-    background: #161B22;
-    border-bottom: 1px solid #30363D;
+    background: hsl(220 13% 11%);
+    border-bottom: 1px solid hsl(220 10% 16%);
   }
 
-  .terminal-dot {
+  .terminal-dots {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .dot {
     width: 0.75rem;
     height: 0.75rem;
     border-radius: 50%;
   }
 
-  .terminal-dot.red { background: #FF5F56; }
-  .terminal-dot.yellow { background: #FFBD2E; }
-  .terminal-dot.green { background: #27C93F; }
+  .dot-red { background: hsl(0 75% 55%); }
+  .dot-yellow { background: hsl(45 100% 55%); }
+  .dot-green { background: hsl(140 70% 45%); }
 
   .terminal-title {
     flex: 1;
     text-align: center;
     font-size: 0.75rem;
-    color: #8B949E;
     font-family: var(--sl-font-mono);
+    color: hsl(220 10% 50%);
+  }
+
+  .terminal-spacer {
+    width: 3rem;
   }
 
   .terminal-body {
-    padding: 1rem;
+    padding: 1rem 1.25rem 1.25rem;
     font-family: var(--sl-font-mono);
-    font-size: 0.875rem;
-    line-height: 1.7;
+    font-size: 0.8125rem;
+    line-height: 1.8;
   }
 
   .terminal-line {
     display: flex;
     gap: 0.5rem;
-    margin-bottom: 0.75rem;
+    opacity: 0;
+    animation: terminalLine 0.4s ease-out forwards;
   }
 
-  .terminal-prompt {
-    color: #7EE787;
+  .line-1 { animation-delay: 0.8s; }
+  .line-2 { animation-delay: 1.2s; }
+  .line-3 { animation-delay: 1.6s; }
+  .line-4 { animation-delay: 2.0s; }
+  .line-5 { animation-delay: 2.4s; }
+
+  @keyframes terminalLine {
+    from {
+      opacity: 0;
+      transform: translateX(-5px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
   }
 
-  .terminal-command {
-    color: #79C0FF;
+  .prompt {
+    color: hsl(140 70% 55%);
+    font-weight: 600;
   }
 
-  .terminal-args {
-    color: #A5D6FF;
+  .cmd {
+    color: hsl(200 100% 70%);
   }
 
-  .terminal-output {
-    color: #8B949E;
-    padding-left: 1rem;
-    margin-bottom: 0.25rem;
+  .arg {
+    color: hsl(200 60% 80%);
   }
 
-  .terminal-output.success {
-    color: #7EE787;
+  .loop-icon {
+    color: var(--sl-color-accent);
+    margin-right: 0.25rem;
   }
 
-  .output-icon {
-    margin-right: 0.5rem;
+  .output {
+    color: hsl(220 10% 60%);
   }
 
+  .terminal-line.success .check-icon {
+    color: hsl(140 70% 55%);
+  }
+
+  .terminal-line.success .output {
+    color: hsl(140 70% 55%);
+  }
+
+  /* Buttons */
   .hero-actions {
     display: flex;
     gap: 1rem;
     justify-content: center;
     flex-wrap: wrap;
     margin-bottom: 2.5rem;
+    animation: fadeSlideUp 0.6s ease-out 0.6s backwards;
   }
 
-  .btn-primary {
+  .btn {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
     padding: 0.875rem 1.75rem;
-    background: var(--sl-color-accent);
-    color: var(--sl-color-black);
-    font-weight: 600;
     font-size: 1rem;
+    font-weight: 600;
     border-radius: 0.5rem;
     text-decoration: none;
     transition: all 0.2s ease;
   }
 
+  .btn-primary {
+    background: var(--sl-color-accent);
+    color: var(--sl-color-black);
+  }
+
   .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 0 24px rgba(255, 217, 61, 0.4);
+    box-shadow: 0 0 24px hsla(45, 100%, 62%, 0.4);
   }
 
   .btn-arrow {
@@ -291,112 +398,118 @@
   }
 
   .btn-primary:hover .btn-arrow {
-    transform: translateX(4px);
+    transform: translateX(3px);
   }
 
-  .btn-secondary {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.875rem 1.75rem;
+  .btn-ghost {
     background: transparent;
     color: var(--sl-color-white);
-    font-weight: 600;
-    font-size: 1rem;
     border: 1px solid var(--sl-color-gray-5);
-    border-radius: 0.5rem;
-    text-decoration: none;
-    transition: all 0.2s ease;
   }
 
-  :root:not([data-theme='dark']) .btn-secondary {
+  :root:not([data-theme='dark']) .btn-ghost {
     color: var(--sl-color-black);
-    border-color: var(--sl-color-gray-3);
+    border-color: var(--sl-color-gray-2);
   }
 
-  .btn-secondary:hover {
+  .btn-ghost:hover {
     border-color: var(--sl-color-accent);
-    background: rgba(255, 217, 61, 0.1);
+    background: hsla(45, 100%, 62%, 0.1);
   }
 
+  /* Quote */
   .hero-quote {
-    max-width: 28rem;
-    margin: 0 auto 3rem;
+    max-width: 26rem;
+    margin: 0 auto 2.5rem;
+    padding: 1rem 1.5rem;
+    border-left: 3px solid var(--sl-color-accent);
+    background: linear-gradient(to right, hsla(45, 100%, 62%, 0.06), transparent);
+    border-radius: 0 0.5rem 0.5rem 0;
+    animation: fadeSlideUp 0.6s ease-out 0.7s backwards;
   }
 
-  .hero-quote blockquote {
-    font-family: 'Comic Neue', cursive;
-    font-size: 1.125rem;
+  .hero-quote p {
+    font-size: 1rem;
     font-style: italic;
     color: var(--sl-color-gray-2);
     margin: 0;
-    padding: 1rem 1.5rem;
-    background: linear-gradient(135deg, rgba(255, 217, 61, 0.08) 0%, transparent 100%);
-    border-left: 3px solid var(--sl-color-accent);
-    border-radius: 0 0.5rem 0.5rem 0;
   }
 
-  :root:not([data-theme='dark']) .hero-quote blockquote {
+  :root:not([data-theme='dark']) .hero-quote p {
     color: var(--sl-color-gray-4);
   }
 
-  .hero-quote footer {
+  .hero-quote cite {
+    display: block;
+    font-size: 0.8125rem;
     font-style: normal;
-    font-size: 0.875rem;
+    color: var(--sl-color-gray-3);
     margin-top: 0.5rem;
-    opacity: 0.7;
   }
 
-  .hero-features {
+  /* Features */
+  .features {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 1rem;
-    max-width: 48rem;
+    max-width: 52rem;
     margin: 0 auto;
+    animation: fadeSlideUp 0.6s ease-out 0.8s backwards;
   }
 
-  .feature-item {
+  .feature {
     display: flex;
     align-items: flex-start;
-    gap: 0.75rem;
-    padding: 1rem;
+    gap: 0.875rem;
+    padding: 1.125rem;
     background: var(--sl-color-bg-sidebar);
     border: 1px solid var(--sl-color-hairline-light);
-    border-radius: 0.75rem;
+    border-radius: 0.625rem;
     transition: all 0.2s ease;
   }
 
-  .feature-item:hover {
+  .feature:hover {
     border-color: var(--sl-color-accent);
     transform: translateY(-2px);
+    box-shadow: 0 0 20px hsla(45, 100%, 62%, 0.15);
   }
 
   .feature-icon {
-    font-size: 1.5rem;
-    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    background: var(--sl-color-accent-low);
+    border-radius: 0.5rem;
+    color: var(--sl-color-accent);
+    flex-shrink: 0;
   }
 
-  .feature-text {
+  .feature-content {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
   }
 
-  .feature-text strong {
+  .feature-content strong {
     font-weight: 600;
+    font-size: 0.9375rem;
     color: var(--sl-color-white);
   }
 
-  :root:not([data-theme='dark']) .feature-text strong {
+  :root:not([data-theme='dark']) .feature-content strong {
     color: var(--sl-color-black);
   }
 
-  .feature-text span {
-    font-size: 0.875rem;
+  .feature-content span {
+    font-size: 0.8125rem;
     color: var(--sl-color-gray-3);
   }
 
+  /* Responsive */
   @media (max-width: 640px) {
-    .hero-container {
+    .hero {
       padding: 2rem 1rem 3rem;
     }
 
@@ -405,15 +518,19 @@
       align-items: center;
     }
 
-    .btn-primary,
-    .btn-secondary {
+    .btn {
       width: 100%;
       max-width: 280px;
       justify-content: center;
     }
 
-    .hero-features {
+    .features {
       grid-template-columns: 1fr;
+    }
+
+    .terminal-body {
+      font-size: 0.75rem;
+      padding: 0.875rem 1rem;
     }
   }
 </style>

@@ -1,99 +1,222 @@
 @import "tailwindcss";
 
 @theme {
-  /* Ralph Wiggum inspired accent palette */
-  --color-accent-50: #FFFBEB;
-  --color-accent-100: #FEF3C7;
-  --color-accent-200: #FDE68A;
-  --color-accent-300: #FFD93D;
-  --color-accent-400: #FBBF24;
-  --color-accent-500: #F59E0B;
-  --color-accent-600: #D97706;
-  --color-accent-700: #B45309;
-  --color-accent-800: #92400E;
-  --color-accent-900: #78350F;
-  --color-accent-950: #451A03;
+  /* Ralph accent palette - warm yellow */
+  --color-accent-50: hsl(48 100% 96%);
+  --color-accent-100: hsl(48 96% 89%);
+  --color-accent-200: hsl(46 95% 78%);
+  --color-accent-300: hsl(45 100% 62%);
+  --color-accent-400: hsl(43 96% 56%);
+  --color-accent-500: hsl(38 92% 50%);
+  --color-accent-600: hsl(32 95% 44%);
+  --color-accent-700: hsl(26 90% 37%);
+  --color-accent-800: hsl(22 82% 31%);
+  --color-accent-900: hsl(21 78% 26%);
+  --color-accent-950: hsl(20 80% 14%);
 
-  /* Gray palette */
-  --color-gray-50: #FAFAFA;
-  --color-gray-100: #F4F4F5;
-  --color-gray-200: #E4E4E7;
-  --color-gray-300: #D4D4D8;
-  --color-gray-400: #A1A1AA;
-  --color-gray-500: #71717A;
-  --color-gray-600: #52525B;
-  --color-gray-700: #3F3F46;
-  --color-gray-800: #27272A;
-  --color-gray-900: #18181B;
-  --color-gray-950: #09090B;
+  /* Warm gray palette */
+  --color-gray-50: hsl(60 9% 98%);
+  --color-gray-100: hsl(48 20% 96%);
+  --color-gray-200: hsl(45 15% 88%);
+  --color-gray-300: hsl(45 10% 82%);
+  --color-gray-400: hsl(45 3% 70%);
+  --color-gray-500: hsl(45 2% 50%);
+  --color-gray-600: hsl(45 3% 35%);
+  --color-gray-700: hsl(40 6% 20%);
+  --color-gray-800: hsl(40 10% 10%);
+  --color-gray-900: hsl(40 15% 5%);
+  --color-gray-950: hsl(40 20% 3%);
 
-  /* Simpsons theme colors */
-  --color-simpsons-yellow: #FFD93D;
-  --color-simpsons-blue: #70D6FF;
-  --color-simpsons-pink: #FF70A6;
-  --color-simpsons-red: #FF4444;
-  --color-simpsons-green: #7DCE82;
-  --color-simpsons-orange: #FF9F1C;
-  --color-simpsons-purple: #9B5DE5;
+  /* Semantic colors */
+  --color-info: hsl(200 100% 60%);
+  --color-success: hsl(145 65% 45%);
+  --color-warning: hsl(28 100% 55%);
+  --color-danger: hsl(0 85% 55%);
 
   /* Typography */
-  --font-sans: "Inter", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
-  --font-display: "Comic Neue", cursive;
+  --font-sans: "Atkinson Hyperlegible", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-display: "Atkinson Hyperlegible", system-ui, sans-serif;
 
-  /* Animations */
-  --animate-wiggle: wiggle 1s ease-in-out infinite;
-  --animate-bounce-slow: bounce 2s infinite;
-  --animate-pulse-subtle: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  --animate-spin-slow: spin 8s linear infinite;
+  /* Custom shadows */
+  --shadow-glow: 0 0 20px hsla(45 100% 62% / 0.25);
+  --shadow-glow-lg: 0 0 40px hsla(45 100% 62% / 0.35);
+  --shadow-soft: 0 1px 2px hsla(0 0% 0% / 0.05), 0 4px 12px hsla(0 0% 0% / 0.08);
+  --shadow-lifted: 0 4px 20px hsla(0 0% 0% / 0.12);
 
-  /* Shadows */
-  --shadow-glow: 0 0 20px rgba(255, 217, 61, 0.4);
-  --shadow-glow-lg: 0 0 40px rgba(255, 217, 61, 0.5);
-}
+  /* Transitions */
+  --transition-snappy: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 300ms cubic-bezier(0.4, 0, 0.2, 1);
 
-@keyframes wiggle {
-  0%, 100% { transform: rotate(-3deg); }
-  50% { transform: rotate(3deg); }
+  /* Border radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 9999px;
 }
 
 @layer components {
+  /* Primary button - Yellow accent */
   .btn-primary {
-    @apply inline-flex items-center justify-center px-6 py-3 font-semibold rounded-lg transition-all duration-200;
-    @apply bg-accent-300 text-gray-900 hover:bg-accent-400 hover:shadow-glow;
+    @apply inline-flex items-center justify-center gap-2;
+    @apply px-6 py-3 font-semibold rounded-lg;
+    @apply bg-accent-300 text-gray-900;
+    @apply transition-all duration-[var(--transition-snappy)];
+    @apply hover:shadow-glow hover:translate-y-[-2px];
+    @apply focus:outline-none focus:ring-2 focus:ring-accent-400 focus:ring-offset-2;
+    @apply active:translate-y-0;
+  }
+
+  /* Secondary button - Ghost style */
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2;
+    @apply px-6 py-3 font-semibold rounded-lg;
+    @apply bg-transparent border border-gray-300 dark:border-gray-700;
+    @apply text-gray-900 dark:text-gray-100;
+    @apply transition-all duration-[var(--transition-snappy)];
+    @apply hover:border-accent-300 hover:bg-accent-950/10 dark:hover:bg-accent-300/10;
     @apply focus:outline-none focus:ring-2 focus:ring-accent-400 focus:ring-offset-2;
   }
 
-  .btn-secondary {
-    @apply inline-flex items-center justify-center px-6 py-3 font-semibold rounded-lg transition-all duration-200;
-    @apply bg-gray-800 text-white border border-gray-700;
-    @apply hover:bg-gray-700 hover:border-gray-600;
-    @apply focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2;
-  }
-
+  /* Card component */
   .card {
-    @apply rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm;
-    @apply transition-all duration-200 hover:shadow-md hover:border-accent-300;
+    @apply rounded-xl p-6;
+    @apply bg-gray-50 dark:bg-gray-800;
+    @apply border border-gray-200 dark:border-gray-700;
+    @apply shadow-soft;
+    @apply transition-all duration-[var(--transition-snappy)];
+    @apply hover:shadow-glow hover:border-accent-300 hover:translate-y-[-3px];
   }
 
+  /* Badge */
   .badge {
-    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
-    @apply bg-accent-100 text-accent-800 dark:bg-accent-900 dark:text-accent-200;
+    @apply inline-flex items-center gap-1.5;
+    @apply px-3 py-1 rounded-full;
+    @apply text-sm font-medium;
+    @apply bg-accent-100 text-accent-800;
+    @apply dark:bg-accent-950/50 dark:text-accent-300;
   }
 
+  .badge-info {
+    @apply bg-info/10 text-info;
+  }
+
+  .badge-success {
+    @apply bg-success/10 text-success;
+  }
+
+  .badge-warning {
+    @apply bg-warning/10 text-warning;
+  }
+
+  .badge-danger {
+    @apply bg-danger/10 text-danger;
+  }
+
+  /* Code block wrapper */
   .code-block {
-    @apply font-mono text-sm bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto;
+    @apply font-mono text-sm;
+    @apply bg-gray-900 text-gray-100;
+    @apply rounded-lg p-4 overflow-x-auto;
     @apply border border-gray-700;
+    @apply shadow-soft;
   }
 
+  /* Terminal mockup */
+  .terminal {
+    @apply bg-gray-900 rounded-xl overflow-hidden;
+    @apply border border-gray-700;
+    @apply shadow-lifted;
+  }
+
+  .terminal-header {
+    @apply flex items-center gap-2 px-4 py-3;
+    @apply bg-gray-800 border-b border-gray-700;
+  }
+
+  .terminal-dot {
+    @apply w-3 h-3 rounded-full;
+  }
+
+  .terminal-dot-red { @apply bg-red-500; }
+  .terminal-dot-yellow { @apply bg-yellow-500; }
+  .terminal-dot-green { @apply bg-green-500; }
+
+  .terminal-body {
+    @apply p-4 font-mono text-sm leading-relaxed;
+  }
+
+  .terminal-prompt {
+    @apply text-green-400;
+  }
+
+  .terminal-command {
+    @apply text-blue-400;
+  }
+
+  .terminal-output {
+    @apply text-gray-400 pl-4;
+  }
+
+  .terminal-success {
+    @apply text-green-400;
+  }
+
+  /* Quote with Ralph personality */
   .quote-ralph {
-    @apply relative pl-6 py-4 my-6 italic text-lg;
-    @apply border-l-4 border-accent-300 bg-accent-50 dark:bg-accent-950/20;
+    @apply relative pl-6 py-4 my-6;
+    @apply italic text-lg text-gray-500 dark:text-gray-400;
+    @apply border-l-4 border-accent-300;
+    @apply bg-gradient-to-r from-accent-50 to-transparent dark:from-accent-950/20 dark:to-transparent;
     @apply rounded-r-lg;
   }
 
   .quote-ralph::before {
     content: '"';
-    @apply absolute left-2 -top-2 text-4xl text-accent-300 font-display;
+    @apply absolute left-2 -top-2;
+    @apply text-4xl text-accent-300;
+    @apply font-sans font-bold;
+  }
+
+  /* Loop visualization */
+  .loop-indicator {
+    @apply inline-flex items-center gap-1;
+    @apply px-2 py-0.5 rounded-full;
+    @apply bg-accent-300 text-gray-900;
+    @apply text-xs font-bold uppercase tracking-wide;
+  }
+
+  .loop-indicator-icon {
+    @apply animate-spin;
+    animation-duration: 3s;
+  }
+}
+
+@layer utilities {
+  /* Text gradient */
+  .text-gradient-accent {
+    @apply bg-gradient-to-r from-accent-400 to-accent-600;
+    @apply bg-clip-text text-transparent;
+  }
+
+  /* Glow effects */
+  .glow {
+    @apply shadow-glow;
+  }
+
+  .glow-lg {
+    @apply shadow-glow-lg;
+  }
+
+  /* Subtle hover lift */
+  .hover-lift {
+    @apply transition-transform duration-[var(--transition-snappy)];
+    @apply hover:translate-y-[-2px];
+  }
+
+  /* Focus ring */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-accent-400 focus:ring-offset-2;
   }
 }

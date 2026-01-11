@@ -46,7 +46,7 @@ export default defineConfig({
         {
           tag: "link",
           attrs: {
-            href: "https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap",
+            href: "https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&family=JetBrains+Mono:wght@400;500;600&display=swap",
             rel: "stylesheet",
           },
         },
