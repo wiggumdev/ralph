@@ -10,35 +10,8 @@ export interface MessageItemProps {
 }
 
 export function MessageItem(props: MessageItemProps) {
-  const roleColor = () => {
-    switch (props.message.role) {
-      case "user":
-        return "#00aaff";
-      case "assistant":
-        return "#00ff00";
-      default:
-        return "#888888";
-    }
-  };
-
-  const roleIcon = () => {
-    switch (props.message.role) {
-      case "user":
-        return "👤";
-      case "assistant":
-        return "🤖";
-      default:
-        return "📝";
-    }
-  };
-
   return (
-    <box flexDirection="column" style={{ marginBottom: 1 }}>
-      <text>
-        <span style={{ fg: roleColor() }}>
-          {roleIcon()} {props.message.role.toUpperCase()}
-        </span>
-      </text>
+    <box flexDirection="column">
       <For each={props.message.content}>
         {(block) => (
           <Switch>
