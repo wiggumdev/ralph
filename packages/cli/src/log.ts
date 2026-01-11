@@ -72,7 +72,12 @@ export namespace Log {
         : `${new Date().toISOString().split(".")[0]!.replace(/:/g, "")}.log`
     );
     const logfile = Bun.file(logpath);
-    await fs.truncate(logpath).catch(() => {});
+    await fs.truncate(logpath).catch((err) => {
+      // File may not exist yet - this is expected on first run
+      if (options.dev) {
+        process.stderr.write(`DEBUG: Could not truncate ${logpath}: ${err}\n`);
+      }
+    });
     const writer = logfile.writer();
     write = async (msg: any) => {
       const num = writer.write(msg);
@@ -95,7 +100,16 @@ export namespace Log {
 
     const filesToDelete = files.slice(0, -10);
     await Promise.all(
-      filesToDelete.map((file) => fs.unlink(file).catch(() => {}))
+      filesToDelete.map((file) =>
+        fs.unlink(file).catch((err) => {
+          // File may have been deleted by another process - log in debug mode
+          if (level === "DEBUG") {
+            process.stderr.write(
+              `DEBUG: Could not delete log file ${file}: ${err}\n`
+            );
+          }
+        })
+      )
     );
   }
 
