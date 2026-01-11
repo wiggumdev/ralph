@@ -7,16 +7,12 @@ import { getPrdPath, getPromptPath, loadConfig } from "#config/loader";
 import type { Hooks } from "#config/schema";
 import { createHookExecutor } from "#hooks";
 import { createParser, type OutputFormat } from "#parsers";
-import type { ResultMessage } from "#parsers/message-types";
-import {
-  isMessage,
-  isResultMessage,
-  isToolUseBlock,
-} from "#parsers/message-types";
 import type { LoopResult } from "#ui/ralph-app";
 import { runLoopTUI } from "#ui/ralph-app";
+import { formatCost, formatTokens } from "#utils/format";
 import { readStream } from "#utils/stream";
 import { isOutputFormat, parsePrd } from "#utils/validation";
+import { trackTokensFromChunk } from "./run-helpers";
 
 function countTasksNotPassing(prdPath: string): number {
   if (!existsSync(prdPath)) {
@@ -128,10 +124,14 @@ async function runLoopPlain(options: RunLoopPlainOptions): Promise<LoopResult> {
   let iterations = 0;
   let exitReason: LoopResult["exitReason"] = "max_iterations";
   let lastSessionId: string | undefined;
-  let totalInputTokens = 0;
-  let totalOutputTokens = 0;
-  let totalCost = 0;
-  let toolCallCount = 0;
+
+  // Token tracking stats
+  const stats = {
+    totalInputTokens: 0,
+    totalOutputTokens: 0,
+    totalCost: 0,
+    toolCallCount: 0,
+  };
 
   // Initialize hook executor if hooks provided
   const hookExecutor = hooks
@@ -182,7 +182,6 @@ async function runLoopPlain(options: RunLoopPlainOptions): Promise<LoopResult> {
     const stdoutReader = stdout.getReader();
     const stderrReader = stderr.getReader();
 
-    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: stream processing requires nested conditionals
     const handleText = (text: string) => {
       const chunks = parser.processChunk(text);
       for (const chunk of chunks) {
@@ -190,22 +189,7 @@ async function runLoopPlain(options: RunLoopPlainOptions): Promise<LoopResult> {
           process.stdout.write(`${chunk.displayText}\n`);
         }
         // Track tool calls and token usage
-        if (chunk.richMessage) {
-          if (isMessage(chunk.richMessage)) {
-            const toolCalls = chunk.richMessage.content.filter(isToolUseBlock);
-            toolCallCount += toolCalls.length;
-          }
-          if (isResultMessage(chunk.richMessage)) {
-            const result = chunk.richMessage as ResultMessage;
-            if (result.usage) {
-              totalInputTokens += result.usage.input_tokens;
-              totalOutputTokens += result.usage.output_tokens;
-            }
-            if (result.total_cost_usd !== undefined) {
-              totalCost += result.total_cost_usd;
-            }
-          }
-        }
+        trackTokensFromChunk(chunk, stats);
       }
     };
 
@@ -226,22 +210,7 @@ async function runLoopPlain(options: RunLoopPlainOptions): Promise<LoopResult> {
         process.stdout.write(`${chunk.displayText}\n`);
       }
       // Track tool calls and token usage from final chunks
-      if (chunk.richMessage) {
-        if (isMessage(chunk.richMessage)) {
-          const toolCalls = chunk.richMessage.content.filter(isToolUseBlock);
-          toolCallCount += toolCalls.length;
-        }
-        if (isResultMessage(chunk.richMessage)) {
-          const result = chunk.richMessage as ResultMessage;
-          if (result.usage) {
-            totalInputTokens += result.usage.input_tokens;
-            totalOutputTokens += result.usage.output_tokens;
-          }
-          if (result.total_cost_usd !== undefined) {
-            totalCost += result.total_cost_usd;
-          }
-        }
-      }
+      trackTokensFromChunk(chunk, stats);
     }
 
     lastExitCode = await proc.exited;
@@ -287,25 +256,11 @@ async function runLoopPlain(options: RunLoopPlainOptions): Promise<LoopResult> {
     exitReason,
     lastExitCode,
     lastSessionId,
-    totalInputTokens,
-    totalOutputTokens,
-    totalCost,
-    toolCallCount,
+    totalInputTokens: stats.totalInputTokens,
+    totalOutputTokens: stats.totalOutputTokens,
+    totalCost: stats.totalCost,
+    toolCallCount: stats.toolCallCount,
   };
-}
-
-function formatTokens(count: number): string {
-  if (count >= 1000) {
-    return `${(count / 1000).toFixed(1)}k`;
-  }
-  return count.toString();
-}
-
-function formatCost(cost: number): string {
-  if (cost < 0.01) {
-    return `$${cost.toFixed(4)}`;
-  }
-  return `$${cost.toFixed(2)}`;
 }
 
 function getOutcomeIcon(exitReason: LoopResult["exitReason"]): string {

@@ -1,8 +1,8 @@
-import { describe, expect, it, beforeEach, afterEach } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { JsonLogger } from "./json-logger";
 import type { StreamJsonMessage } from "#parsers/types";
+import { JsonLogger } from "./json-logger";
 
 describe("JsonLogger", () => {
   const testDir = join(import.meta.dir, ".test-json-logger");

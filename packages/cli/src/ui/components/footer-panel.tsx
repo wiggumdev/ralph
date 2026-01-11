@@ -1,0 +1,136 @@
+import type { Accessor } from "solid-js";
+import { For, Show } from "solid-js";
+import type { LoopResult } from "#ui/ralph-app";
+import { formatCost, formatTokens } from "#utils/format";
+import type { TodoItem } from "./session-panel";
+
+interface FooterPanelProps {
+  icon: string;
+  status: "running" | "complete" | "error" | "idle";
+  statusIcon: string | undefined;
+  statusColor: string;
+  iteration: Accessor<number>;
+  maxIterations: number;
+  progressBar: string;
+  exitReason: Accessor<LoopResult["exitReason"]>;
+  lastSessionId: Accessor<string | undefined>;
+  showUsage: boolean;
+  totalInputTokens: Accessor<number>;
+  totalOutputTokens: Accessor<number>;
+  totalCost: Accessor<number>;
+  todos: Accessor<TodoItem[]>;
+}
+
+function getTodoIcon(todoStatus: string): string {
+  switch (todoStatus) {
+    case "completed":
+      return "☑";
+    case "in_progress":
+      return "◐";
+    default:
+      return "☐";
+  }
+}
+
+function getTodoColor(todoStatus: string): string {
+  switch (todoStatus) {
+    case "completed":
+      return "#00ff00";
+    case "in_progress":
+      return "#ffff00";
+    default:
+      return "#888888";
+  }
+}
+
+export function FooterPanel(props: FooterPanelProps) {
+  const hasUsageData = () =>
+    props.showUsage &&
+    (props.totalInputTokens() > 0 ||
+      props.totalOutputTokens() > 0 ||
+      props.totalCost() > 0);
+
+  return (
+    <box flexDirection="column" style={{ paddingTop: 1 }}>
+      {/* Header + progress bar combined */}
+      <text>
+        <span style={{ fg: "#00aaff" }}>{props.icon}</span>{" "}
+        <strong>Ralph Agentic Loop</strong>{" "}
+        <span style={{ fg: props.statusColor }}>{props.statusIcon}</span>{" "}
+        Iteration {props.iteration()}/{props.maxIterations}{" "}
+        <span style={{ fg: "#666666" }}>{props.progressBar}</span>
+        <span style={{ fg: "#666666" }}> | [e] expand [q] quit</span>
+      </text>
+
+      {/* Session + tokens line */}
+      <Show when={props.lastSessionId() || hasUsageData()}>
+        <text>
+          <Show when={props.lastSessionId()}>
+            <span style={{ fg: "#888888" }}>Session: </span>
+            <span style={{ fg: "#606060" }}>{props.lastSessionId()}</span>
+          </Show>
+          <Show when={props.lastSessionId() && hasUsageData()}>
+            <span style={{ fg: "#444444" }}> | </span>
+          </Show>
+          <Show when={hasUsageData()}>
+            <span style={{ fg: "#888888" }}>Tokens: </span>
+            <span style={{ fg: "#00aaff" }}>
+              {formatTokens(props.totalInputTokens())} in /{" "}
+              {formatTokens(props.totalOutputTokens())} out
+            </span>
+            <Show when={props.totalCost() > 0}>
+              <span style={{ fg: "#ffaa00" }}>
+                {" "}
+                | {formatCost(props.totalCost())}
+              </span>
+            </Show>
+          </Show>
+        </text>
+      </Show>
+
+      {/* Status messages */}
+      <Show
+        when={props.status === "complete" && props.exitReason() === "complete"}
+      >
+        <text>
+          <span style={{ fg: "#00ff00" }}>✓ Task marked complete by agent</span>
+        </text>
+      </Show>
+      <Show
+        when={
+          props.status === "complete" && props.exitReason() === "max_iterations"
+        }
+      >
+        <text>
+          <span style={{ fg: "#ffff00" }}>
+            ⚠ Reached max iterations ({props.maxIterations})
+          </span>
+        </text>
+      </Show>
+      <Show when={props.status === "error"}>
+        <text>
+          <span style={{ fg: "#ff0000" }}>
+            ✗ Error in iteration {props.iteration()}
+          </span>
+        </text>
+      </Show>
+
+      {/* Tasks with title */}
+      <Show when={props.todos().length > 0}>
+        <text>
+          <span style={{ fg: "#888888" }}>Todo:</span>
+        </text>
+        <For each={props.todos()}>
+          {(todo) => (
+            <text>
+              <span style={{ fg: getTodoColor(todo.status) }}>
+                {getTodoIcon(todo.status)}
+              </span>
+              <span style={{ fg: "#aaaaaa" }}> {todo.content}</span>
+            </text>
+          )}
+        </For>
+      </Show>
+    </box>
+  );
+}

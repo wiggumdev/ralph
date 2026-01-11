@@ -27,36 +27,42 @@ export function MessageList(props: MessageListProps) {
     >
       <For each={props.messages}>
         {(msg) => (
-          <Switch>
-            <Match when={isSystemMessage(msg)}>
-              <SystemMessage
-                message={msg as import("#parsers/message-types").SystemMessage}
-              />
-            </Match>
-            <Match when={isMessage(msg)}>
-              <MessageItem
-                expanded={props.expanded}
-                message={msg as import("#parsers/message-types").Message}
-              />
-            </Match>
-            <Match when={isResultMessage(msg)}>
-              <ResultMessage
-                message={msg as import("#parsers/message-types").ResultMessage}
-              />
-            </Match>
-            <Match when={isPartialToolInput(msg)}>
-              <PartialToolBlock
-                message={
-                  msg as import("#parsers/message-types").PartialToolInput
-                }
-              />
-            </Match>
-            <Match when={isTextDelta(msg)}>
-              <TextDeltaBlock
-                message={msg as import("#parsers/message-types").TextDelta}
-              />
-            </Match>
-          </Switch>
+          <box style={{ marginBottom: 1 }}>
+            <Switch>
+              <Match when={isSystemMessage(msg)}>
+                <SystemMessage
+                  message={
+                    msg as import("#parsers/message-types").SystemMessage
+                  }
+                />
+              </Match>
+              <Match when={isMessage(msg)}>
+                <MessageItem
+                  expanded={props.expanded}
+                  message={msg as import("#parsers/message-types").Message}
+                />
+              </Match>
+              <Match when={isResultMessage(msg)}>
+                <ResultMessage
+                  message={
+                    msg as import("#parsers/message-types").ResultMessage
+                  }
+                />
+              </Match>
+              <Match when={isPartialToolInput(msg)}>
+                <PartialToolBlock
+                  message={
+                    msg as import("#parsers/message-types").PartialToolInput
+                  }
+                />
+              </Match>
+              <Match when={isTextDelta(msg)}>
+                <TextDeltaBlock
+                  message={msg as import("#parsers/message-types").TextDelta}
+                />
+              </Match>
+            </Switch>
+          </box>
         )}
       </For>
     </scrollbox>

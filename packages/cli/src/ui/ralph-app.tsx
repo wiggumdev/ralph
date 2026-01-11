@@ -27,9 +27,11 @@ import {
   isToolUseBlock,
 } from "#parsers/message-types";
 import { type PrdFeature, validatePrd } from "#schema/prd";
+import { FooterPanel } from "#ui/components/footer-panel";
 import { MessageList } from "#ui/components/message-list";
 import { type PassFilter, PrdItemsTab } from "#ui/components/prd-items-tab";
 import type { TodoItem } from "#ui/components/session-panel";
+import { TabBar, type TabView } from "#ui/components/tab-bar";
 import { JsonLogger } from "#utils/json-logger";
 import { readStream } from "#utils/stream";
 import { isTodoItemArray } from "#utils/validation";
@@ -66,8 +68,6 @@ export interface RalphAppProps {
   tasksNotPassing?: number;
   onComplete: (result: LoopResult) => void;
 }
-
-type TabView = "output" | "progress" | "prd";
 
 function loadPrdItems(prdPath: string): PrdFeature[] {
   if (!existsSync(prdPath)) {
@@ -428,46 +428,6 @@ function RalphApp(props: RalphAppProps) {
     }
   };
 
-  const getTodoIcon = (todoStatus: string): string => {
-    switch (todoStatus) {
-      case "completed":
-        return "☑";
-      case "in_progress":
-        return "◐";
-      default:
-        return "☐";
-    }
-  };
-
-  const getTodoColor = (todoStatus: string): string => {
-    switch (todoStatus) {
-      case "completed":
-        return "#00ff00";
-      case "in_progress":
-        return "#ffff00";
-      default:
-        return "#888888";
-    }
-  };
-
-  const formatTokens = (count: number): string => {
-    if (count >= 1000) {
-      return `${(count / 1000).toFixed(1)}k`;
-    }
-    return count.toString();
-  };
-
-  const formatCost = (cost: number): string => {
-    if (cost < 0.01) {
-      return `$${cost.toFixed(4)}`;
-    }
-    return `$${cost.toFixed(2)}`;
-  };
-
-  const hasUsageData = () =>
-    props.showUsage &&
-    (totalInputTokens() > 0 || totalOutputTokens() > 0 || totalCost() > 0);
-
   // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: message processing requires multiple checks
   const processRichMessage = (message: RichMessage) => {
     setMessages((prev) => [...prev.slice(-OUTPUT_BUFFER_SIZE), message]);
@@ -766,77 +726,22 @@ function RalphApp(props: RalphAppProps) {
       </box>
 
       {/* Footer */}
-      <box flexDirection="column" style={{ paddingTop: 1 }}>
-        {/* Header line */}
-        <text>
-          <span style={{ fg: "#00aaff" }}>{RALPH_ICON}</span>{" "}
-          <strong>Ralph Agent Loop</strong>
-          <span style={{ fg: "#666666" }}>
-            {" "}
-            | [e] toggle | [r] {richMode() ? "plain" : "rich"} | [Tab] switch |
-            [q] quit
-          </span>
-        </text>
-
-        {/* Progress bar */}
-        <text>
-          <span style={{ fg: statusColor() }}>{statusIcon()} </span>
-          Iteration {iteration()}/{props.maxIterations}{" "}
-          <span style={{ fg: "#666666" }}>{progressBar()}</span>
-          <Show when={hasUsageData()}>
-            <span style={{ fg: "#444444" }}> | </span>
-            <span style={{ fg: "#00aaff" }}>
-              {formatTokens(totalInputTokens())} in /{" "}
-              {formatTokens(totalOutputTokens())} out
-            </span>
-            <Show when={totalCost() > 0}>
-              <span style={{ fg: "#ffaa00" }}>
-                {" "}
-                | {formatCost(totalCost())}
-              </span>
-            </Show>
-          </Show>
-        </text>
-
-        {/* Status messages */}
-        <Show when={status() === "complete" && exitReason() === "complete"}>
-          <text>
-            <span style={{ fg: "#00ff00" }}>
-              ✓ Task marked complete by agent
-            </span>
-          </text>
-        </Show>
-        <Show
-          when={status() === "complete" && exitReason() === "max_iterations"}
-        >
-          <text>
-            <span style={{ fg: "#ffff00" }}>
-              ⚠ Reached max iterations ({props.maxIterations})
-            </span>
-          </text>
-        </Show>
-        <Show when={status() === "error"}>
-          <text>
-            <span style={{ fg: "#ff0000" }}>
-              ✗ Error in iteration {iteration()}
-            </span>
-          </text>
-        </Show>
-
-        {/* Tasks */}
-        <Show when={todos().length > 0}>
-          <For each={todos()}>
-            {(todo) => (
-              <text>
-                <span style={{ fg: getTodoColor(todo.status) }}>
-                  {getTodoIcon(todo.status)}
-                </span>
-                <span style={{ fg: "#aaaaaa" }}> {todo.content}</span>
-              </text>
-            )}
-          </For>
-        </Show>
-      </box>
+      <FooterPanel
+        exitReason={exitReason}
+        icon={RALPH_ICON}
+        iteration={iteration}
+        lastSessionId={lastSessionId}
+        maxIterations={props.maxIterations}
+        progressBar={progressBar()}
+        showUsage={props.showUsage ?? false}
+        status={status()}
+        statusColor={statusColor()}
+        statusIcon={statusIcon()}
+        todos={todos}
+        totalCost={totalCost}
+        totalInputTokens={totalInputTokens}
+        totalOutputTokens={totalOutputTokens}
+      />
     </box>
   );
 }

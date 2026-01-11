@@ -15,6 +15,9 @@
  */
 
 import { describe, expect, test } from "bun:test";
+import { trackTokensFromChunk } from "./run-helpers";
+import type { ParsedChunk, OutputParser } from "#parsers";
+import type { Message, ResultMessage } from "#parsers/message-types";
 
 describe("run command useTui logic", () => {
   /**
@@ -205,5 +208,205 @@ describe("run command expected yargs options", () => {
 
     expect(expectedOptions.verbose.type).toBe("boolean");
     expect(expectedOptions.verbose.alias).toBe("v");
+  });
+});
+
+/**
+ * Token Tracking Helper Tests
+ *
+ * Tests for the token tracking logic extracted from runLoopPlain.
+ * This logic processes chunks to track:
+ * - Tool call count
+ * - Input/output tokens
+ * - Total cost
+ */
+
+describe("trackTokensFromChunk", () => {
+  test("tracks tool calls from message content", () => {
+    const stats = {
+      toolCallCount: 0,
+      totalInputTokens: 0,
+      totalOutputTokens: 0,
+      totalCost: 0,
+    };
+
+    const chunk: ParsedChunk = {
+      displayText: "test",
+      richMessage: {
+        type: "message",
+        role: "assistant",
+        content: [
+          { type: "tool_use", id: "1", name: "bash", input: {} },
+          { type: "tool_use", id: "2", name: "read", input: {} },
+        ],
+      } as Message,
+    };
+
+    trackTokensFromChunk(chunk, stats);
+    expect(stats.toolCallCount).toBe(2);
+  });
+
+  test("tracks input and output tokens from result messages", () => {
+    const stats = {
+      toolCallCount: 0,
+      totalInputTokens: 0,
+      totalOutputTokens: 0,
+      totalCost: 0,
+    };
+
+    const chunk: ParsedChunk = {
+      displayText: "test",
+      richMessage: {
+        type: "result",
+        subtype: "success",
+        complete: true,
+        timestamp: Date.now(),
+        usage: {
+          input_tokens: 100,
+          output_tokens: 50,
+        },
+      } as ResultMessage,
+    };
+
+    trackTokensFromChunk(chunk, stats);
+    expect(stats.totalInputTokens).toBe(100);
+    expect(stats.totalOutputTokens).toBe(50);
+  });
+
+  test("accumulates total cost from result messages", () => {
+    const stats = {
+      toolCallCount: 0,
+      totalInputTokens: 0,
+      totalOutputTokens: 0,
+      totalCost: 0,
+    };
+
+    const chunk1: ParsedChunk = {
+      displayText: "test",
+      richMessage: {
+        type: "result",
+        subtype: "success",
+        complete: true,
+        timestamp: Date.now(),
+        total_cost_usd: 0.05,
+      } as ResultMessage,
+    };
+
+    const chunk2: ParsedChunk = {
+      displayText: "test",
+      richMessage: {
+        type: "result",
+        subtype: "success",
+        complete: true,
+        timestamp: Date.now(),
+        total_cost_usd: 0.03,
+      } as ResultMessage,
+    };
+
+    trackTokensFromChunk(chunk1, stats);
+    trackTokensFromChunk(chunk2, stats);
+    expect(stats.totalCost).toBe(0.08);
+  });
+
+  test("handles chunks without rich messages", () => {
+    const stats = {
+      toolCallCount: 0,
+      totalInputTokens: 0,
+      totalOutputTokens: 0,
+      totalCost: 0,
+    };
+
+    const chunk: ParsedChunk = {
+      displayText: "test",
+      richMessage: undefined,
+    };
+
+    trackTokensFromChunk(chunk, stats);
+    expect(stats.toolCallCount).toBe(0);
+    expect(stats.totalInputTokens).toBe(0);
+    expect(stats.totalOutputTokens).toBe(0);
+    expect(stats.totalCost).toBe(0);
+  });
+
+  test("handles result messages without usage data", () => {
+    const stats = {
+      toolCallCount: 0,
+      totalInputTokens: 0,
+      totalOutputTokens: 0,
+      totalCost: 0,
+    };
+
+    const chunk: ParsedChunk = {
+      displayText: "test",
+      richMessage: {
+        type: "result",
+        subtype: "success",
+        complete: true,
+        timestamp: Date.now(),
+        // No usage or total_cost_usd
+      } as ResultMessage,
+    };
+
+    trackTokensFromChunk(chunk, stats);
+    expect(stats.totalInputTokens).toBe(0);
+    expect(stats.totalOutputTokens).toBe(0);
+    expect(stats.totalCost).toBe(0);
+  });
+
+  test("accumulates multiple messages with mixed data", () => {
+    const stats = {
+      toolCallCount: 0,
+      totalInputTokens: 0,
+      totalOutputTokens: 0,
+      totalCost: 0,
+    };
+
+    // Message with tool calls
+    const chunk1: ParsedChunk = {
+      displayText: "test",
+      richMessage: {
+        type: "message",
+        role: "assistant",
+        content: [
+          { type: "text", text: "thinking" },
+          { type: "tool_use", id: "1", name: "bash", input: {} },
+        ],
+      } as Message,
+    };
+
+    // Result with usage and cost
+    const chunk2: ParsedChunk = {
+      displayText: "test",
+      richMessage: {
+        type: "result",
+        subtype: "success",
+        complete: true,
+        timestamp: Date.now(),
+        usage: { input_tokens: 200, output_tokens: 150 },
+        total_cost_usd: 0.1,
+      } as ResultMessage,
+    };
+
+    // Another message with more tool calls
+    const chunk3: ParsedChunk = {
+      displayText: "test",
+      richMessage: {
+        type: "message",
+        role: "assistant",
+        content: [
+          { type: "tool_use", id: "2", name: "read", input: {} },
+          { type: "tool_use", id: "3", name: "edit", input: {} },
+        ],
+      } as Message,
+    };
+
+    trackTokensFromChunk(chunk1, stats);
+    trackTokensFromChunk(chunk2, stats);
+    trackTokensFromChunk(chunk3, stats);
+
+    expect(stats.toolCallCount).toBe(3);
+    expect(stats.totalInputTokens).toBe(200);
+    expect(stats.totalOutputTokens).toBe(150);
+    expect(stats.totalCost).toBe(0.1);
   });
 });
