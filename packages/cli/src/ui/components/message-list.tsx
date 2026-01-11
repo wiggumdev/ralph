@@ -25,7 +25,7 @@ export function MessageList(props: MessageListProps) {
     >
       <For each={props.messages}>
         {(msg) => (
-          <box style={{ marginBottom: 1 }}>
+          <box>
             <Switch>
               <Match when={isMessage(msg)}>
                 <MessageItem

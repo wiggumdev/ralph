@@ -1,5 +1,5 @@
 # Ralph configuration
-adapter = "opencode"
+adapter = "claude"
 plansDir = ".plans"
 maxIterations = 10
 verbose = false
