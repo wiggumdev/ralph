@@ -45,6 +45,7 @@
     "@opentui/core": "^0.1.72",
     "@opentui/solid": "^0.1.72",
     "babel-preset-solid": "1.9.10",
+    "diff": "^8.0.2",
     "partial-json": "^0.1.7",
     "smol-toml": "^1.6.0",
     "solid-js": "1.9.10",
@@ -54,6 +55,7 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
+    "@types/diff": "^8.0.0",
     "@types/yargs": "^17.0.35"
   },
   "peerDependencies": {

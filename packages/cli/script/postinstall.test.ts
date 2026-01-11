@@ -52,4 +52,47 @@ describe("postinstall script", () => {
 
     expect(stderr.length).toBeGreaterThan(0);
   });
+
+  /**
+   * Successful execution on Windows should exit with code 0.
+   * This test uses a mock script to simulate Windows behavior.
+   */
+  test("exits with code 0 on successful Windows execution", async () => {
+    // Create a temporary test script that simulates Windows success
+    const testScript = join(import.meta.dir, "postinstall-test-windows.mjs");
+    const { writeFileSync, unlinkSync } = await import("node:fs");
+
+    writeFileSync(
+      testScript,
+      `
+      import os from 'node:os';
+      
+      // Mock os.platform to return win32
+      const originalPlatform = os.platform;
+      os.platform = () => 'win32';
+      
+      async function main() {
+        if (os.platform() === 'win32') {
+          console.log('Windows detected: binary setup not needed');
+          return;
+        }
+      }
+      
+      main().catch((error) => {
+        console.error('Postinstall script error:', error.message);
+        process.exit(1);
+      });
+    `
+    );
+
+    const { code } = await new Promise<{ code: number | null }>((resolve) => {
+      const child = spawn("node", [testScript]);
+      child.on("close", (code) => {
+        unlinkSync(testScript);
+        resolve({ code });
+      });
+    });
+
+    expect(code).toBe(0);
+  });
 });

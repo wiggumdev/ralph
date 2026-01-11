@@ -1,3 +1,4 @@
+import { createTwoFilesPatch } from "diff";
 import { For, Show } from "solid-js";
 import type { ToolUseBlock as ToolUseBlockType } from "#parsers/message-types";
 
@@ -65,14 +66,39 @@ function getTodoColor(status: string): string {
   }
 }
 
+function getDiffLineColor(line: string): string {
+  if (line.startsWith("+") && !line.startsWith("+++")) {
+    return "#00ff00";
+  }
+  if (line.startsWith("-") && !line.startsWith("---")) {
+    return "#ff6666";
+  }
+  if (line.startsWith("@@")) {
+    return "#00aaff";
+  }
+  return "#888888";
+}
+
 export function ToolUseBlock(props: ToolUseBlockProps) {
-  const inputJson = () => JSON.stringify(props.block.input, null, 2);
   const input = () => props.block.input as Record<string, unknown>;
 
   const keyParam = () => getKeyParam(props.block.name, input());
 
   const isTodoWrite = () => props.block.name === "TodoWrite";
   const todos = () => (input().todos as TodoItem[]) || [];
+
+  const isEdit = () => props.block.name === "Edit";
+  const diffLines = () => {
+    if (!isEdit()) {
+      return [];
+    }
+    const oldStr = (input().old_string as string) || "";
+    const newStr = (input().new_string as string) || "";
+    const filePath = (input().file_path as string) || "file";
+    const patch = createTwoFilesPatch(filePath, filePath, oldStr, newStr);
+    // Skip first 4 header lines, get actual diff
+    return patch.split("\n").slice(4);
+  };
 
   return (
     <box flexDirection="column">
@@ -99,17 +125,15 @@ export function ToolUseBlock(props: ToolUseBlockProps) {
         </box>
       </Show>
 
-      <Show when={props.expanded && !isTodoWrite()}>
-        <box
-          border
-          style={{
-            paddingLeft: 1,
-            marginTop: 1,
-            marginLeft: 2,
-            backgroundColor: "#1a1a1a",
-          }}
-        >
-          <text>{inputJson()}</text>
+      <Show when={isEdit() && diffLines().length > 0}>
+        <box flexDirection="column" style={{ marginLeft: 2 }}>
+          <For each={diffLines()}>
+            {(line) => (
+              <text>
+                <span style={{ fg: getDiffLineColor(line) }}>{line}</span>
+              </text>
+            )}
+          </For>
         </box>
       </Show>
     </box>
