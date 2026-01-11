@@ -1,10 +1,9 @@
 import type { OutputFormat } from "#parsers";
-import { isCommandAvailable } from "#utils/stream";
-import type { AdapterOptions, CLIAdapter } from "./types";
+import { BaseAdapter } from "./base-adapter";
+import type { AdapterOptions } from "./types";
 
-export class OpenCodeAdapter implements CLIAdapter {
+export class OpenCodeAdapter extends BaseAdapter {
   readonly name = "opencode";
-  readonly completionMarker = "<promise>COMPLETE</promise>";
   readonly supportedFormats: OutputFormat[] = ["opencode-json", "text"];
 
   buildArgs(prompt: string, options: AdapterOptions): string[] {
@@ -21,13 +20,5 @@ export class OpenCodeAdapter implements CLIAdapter {
 
     args.push(prompt);
     return args;
-  }
-
-  detectCompletion(output: string): boolean {
-    return output.includes(this.completionMarker);
-  }
-
-  async isAvailable(): Promise<boolean> {
-    return isCommandAvailable(this.name);
   }
 }

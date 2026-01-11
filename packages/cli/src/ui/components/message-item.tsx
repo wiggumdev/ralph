@@ -31,7 +31,6 @@ export function MessageItem(props: MessageItemProps) {
                 block={
                   block as import("#parsers/message-types").ToolResultBlock
                 }
-                expanded={props.expanded}
               />
             </Match>
           </Switch>

@@ -1,10 +1,9 @@
 import type { OutputFormat } from "#parsers";
-import { isCommandAvailable } from "#utils/stream";
-import type { AdapterOptions, CLIAdapter } from "./types";
+import { BaseAdapter } from "./base-adapter";
+import type { AdapterOptions } from "./types";
 
-export class GeminiAdapter implements CLIAdapter {
+export class GeminiAdapter extends BaseAdapter {
   readonly name = "gemini";
-  readonly completionMarker = "<promise>COMPLETE</promise>";
   readonly supportedFormats: OutputFormat[] = ["stream-json", "text"];
 
   buildArgs(prompt: string, options: AdapterOptions): string[] {
@@ -20,13 +19,5 @@ export class GeminiAdapter implements CLIAdapter {
 
     args.push("-p", prompt);
     return args;
-  }
-
-  detectCompletion(output: string): boolean {
-    return output.includes(this.completionMarker);
-  }
-
-  async isAvailable(): Promise<boolean> {
-    return isCommandAvailable(this.name);
   }
 }

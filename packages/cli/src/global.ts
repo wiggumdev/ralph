@@ -8,14 +8,16 @@ const app = "ralph";
 /** Ralph icon - clockwise closed circle arrow (U+2941) */
 export const RALPH_ICON = "⥁";
 
-const data = path.join(xdgData!, app);
-const cache = path.join(xdgCache!, app);
-const config = path.join(xdgConfig!, app);
-const state = path.join(xdgState!, app);
+// Provide fallback paths when xdg values are undefined (can happen on some systems)
+const home = os.homedir();
+const data = path.join(xdgData ?? path.join(home, ".local", "share"), app);
+const cache = path.join(xdgCache ?? path.join(home, ".cache"), app);
+const config = path.join(xdgConfig ?? path.join(home, ".config"), app);
+const state = path.join(xdgState ?? path.join(home, ".local", "state"), app);
 
 export namespace Global {
   export const Path = {
-    home: os.homedir(),
+    home,
     data,
     bin: path.join(data, "bin"),
     log: path.join(data, "log"),
