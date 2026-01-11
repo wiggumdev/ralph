@@ -5,8 +5,8 @@ import { xdgCache, xdgConfig, xdgData, xdgState } from "xdg-basedir";
 
 const app = "ralph";
 
-/** Ralph icon - clockwise closed circle arrow (U+2941) */
-export const RALPH_ICON = "⥁";
+/** Ralph icon - clockwise open circle arrow (U+21BB) */
+export const RALPH_ICON = "↻";
 
 // Provide fallback paths when xdg values are undefined (can happen on some systems)
 const home = os.homedir();

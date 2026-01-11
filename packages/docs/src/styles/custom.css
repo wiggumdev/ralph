@@ -162,6 +162,13 @@ header.header {
   transition: color var(--ralph-transition);
 }
 
+.site-title::before {
+  content: "↻";
+  margin-right: 0.5rem;
+  color: var(--sl-color-accent);
+  font-size: 1.25em;
+}
+
 .site-title:hover {
   color: var(--sl-color-accent) !important;
 }

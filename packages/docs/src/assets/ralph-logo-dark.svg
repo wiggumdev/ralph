@@ -1,31 +1,20 @@
 <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Loop circle - dashed -->
-  <circle
-    cx="18"
-    cy="18"
-    r="14"
+  <!-- Clockwise circle arrow (⥁) -->
+  <path
+    d="M18 4
+       A14 14 0 1 1 6.5 25"
     stroke="#FFD93D"
-    stroke-width="2.5"
+    stroke-width="3"
     stroke-linecap="round"
-    stroke-dasharray="4 5.5"
+    fill="none"
   />
-
-  <!-- Chevron arrows -->
+  <!-- Arrowhead -->
   <path
-    d="M23 14L27 18L23 22"
-    stroke="#FAFAFA"
-    stroke-width="2.5"
+    d="M3 21L6.5 25L11 22"
+    stroke="#FFD93D"
+    stroke-width="3"
     stroke-linecap="round"
     stroke-linejoin="round"
+    fill="none"
   />
-  <path
-    d="M13 14L9 18L13 22"
-    stroke="#FAFAFA"
-    stroke-width="2.5"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-  />
-
-  <!-- Center dot -->
-  <circle cx="18" cy="18" r="2.5" fill="#FFD93D"/>
 </svg>

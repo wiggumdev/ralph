@@ -11,11 +11,6 @@ export default defineConfig({
       title: "ralph",
       description:
         "AI-agnostic agentic loop CLI. Reset context, persist learnings, ship code.",
-      logo: {
-        light: "./src/assets/ralph-logo-light.svg",
-        dark: "./src/assets/ralph-logo-dark.svg",
-        replacesTitle: false,
-      },
       social: [
         { icon: "github", label: "GitHub", href: "https://github.com/wiggumdev/ralph" },
       ],
