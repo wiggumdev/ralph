@@ -15,49 +15,39 @@
  */
 
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { initCommand } from "./init";
+
+// Path to init.ts source for content-based tests
+const INIT_SOURCE_PATH = path.join(import.meta.dir, "init.ts");
+const initSource = readFileSync(INIT_SOURCE_PATH, "utf-8");
+
+// Regex patterns for source code validation (defined at top level for performance)
+const CHOICE_3_PATTERN = /choice\s*===\s*["']3["']/;
+const RETURN_GEMINI_PATTERN = /return\s*["']gemini["']/;
 
 describe("init command", () => {
   describe("command metadata", () => {
-    /**
-     * Tests that command name is correct.
-     * Used for help output and command matching.
-     */
     test("has correct command name", () => {
       expect(initCommand.command).toBe("init");
     });
 
-    /**
-     * Tests that description is provided.
-     * Shown in --help output.
-     */
     test("has description", () => {
       expect(initCommand.describe).toBeDefined();
       expect(typeof initCommand.describe).toBe("string");
     });
 
-    /**
-     * Tests that handler is a function.
-     * Handler executes the command logic.
-     */
     test("has handler function", () => {
       expect(typeof initCommand.handler).toBe("function");
     });
 
-    /**
-     * Tests that builder is defined.
-     * Builder configures command options.
-     */
     test("has builder function", () => {
       expect(typeof initCommand.builder).toBe("function");
     });
   });
 
   describe("builder configuration", () => {
-    /**
-     * Tests that builder configures expected options.
-     * We test the builder by calling it with a mock yargs.
-     */
     test("configures --cwd option", () => {
       const options: Record<string, unknown> = {};
       const mockYargs = {
@@ -75,10 +65,6 @@ describe("init command", () => {
       expect((options.cwd as { type: string }).type).toBe("string");
     });
 
-    /**
-     * Tests that --force option is configured.
-     * Force allows overwriting existing files.
-     */
     test("configures --force option", () => {
       const options: Record<string, unknown> = {};
       const mockYargs = {
@@ -95,6 +81,25 @@ describe("init command", () => {
       expect((options.force as { alias: string }).alias).toBe("f");
       expect((options.force as { type: string }).type).toBe("boolean");
       expect((options.force as { default: boolean }).default).toBe(false);
+    });
+  });
+
+  describe("adapter selection", () => {
+    test("selectAdapter includes gemini option", () => {
+      expect(initSource).toContain("gemini");
+      expect(initSource).toContain("3. gemini");
+    });
+
+    test("selectAdapter lists all three adapters", () => {
+      expect(initSource).toContain("claude (Claude Code CLI)");
+      expect(initSource).toContain("opencode (OpenCode CLI)");
+      expect(initSource).toContain("gemini (Gemini CLI)");
+    });
+
+    test("selectAdapter returns gemini for choice 3", () => {
+      // Verify the choice mapping logic exists in source
+      expect(initSource).toMatch(CHOICE_3_PATTERN);
+      expect(initSource).toMatch(RETURN_GEMINI_PATTERN);
     });
   });
 });

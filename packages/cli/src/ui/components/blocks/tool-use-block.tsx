@@ -7,11 +7,6 @@ export interface ToolUseBlockProps {
   expanded: boolean;
 }
 
-interface TodoItem {
-  content: string;
-  status: "pending" | "in_progress" | "completed";
-}
-
 interface DiffLine {
   lineNum: string;
   prefix: string;
@@ -97,28 +92,6 @@ function formatParams(name: string, input: Record<string, unknown>): string {
   }
 }
 
-function getTodoIcon(status: string): string {
-  switch (status) {
-    case "completed":
-      return "☑";
-    case "in_progress":
-      return "◐";
-    default:
-      return "☐";
-  }
-}
-
-function getTodoColor(status: string): string {
-  switch (status) {
-    case "completed":
-      return "#00ff00";
-    case "in_progress":
-      return "#ffff00";
-    default:
-      return "#888888";
-  }
-}
-
 function computeDiffData(
   oldStr: string,
   newStr: string
@@ -177,15 +150,17 @@ function computeDiffData(
 }
 
 export function ToolUseBlock(props: ToolUseBlockProps) {
-  const input = () => props.block.input as Record<string, unknown>;
-
   const toolName = () => props.block.name.toLowerCase();
+
+  // Don't render TodoWrite - handled by session panel sidebar
+  if (toolName() === "todowrite" || toolName() === "todo_write") {
+    return null;
+  }
+
+  const input = () => props.block.input as Record<string, unknown>;
   const params = () => formatParams(props.block.name, input());
   const icon = () => getToolIcon(props.block.name);
   const iconColor = () => getToolColor(props.block.name);
-  const isTodoWrite = () =>
-    toolName() === "todowrite" || toolName() === "todo_write";
-  const todos = () => (input().todos as TodoItem[]) || [];
 
   const isEdit = () => toolName() === "edit";
   const diffData = () => {
@@ -221,21 +196,6 @@ export function ToolUseBlock(props: ToolUseBlockProps) {
           <span style={{ fg: "#606060" }}> {params()}</span>
         </Show>
       </text>
-
-      <Show when={isTodoWrite()}>
-        <box flexDirection="column" style={{ marginLeft: 2 }}>
-          <For each={todos()}>
-            {(todo) => (
-              <text>
-                <span style={{ fg: getTodoColor(todo.status) }}>
-                  {getTodoIcon(todo.status)}{" "}
-                </span>
-                <span style={{ fg: "#aaaaaa" }}>{todo.content}</span>
-              </text>
-            )}
-          </For>
-        </box>
-      </Show>
 
       <Show when={isEdit() && diffData().lines.length > 0}>
         <text>
