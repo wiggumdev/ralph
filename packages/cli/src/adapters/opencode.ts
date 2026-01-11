@@ -5,14 +5,21 @@ import type { AdapterOptions, CLIAdapter } from "./types";
 export class OpenCodeAdapter implements CLIAdapter {
   readonly name = "opencode";
   readonly completionMarker = "<promise>COMPLETE</promise>";
-  readonly supportedFormats: OutputFormat[] = ["text"];
+  readonly supportedFormats: OutputFormat[] = ["opencode-json", "text"];
 
   buildArgs(prompt: string, options: AdapterOptions): string[] {
-    const args = ["opencode", "--non-interactive"];
-    if (options.verbose) {
-      args.push("--verbose");
+    const args = ["opencode", "run"];
+
+    // Add format flag for JSON output
+    if (options.outputFormat === "opencode-json") {
+      args.push("--format", "json");
     }
-    args.push("-m", prompt);
+
+    if (options.verbose) {
+      args.push("--print-logs");
+    }
+
+    args.push(prompt);
     return args;
   }
 

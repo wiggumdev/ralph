@@ -246,4 +246,71 @@ maxIterations = 15
     expect(config.verbose).toBe(false);
     expect(config.tui).toBe(true);
   });
+
+  /**
+   * Tests that nested objects (like hooks) are merged recursively.
+   * This is critical - shallow merge would replace entire hooks object,
+   * losing user-defined hooks when project config adds more hooks.
+   *
+   * Example scenario:
+   * - User config: {hooks: {ralph_start: "cmd1"}}
+   * - Project config: {hooks: {ralph_loop_end: "cmd2"}}
+   * - Expected result: {hooks: {ralph_start: "cmd1", ralph_loop_end: "cmd2"}}
+   * - Bug (shallow merge): {hooks: {ralph_loop_end: "cmd2"}} (ralph_start lost!)
+   */
+  test("deeply merges nested objects like hooks", async () => {
+    const ralphDir = join(tempDir, ".ralph");
+    mkdirSync(ralphDir, { recursive: true });
+    writeFileSync(
+      join(ralphDir, "config.toml"),
+      `
+[hooks]
+ralph_start = "echo 'start hook'"
+ralph_loop_end = "echo 'loop end hook'"
+`
+    );
+
+    const { loadConfig } = await import("./loader");
+    const config = await loadConfig({
+      cwd: tempDir,
+      overrides: {
+        hooks: {
+          ralph_loop_start: "echo 'loop start hook'",
+        },
+      },
+    });
+
+    // All hooks should be present (deep merge)
+    expect(config.hooks.ralph_start).toBe("echo 'start hook'");
+    expect(config.hooks.ralph_loop_end).toBe("echo 'loop end hook'");
+    expect(config.hooks.ralph_loop_start).toBe("echo 'loop start hook'");
+  });
+
+  /**
+   * Tests that later config values override earlier ones at the same path.
+   * While objects merge, primitive values should be replaced.
+   */
+  test("later values override earlier ones in nested merge", async () => {
+    const ralphDir = join(tempDir, ".ralph");
+    mkdirSync(ralphDir, { recursive: true });
+    writeFileSync(
+      join(ralphDir, "config.toml"),
+      `
+[hooks]
+ralph_start = "original command"
+`
+    );
+
+    const { loadConfig } = await import("./loader");
+    const config = await loadConfig({
+      cwd: tempDir,
+      overrides: {
+        hooks: {
+          ralph_start: "override command",
+        },
+      },
+    });
+
+    expect(config.hooks.ralph_start).toBe("override command");
+  });
 });

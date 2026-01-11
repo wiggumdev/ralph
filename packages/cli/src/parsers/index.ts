@@ -1,3 +1,4 @@
+import { OpenCodeJsonParser } from "./opencode-json-parser";
 import { StreamJsonParser } from "./stream-json-parser";
 import { TextParser } from "./text-parser";
 import type { OutputFormat, OutputParser } from "./types";
@@ -16,6 +17,8 @@ export function createParser(
   switch (format) {
     case "stream-json":
       return new StreamJsonParser();
+    case "opencode-json":
+      return new OpenCodeJsonParser(completionMarker);
     case "text":
       return new TextParser(completionMarker);
     default:

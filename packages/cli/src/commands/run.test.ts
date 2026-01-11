@@ -170,12 +170,13 @@ describe("run command expected yargs options", () => {
       "output-format": {
         alias: "f",
         type: "string",
-        choices: ["stream-json", "text"],
+        choices: ["stream-json", "opencode-json", "text"],
         default: "stream-json",
       },
     };
 
     expect(expectedOptions["output-format"].choices).toContain("stream-json");
+    expect(expectedOptions["output-format"].choices).toContain("opencode-json");
     expect(expectedOptions["output-format"].choices).toContain("text");
     expect(expectedOptions["output-format"].default).toBe("stream-json");
   });

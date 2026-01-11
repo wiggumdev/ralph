@@ -19,6 +19,15 @@ function loadTomlFile(filePath: string): Partial<Config> {
   }
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    Object.getPrototypeOf(value) === Object.prototype
+  );
+}
+
 function deepMerge<T extends Record<string, unknown>>(
   ...objects: Partial<T>[]
 ): T {
@@ -26,7 +35,16 @@ function deepMerge<T extends Record<string, unknown>>(
   for (const obj of objects) {
     for (const [key, value] of Object.entries(obj)) {
       if (value !== undefined) {
-        result[key] = value;
+        // If both current and new values are plain objects, merge recursively
+        if (isPlainObject(result[key]) && isPlainObject(value)) {
+          result[key] = deepMerge(
+            result[key] as Record<string, unknown>,
+            value as Record<string, unknown>
+          );
+        } else {
+          // Otherwise, replace with new value
+          result[key] = value;
+        }
       }
     }
   }

@@ -405,9 +405,9 @@ export const runCommand: CommandModule<object, RunArgs> = {
       .option("output-format", {
         alias: "f",
         type: "string",
-        choices: ["stream-json", "text"],
-        describe: "Output format from CLI adapter",
-        default: "stream-json",
+        choices: ["stream-json", "opencode-json", "text"],
+        describe:
+          "Output format from CLI adapter (defaults to adapter preference)",
       })
       .option("log-file", {
         alias: "l",
@@ -418,9 +418,11 @@ export const runCommand: CommandModule<object, RunArgs> = {
   handler: async (argv) => {
     const cwd = argv.cwd ?? process.cwd();
     const config = await loadConfig({ cwd });
-    const outputFormat = (argv.outputFormat as OutputFormat) || "stream-json";
 
     const adapter = getAdapter(config.adapter);
+    // Use specified format, or fall back to adapter's preferred format
+    const outputFormat =
+      (argv.outputFormat as OutputFormat) || adapter.supportedFormats[0];
     await validateAdapter(adapter, config.adapter, outputFormat);
 
     // Resolve prompt
