@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { parse as parseToml } from "smol-toml";
 import { Global } from "#global";
+import { validateTomlOutput } from "#utils/validation";
 import { type Config, ConfigSchema, DEFAULT_CONFIG } from "./schema";
 
 function loadTomlFile(filePath: string): Partial<Config> {
@@ -10,7 +11,9 @@ function loadTomlFile(filePath: string): Partial<Config> {
   }
   try {
     const content = readFileSync(filePath, "utf-8");
-    return parseToml(content) as Partial<Config>;
+    const parsed = parseToml(content);
+    const validated = validateTomlOutput(parsed);
+    return validated as Partial<Config>;
   } catch (error) {
     console.warn(`Warning: Failed to parse ${filePath}`);
     console.warn(error instanceof Error ? error.message : String(error));

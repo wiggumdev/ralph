@@ -36,54 +36,46 @@ function getTodoColor(status: string): string {
 
 export function SessionPanel(props: SessionPanelProps) {
   return (
-    <box
-      border
-      flexDirection="column"
-      style={{ width: 35, paddingLeft: 1, paddingRight: 1 }}
-    >
-      <text>
-        <span style={{ bold: true }}>Session</span>
-      </text>
-
+    <box flexDirection="row" style={{ paddingTop: 1 }}>
       <text>
         <span style={{ fg: "#888888" }}>Iteration: </span>
         <span>
           {props.iteration}/{props.maxIterations}
         </span>
       </text>
-
       <Show when={props.sessionId}>
         <text>
+          <span style={{ fg: "#444444" }}> | </span>
           <span style={{ fg: "#888888" }}>ID: </span>
           <span style={{ fg: "#606060" }}>
-            {props.sessionId?.slice(0, 20)}...
+            {props.sessionId?.slice(0, 12)}...
           </span>
         </text>
       </Show>
-
-      <text style={{ fg: "#444444" }}>───────────────────────────</text>
-
-      <text>
-        <span style={{ bold: true }}>Tasks</span>
-      </text>
-
-      <scrollbox style={{ flexGrow: 1 }}>
-        <Show
-          fallback={<text style={{ fg: "#666666" }}>No tasks</text>}
-          when={props.todos.length > 0}
-        >
+      <Show when={props.todos.length > 0}>
+        <text>
+          <span style={{ fg: "#444444" }}> | </span>
+          <span style={{ fg: "#888888" }}>Tasks: </span>
           <For each={props.todos}>
-            {(todo) => (
-              <text>
+            {(todo, index) => (
+              <>
                 <span style={{ fg: getTodoColor(todo.status) }}>
-                  {getTodoIcon(todo.status)}{" "}
+                  {getTodoIcon(todo.status)}
                 </span>
-                <span style={{ fg: "#aaaaaa" }}>{todo.content}</span>
-              </text>
+                <span style={{ fg: "#aaaaaa" }}>
+                  {" "}
+                  {todo.content.length > 20
+                    ? `${todo.content.slice(0, 20)}...`
+                    : todo.content}
+                </span>
+                <Show when={index() < props.todos.length - 1}>
+                  <span style={{ fg: "#444444" }}> | </span>
+                </Show>
+              </>
             )}
           </For>
-        </Show>
-      </scrollbox>
+        </text>
+      </Show>
     </box>
   );
 }

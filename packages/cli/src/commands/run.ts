@@ -13,10 +13,10 @@ import {
   isResultMessage,
   isToolUseBlock,
 } from "#parsers/message-types";
-import type { Prd } from "#schema/prd";
 import type { LoopResult } from "#ui/ralph-app";
 import { runLoopTUI } from "#ui/ralph-app";
 import { readStream } from "#utils/stream";
+import { isOutputFormat, parsePrd } from "#utils/validation";
 
 function countTasksNotPassing(prdPath: string): number {
   if (!existsSync(prdPath)) {
@@ -24,7 +24,7 @@ function countTasksNotPassing(prdPath: string): number {
   }
   try {
     const content = readFileSync(prdPath, "utf-8");
-    const prd = JSON.parse(content) as Prd;
+    const prd = parsePrd(content);
     return prd.filter((feature) => !feature.passes).length;
   } catch {
     return 0;
@@ -421,8 +421,22 @@ export const runCommand: CommandModule<object, RunArgs> = {
 
     const adapter = getAdapter(config.adapter);
     // Use specified format, or fall back to adapter's preferred format
-    const outputFormat =
-      (argv.outputFormat as OutputFormat) || adapter.supportedFormats[0];
+    let outputFormat: OutputFormat;
+    if (argv.outputFormat && isOutputFormat(argv.outputFormat)) {
+      outputFormat = argv.outputFormat;
+    } else if (argv.outputFormat) {
+      throw new Error(
+        `Invalid output format: ${argv.outputFormat}. Valid formats: stream-json, opencode-json, text`
+      );
+    } else {
+      const defaultFormat = adapter.supportedFormats[0];
+      if (!defaultFormat) {
+        throw new Error(
+          `Adapter ${config.adapter} has no supported formats configured`
+        );
+      }
+      outputFormat = defaultFormat;
+    }
     await validateAdapter(adapter, config.adapter, outputFormat);
 
     // Resolve prompt

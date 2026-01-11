@@ -1,4 +1,5 @@
 import { ARR, OBJ, parse, STR } from "partial-json";
+import { isOptionalString, isOptionalStringArray } from "#utils/validation";
 import type {
   ContentBlock,
   Message,
@@ -235,13 +236,17 @@ export class StreamJsonParser implements OutputParser {
   }
 
   private parseSystemMessage(msg: StreamJsonMessage): SystemMessage {
+    const model = isOptionalString(msg.model) ? msg.model : undefined;
+    const tools = isOptionalStringArray(msg.tools) ? msg.tools : undefined;
+    const cwd = isOptionalString(msg.cwd) ? msg.cwd : undefined;
+
     return {
       type: "system",
       subtype: msg.subtype,
       session_id: msg.session_id,
-      model: msg.model as string | undefined,
-      tools: msg.tools as string[] | undefined,
-      cwd: msg.cwd as string | undefined,
+      model,
+      tools,
+      cwd,
       timestamp: Date.now(),
     };
   }
