@@ -23,10 +23,14 @@ export async function readStream(
 
 /**
  * Check if a command is available on the system
+ * Uses 'where' on Windows, 'which' on Unix-like systems
  */
 export async function isCommandAvailable(command: string): Promise<boolean> {
   try {
-    const proc = Bun.spawn(["which", command], {
+    const isWindows = process.platform === "win32";
+    const checkCommand = isWindows ? "where" : "which";
+
+    const proc = Bun.spawn([checkCommand, command], {
       stdout: "pipe",
       stderr: "pipe",
     });

@@ -20,7 +20,12 @@ export interface MessageListProps {
 
 export function MessageList(props: MessageListProps) {
   return (
-    <scrollbox border style={{ marginTop: 1, height: 20, flexGrow: 1 }}>
+    <scrollbox
+      border
+      stickyScroll
+      stickyStart="bottom"
+      style={{ marginTop: 1, flexGrow: 1 }}
+    >
       <For each={props.messages}>
         {(msg) => (
           <Switch>

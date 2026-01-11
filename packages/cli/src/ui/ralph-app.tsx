@@ -723,7 +723,9 @@ function RalphApp(props: RalphAppProps) {
             fallback={
               <scrollbox
                 border
-                style={{ marginTop: 1, height: 20, flexGrow: 1 }}
+                stickyScroll
+                stickyStart="bottom"
+                style={{ marginTop: 1, flexGrow: 1 }}
               >
                 <For each={legacyOutput().slice(-OUTPUT_BUFFER_SIZE)}>
                   {(line) => <text>{line}</text>}
@@ -749,7 +751,12 @@ function RalphApp(props: RalphAppProps) {
 
       {/* Progress tab view */}
       <Show when={currentTab() === "progress"}>
-        <scrollbox border style={{ marginTop: 1, height: 20, flexGrow: 1 }}>
+        <scrollbox
+          border
+          stickyScroll
+          stickyStart="bottom"
+          style={{ marginTop: 1, flexGrow: 1 }}
+        >
           <For each={progressContent()}>{(line) => <text>{line}</text>}</For>
         </scrollbox>
       </Show>

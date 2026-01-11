@@ -99,7 +99,7 @@ export function PrdItemsTab(props: PrdItemsTabProps) {
         </text>
       </box>
 
-      <scrollbox border style={{ height: 18, flexGrow: 1 }}>
+      <scrollbox border style={{ flexGrow: 1 }}>
         <Show
           fallback={
             <text>
