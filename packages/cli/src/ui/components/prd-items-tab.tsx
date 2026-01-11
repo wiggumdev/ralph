@@ -1,4 +1,4 @@
-import { createMemo, createSignal, For, Show } from "solid-js";
+import { createMemo, For, Show } from "solid-js";
 import type { PrdFeature } from "#schema/prd";
 
 export type PassFilter = "all" | "passing" | "failing";
@@ -48,8 +48,6 @@ function PrdItem(props: { expanded: boolean; item: PrdFeature }) {
 }
 
 export function PrdItemsTab(props: PrdItemsTabProps) {
-  const [expandedIndex, _setExpandedIndex] = createSignal<number | null>(null);
-
   const filteredItems = createMemo(() => {
     let items = props.items;
 
@@ -109,9 +107,7 @@ export function PrdItemsTab(props: PrdItemsTabProps) {
           when={filteredItems().length > 0}
         >
           <For each={filteredItems()}>
-            {(item, index) => (
-              <PrdItem expanded={expandedIndex() === index()} item={item} />
-            )}
+            {(item) => <PrdItem expanded={false} item={item} />}
           </For>
         </Show>
       </scrollbox>
