@@ -37,9 +37,9 @@ State lives **in the codebase**, not in conversation. The AI reconstructs contex
 │   File-Based State (persists always):                         │
 │   ┌─────────────────────────────────────────────────────┐    │
 │   │ ✓ src/auth.test.js         → Pattern visible in code │    │
-│   │ ✓ PROGRESS.md              → Explicit status log     │    │
+│   │ ✓ .plans/progress.txt      → Explicit status log     │    │
 │   │ ✓ git log                  → History of changes      │    │
-│   │ ✓ .ralph/decisions.md     → Captured decisions       │    │
+│   │ ✓ .plans/prd.json         → Feature requirements     │    │
 │   └─────────────────────────────────────────────────────┘    │
 │                                                               │
 └──────────────────────────────────────────────────────────────┘
@@ -119,43 +119,38 @@ When committing, include:
 
 ## Progress Files
 
-Explicit progress tracking gives the AI (and you) clear status.
+ralph creates `.plans/progress.txt` to track learning across iterations.
 
-### PROGRESS.md Pattern
+### progress.txt Pattern
 
-```markdown
-# Progress Tracker
-
-## Status: In Progress
+```
+# Progress Log
 
 ## Completed
-- [x] UserAuth module tests (5 tests)
-- [x] SessionManager tests (3 tests)
+- UserAuth module tests (5 tests)
+- SessionManager tests (3 tests)
 
 ## In Progress
-- [ ] TokenService tests
+- TokenService tests
 
 ## Remaining
-- [ ] OAuth integration tests
-- [ ] SAML provider tests
+- OAuth integration tests
+- SAML provider tests
 
-## Notes
+## Learnings
 - Using Jest with async/await pattern
 - Each module follows AAA pattern (Arrange, Act, Assert)
 - Mock external services, don't call real APIs
-
-## Last Updated
-Iteration 4 - 2024-01-15 14:32
 ```
 
 ### Instruct the AI
 
 In your prompt:
 ```markdown
-Track your progress in PROGRESS.md:
-1. Mark completed items with [x]
-2. Add notes about patterns and decisions
-3. Update "Last Updated" each iteration
+Track your progress in progress.txt:
+1. Note completed items
+2. Add learnings about patterns and decisions
+3. Update after each significant milestone
 ```
 
 ## Code as State
@@ -213,55 +208,56 @@ The AI now knows:
 - payment has a failing test to fix
 - 14 tests exist (progress metric)
 
-## The .ralph Directory
+## Project Structure
 
-ralph can create a `.ralph/` directory for its own state:
+ralph creates this structure in your project:
 
 ```
-.ralph/
-├── decisions.md      # Key decisions made
-├── blockers.md       # Issues encountered
-├── iteration-log.md  # Per-iteration notes
-└── config.local.json # Runtime state
+project/
+├── .ralph/
+│   └── config.toml      # Configuration
+└── .plans/
+    ├── prd.json         # Feature requirements (PRD)
+    ├── PROMPT.md        # System prompt for the AI
+    └── progress.txt     # Learning log
 ```
 
-### decisions.md
+### prd.json
+
+The Product Requirements Document defines features for the AI to work on:
+
+```json
+{
+  "features": [
+    {
+      "id": "auth-tests",
+      "name": "Auth Module Tests",
+      "status": "in_progress"
+    },
+    {
+      "id": "user-tests",
+      "name": "User Module Tests",
+      "status": "pending"
+    }
+  ]
+}
+```
+
+### PROMPT.md
+
+The system prompt that runs every iteration:
 
 ```markdown
-# Decisions Log
+# Task: Add Test Coverage
 
-## Testing Framework
-Decided: Jest
-Reason: Already configured in project, team familiarity
+Add tests for all modules in src/.
 
-## Mocking Strategy
-Decided: Mock all external API calls
-Reason: Tests should be fast and deterministic
+## Progress
+Check progress.txt for completed work.
 
-## Coverage Target
-Decided: 80% minimum
-Reason: User requirement
-```
-
-### iteration-log.md
-
-```markdown
-# Iteration Log
-
-## Iteration 1
-- Scanned codebase, found 12 modules needing tests
-- Created test structure for auth module
-- Completed: 3 test files
-
-## Iteration 2
-- Continued with user module
-- Found edge case with null handling
-- Completed: 2 test files
-
-## Iteration 3
-- Working on payment module
-- Blocked: unclear API contract for refunds
-- Added TODO in code, continuing with other tests
+## Completion
+When coverage is 80%+, output:
+<promise>COMPLETE</promise>
 ```
 
 ## State Recovery
@@ -277,7 +273,7 @@ git reset --hard HEAD~1
 
 # Continue from a known good state
 git checkout known-good-commit
-ralph run --continue
+ralph run
 ```
 
 ## Best Practices
@@ -287,19 +283,20 @@ ralph run --continue
 ```markdown
 ## State Management
 
-1. Update PROGRESS.md after completing each module
+1. Update progress.txt after completing each module
 2. Commit after each significant piece of work
 3. Use descriptive commit messages
 4. Check git status before starting work
 ```
 
-### 2. Create State Files Before Running
+### 2. Let ralph Initialize State Files
 
 ```bash
-# Initialize progress tracking
-echo "# Progress\n\n## Status: Not Started" > PROGRESS.md
-git add PROGRESS.md
-git commit -m "Initialize progress tracking for ralph"
+# ralph init creates the .plans/ directory with:
+# - prd.json (features)
+# - PROMPT.md (your task)
+# - progress.txt (learning log)
+ralph init
 ```
 
 ### 3. Use Test Output as Truth

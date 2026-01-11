@@ -76,7 +76,6 @@ export default defineConfig({
             { label: "Configuration", slug: "usage/configuration" },
             { label: "With Claude Code", slug: "usage/claude-code" },
             { label: "With OpenCode", slug: "usage/opencode" },
-            { label: "With Other Tools", slug: "usage/other-tools" },
           ],
         },
         {

@@ -20,20 +20,20 @@ Refactoring is where ralph shines. The repetitive, systematic nature of large re
 
 Rename `UserService` to `AccountService` everywhere.
 
-### Configuration
+### Setup
 
-```json
-{
-  "tool": "claude",
-  "exitConditions": {
-    "command": "grep -r 'UserService' src/ --include='*.ts' | wc -l",
-    "successPattern": "^0$",
-    "maxIterations": 20
-  }
-}
+```bash
+ralph init
 ```
 
-### Prompt (TASK.md)
+Edit `.ralph/config.toml`:
+
+```toml
+adapter = "claude"
+maxIterations = 20
+```
+
+### Prompt (.plans/PROMPT.md)
 
 ```markdown
 # Refactor: Rename UserService to AccountService
@@ -59,13 +59,11 @@ Rename all occurrences of `UserService` to `AccountService` across the codebase.
 - `grep -r "UserService" src/` returns nothing
 
 ## Progress
-Check git log for completed files.
-```
+Track completed files in progress.txt
 
-### Running
-
-```bash
-ralph run --prompt TASK.md
+## Completion
+When `grep -r "UserService" src/` returns no results, output:
+<promise>COMPLETE</promise>
 ```
 
 <Aside type="tip" title="Commit Granularity">
@@ -75,21 +73,6 @@ Instructing the AI to commit after each file makes progress visible and rollback
 ## Example: API Migration
 
 Migrate from deprecated API v1 to v2.
-
-### Configuration
-
-```json
-{
-  "tool": "claude",
-  "exitConditions": {
-    "all": [
-      { "command": "grep -r 'api/v1' src/", "successPattern": "^$" },
-      { "command": "npm test", "successExitCode": 0 }
-    ],
-    "maxIterations": 50
-  }
-}
-```
 
 ### Prompt
 
@@ -125,29 +108,14 @@ v2 `products` response:
 4. Test with `npm test`
 5. Commit
 
-## Done When
-- No references to `/api/v1/` remain
-- All tests pass
+## Completion
+When no references to `/api/v1/` remain and all tests pass, output:
+<promise>COMPLETE</promise>
 ```
 
 ## Example: Framework Upgrade
 
 Upgrade from React 17 to React 18.
-
-### Configuration
-
-```json
-{
-  "tool": "claude",
-  "exitConditions": {
-    "all": [
-      { "command": "npm run build", "successExitCode": 0 },
-      { "command": "npm test", "successExitCode": 0 }
-    ],
-    "maxIterations": 30
-  }
-}
-```
 
 ### Prompt
 
@@ -172,13 +140,7 @@ const root = createRoot(document.getElementById('root'));
 root.render(<App />);
 ```
 
-### 2. Automatic Batching
-No changes needed—React 18 handles this automatically.
-
-### 3. Strict Mode Changes
-Double-rendering in Strict Mode is now expected. Remove any workarounds.
-
-### 4. TypeScript Types
+### 2. TypeScript Types
 Update any `React.FC` that relies on implicit `children` prop.
 
 ## Process
@@ -190,30 +152,15 @@ Update any `React.FC` that relies on implicit `children` prop.
 ## Verification
 - `npm run build` succeeds
 - `npm test` passes
-- No React 17 deprecation warnings
+
+## Completion
+When build succeeds and all tests pass, output:
+<promise>COMPLETE</promise>
 ```
 
 ## Example: Dependency Replacement
 
 Replace Moment.js with date-fns.
-
-### Configuration
-
-```json
-{
-  "tool": "claude",
-  "exitConditions": {
-    "all": [
-      {
-        "command": "grep -r \"from 'moment'\" src/ | wc -l",
-        "successPattern": "^0$"
-      },
-      { "command": "npm test", "successExitCode": 0 }
-    ],
-    "maxIterations": 40
-  }
-}
-```
 
 ### Prompt
 
@@ -221,11 +168,6 @@ Replace Moment.js with date-fns.
 # Replace Moment.js with date-fns
 
 Migrate all date handling from Moment.js to date-fns.
-
-## Why
-- Moment.js is deprecated
-- date-fns is tree-shakeable (smaller bundles)
-- date-fns is more modern
 
 ## Common Conversions
 
@@ -255,10 +197,9 @@ When all files are migrated, run:
 npm uninstall moment
 ```
 
-## Done When
-- No imports from 'moment'
-- All tests pass
-- moment not in package.json
+## Completion
+When no imports from 'moment' remain and all tests pass, output:
+<promise>COMPLETE</promise>
 ```
 
 ## Tips for Refactoring Tasks
@@ -307,9 +248,8 @@ Document known edge cases:
 
 ```markdown
 ## Progress Tracking
-After completing each directory:
-1. Add to PROGRESS.md
-2. Commit with message: "refactor(dirname): migrate to new API"
+After completing each directory, update progress.txt
+Commit with message: "refactor(dirname): migrate to new API"
 ```
 
 ## Common Pitfalls

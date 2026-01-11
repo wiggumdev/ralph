@@ -7,11 +7,11 @@ import { Aside } from '@astrojs/starlight/components';
 
 # Configuration
 
-ralph can be configured through a config file, CLI options, or environment variables. This guide covers all configuration options in detail.
+ralph uses a TOML configuration file located at `.ralph/config.toml`.
 
 ## Configuration File
 
-Create `ralph.config.json` in your project root:
+Run `ralph init` to create the configuration:
 
 ```bash
 ralph init
@@ -19,344 +19,146 @@ ralph init
 
 ### Full Configuration Example
 
-```json
-{
-  "$schema": "https://ralph.dev/schema/config.json",
+```toml
+# AI adapter: claude, opencode, or gemini
+adapter = "claude"
 
-  "tool": "claude",
+# Directory for plans, prompts, and progress
+plansDir = ".plans"
 
-  "toolOptions": {
-    "model": "claude-sonnet-4-20250514",
-    "dangerouslyAllowAllCommands": false
-  },
+# Maximum iterations before stopping
+maxIterations = 10
 
-  "prompt": {
-    "file": "TASK.md",
-    "prepend": null,
-    "append": null,
-    "variables": {
-      "PROJECT_NAME": "my-app",
-      "COVERAGE_TARGET": "80"
-    }
-  },
+# Enable verbose output
+verbose = false
 
-  "exitConditions": {
-    "command": "npm test",
-    "successExitCode": 0,
-    "successPattern": null,
-    "markerFile": null,
-    "maxIterations": 50,
-    "maxDuration": "4h",
-    "maxCost": 100.00,
-    "perIterationTimeout": "10m"
-  },
+# Enable Terminal UI
+tui = true
 
-  "state": {
-    "progressFile": "PROGRESS.md",
-    "createRalphDir": true,
-    "autoCommit": true,
-    "commitTemplate": "ralph: {{iteration}} - {{summary}}"
-  },
+# Show token usage info
+showUsage = false
 
-  "hooks": {
-    "preRun": null,
-    "postRun": null,
-    "beforeIteration": null,
-    "afterIteration": null,
-    "onError": null,
-    "onComplete": null
-  },
-
-  "logging": {
-    "level": "info",
-    "file": ".ralph/logs/ralph.log",
-    "iterations": true
-  }
-}
+# Lifecycle hooks (shell commands)
+[hooks]
+ralph_start = ""
+ralph_loop_start = ""
+ralph_loop_end = ""
+ralph_complete = ""
+ralph_max_iterations = ""
 ```
 
-## Configuration Sections
+## Configuration Options
 
-### Tool Configuration
+### Adapter
 
-```json
-{
-  "tool": "claude",
-  "toolOptions": {
-    "model": "claude-sonnet-4-20250514",
-    "maxTokens": 8192,
-    "temperature": 0,
-    "dangerouslyAllowAllCommands": false
-  }
-}
+```toml
+adapter = "claude"
 ```
 
-**Supported Tools:**
+The AI CLI tool to use. Options:
 
-| Tool | Value | Notes |
-|------|-------|-------|
-| Claude Code | `claude` | Anthropic's official CLI |
-| OpenCode | `opencode` | Open-source alternative |
-| Aider | `aider` | Git-focused assistant |
-| Custom | `custom` | See custom tool config |
+| Adapter | Status | Description |
+|---------|--------|-------------|
+| `claude` | Complete | Anthropic's Claude Code CLI |
+| `opencode` | Complete | Open-source AI coding assistant |
+| `gemini` | Under Development | Google's Gemini CLI |
 
-**Custom Tool Example:**
+### Plans Directory
 
-```json
-{
-  "tool": "custom",
-  "toolOptions": {
-    "command": "my-ai-tool",
-    "args": ["--prompt", "{{prompt}}"],
-    "env": {
-      "MY_API_KEY": "$MY_API_KEY"
-    }
-  }
-}
+```toml
+plansDir = ".plans"
 ```
 
-### Prompt Configuration
+Directory containing your PRD, prompt template, and progress file. Created by `ralph init`.
 
-```json
-{
-  "prompt": {
-    "file": "TASK.md",
-    "prepend": "You are a senior engineer working on {{PROJECT_NAME}}.",
-    "append": "Always run tests before committing.",
-    "variables": {
-      "PROJECT_NAME": "my-app",
-      "AUTHOR": "Team Alpha"
-    }
-  }
-}
+### Max Iterations
+
+```toml
+maxIterations = 10
 ```
 
-**Options:**
+Safety limit on loop iterations. ralph stops when this limit is reached, even if the task isn't complete.
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `file` | string | Path to prompt file |
-| `inline` | string | Inline prompt (alternative to file) |
-| `prepend` | string | Text to add before prompt |
-| `append` | string | Text to add after prompt |
-| `variables` | object | Variables for `{{variable}}` substitution |
-
-<Aside type="tip" title="Variable Substitution">
-Use `{{VARIABLE_NAME}}` in your prompt file. Values come from `variables` config or environment variables.
+<Aside type="caution" title="Always Set a Limit">
+Always keep a reasonable `maxIterations` value to prevent runaway API costs.
 </Aside>
 
-### Exit Conditions
+### Verbose Mode
 
-```json
-{
-  "exitConditions": {
-    "all": [
-      {
-        "command": "npm test",
-        "successExitCode": 0
-      },
-      {
-        "command": "npm run lint",
-        "successExitCode": 0
-      }
-    ],
-    "limits": {
-      "maxIterations": 50,
-      "maxDuration": "4h",
-      "maxCost": 100.00,
-      "perIterationTimeout": "10m"
-    }
-  }
-}
+```toml
+verbose = false
 ```
 
-**Command Conditions:**
+Enable detailed output for debugging.
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `command` | string | Shell command to run |
-| `successExitCode` | number | Expected exit code for success |
-| `successPattern` | string | Regex pattern to match in output |
-| `failPattern` | string | Regex pattern that indicates failure |
+### Terminal UI
 
-**File Conditions:**
-
-| Option | Type | Description |
-|--------|------|-------------|
-| `markerFile` | string | File whose existence signals completion |
-| `file` | string | File to check contents |
-| `contains` | string | String or regex the file must contain |
-
-**Limits:**
-
-| Option | Type | Description |
-|--------|------|-------------|
-| `maxIterations` | number | Maximum loop iterations |
-| `maxDuration` | string | Maximum total time (e.g., "4h", "30m") |
-| `maxCost` | number | Maximum API cost in dollars |
-| `perIterationTimeout` | string | Timeout for each iteration |
-
-### State Management
-
-```json
-{
-  "state": {
-    "progressFile": "PROGRESS.md",
-    "createRalphDir": true,
-    "autoCommit": true,
-    "commitTemplate": "ralph({{iteration}}): {{summary}}",
-    "branchStrategy": "none"
-  }
-}
+```toml
+tui = true
 ```
 
-**Options:**
+Enable the interactive terminal UI. Set to `false` for plain text output (useful in CI).
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `progressFile` | string | null | File to track progress |
-| `createRalphDir` | boolean | true | Create .ralph/ directory |
-| `autoCommit` | boolean | false | Auto-commit after each iteration |
-| `commitTemplate` | string | See default | Commit message template |
-| `branchStrategy` | string | `none` | Branch handling strategy |
+### Show Usage
 
-**Branch Strategies:**
-
-- `none` - Work on current branch
-- `create` - Create new branch for ralph run
-- `isolate` - Each iteration on separate branch, merge at end
-
-### Hooks
-
-```json
-{
-  "hooks": {
-    "preRun": "npm install",
-    "postRun": "npm run cleanup",
-    "beforeIteration": "npm run lint:fix",
-    "afterIteration": "npm run format",
-    "onError": "npm run notify:error",
-    "onComplete": "npm run notify:success"
-  }
-}
+```toml
+showUsage = false
 ```
 
-**Available Hooks:**
+Display token usage and cost information after each iteration.
+
+## Hooks
+
+Hooks allow you to run shell commands at key points in the loop lifecycle.
+
+```toml
+[hooks]
+ralph_start = "npm run lint:fix"
+ralph_loop_start = ""
+ralph_loop_end = "npm run format"
+ralph_complete = "npm run notify"
+ralph_max_iterations = ""
+```
+
+### Available Hooks
 
 | Hook | Timing |
 |------|--------|
-| `preRun` | Before the loop starts |
-| `postRun` | After the loop ends (success or failure) |
-| `beforeIteration` | Before each iteration starts |
-| `afterIteration` | After each iteration ends |
-| `onError` | When an error occurs |
-| `onComplete` | When exit conditions are met |
-
-Hooks receive environment variables:
-
-```bash
-RALPH_ITERATION=5
-RALPH_ELAPSED=1234
-RALPH_STATUS=running
-```
-
-### Logging
-
-```json
-{
-  "logging": {
-    "level": "info",
-    "file": ".ralph/logs/ralph.log",
-    "iterations": true,
-    "timestamps": true,
-    "toolOutput": "stream"
-  }
-}
-```
-
-**Options:**
-
-| Option | Values | Description |
-|--------|--------|-------------|
-| `level` | `debug`, `info`, `warn`, `error` | Log verbosity |
-| `file` | path | Log file location |
-| `iterations` | boolean | Log each iteration separately |
-| `timestamps` | boolean | Include timestamps |
-| `toolOutput` | `stream`, `buffer`, `none` | How to handle AI tool output |
+| `ralph_start` | Before the first iteration |
+| `ralph_loop_start` | Before each iteration |
+| `ralph_loop_end` | After each iteration |
+| `ralph_complete` | When task completes successfully |
+| `ralph_max_iterations` | When max iterations limit is reached |
 
 ## Configuration Precedence
 
 Configuration is merged in this order (later overrides earlier):
 
 1. Default values
-2. `ralph.config.json`
-3. Environment variables
+2. User-level config (`~/.ralph/config.toml`)
+3. Project-level config (`.ralph/config.toml`)
 4. CLI options
 
 **Example:**
 
 ```bash
-# Config says maxIterations: 50
-# This overrides to 10
-ralph run --max-iterations 10
+# Config says maxIterations = 10
+# This overrides to 5
+ralph run --max-iterations 5
 ```
 
-## Environment-Specific Config
+## Project Structure
 
-Use different configs for different environments:
+After running `ralph init`, your project will have:
 
-```bash
-# Development
-ralph run --config ralph.dev.json
-
-# CI/CD
-ralph run --config ralph.ci.json
+```
+project/
+├── .ralph/
+│   └── config.toml          # Configuration
+└── .plans/
+    ├── prd.json             # Product requirements (features to build)
+    ├── PROMPT.md            # System prompt for the AI
+    └── progress.txt         # Learning log across iterations
 ```
 
-Or use environment variable:
-
-```bash
-export RALPH_CONFIG=ralph.ci.json
-ralph run
-```
-
-## Validation
-
-ralph validates config on startup. Check manually:
-
-```bash
-ralph config validate
-```
-
-Or view effective config:
-
-```bash
-ralph config show
-```
-
-## Extending Configuration
-
-### Including Other Configs
-
-```json
-{
-  "extends": "./ralph.base.json",
-  "exitConditions": {
-    "maxIterations": 100
-  }
-}
-```
-
-### Conditional Configuration
-
-Use environment variables for conditional values:
-
-```json
-{
-  "exitConditions": {
-    "maxIterations": "$CI_MAX_ITERATIONS"
-  }
-}
-```
-
-This uses an environment variable for the iteration limit.
+The AI reads and modifies files in `.plans/` during execution, persisting state between context resets.

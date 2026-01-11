@@ -14,7 +14,7 @@ ralph is distributed as an npm package and works on macOS, Linux, and Windows (v
 Before installing ralph, ensure you have:
 
 - **Node.js 18+** — ralph uses modern JavaScript features
-- **An AI CLI tool** — Claude Code, OpenCode, Aider, or similar
+- **An AI CLI tool** — Claude Code or OpenCode
 - **Git** — For state persistence between iterations
 
 <Aside type="note">
@@ -54,7 +54,7 @@ ralph --version
 
 ## Install an AI Tool
 
-ralph needs an AI CLI tool to orchestrate. Here are the popular options:
+ralph needs an AI CLI tool to orchestrate. Here are the supported options:
 
 ### Claude Code (Recommended)
 
@@ -72,19 +72,15 @@ export ANTHROPIC_API_KEY="your-key-here"
 
 ### OpenCode
 
-Open-source AI coding assistant:
+Open-source AI coding assistant with multi-provider support:
 
 ```bash
 go install github.com/opencode-ai/opencode@latest
 ```
 
-### Aider
+### Gemini CLI (Under Development)
 
-Git-aware coding assistant:
-
-```bash
-pip install aider-chat
-```
+Support for Gemini CLI is under development.
 
 ## Configuration
 
@@ -99,29 +95,20 @@ pip install aider-chat
    ralph init
    ```
 
-   This creates a `ralph.config.json` file.
+   This creates `.ralph/config.toml` and the `.plans/` directory.
 
-2. **Configure your AI tool**
+2. **Configure your adapter**
 
-   Edit `ralph.config.json`:
+   Edit `.ralph/config.toml`:
 
-   ```json
-   {
-     "tool": "claude",
-     "exitConditions": {
-       "markers": ["DONE", "COMPLETE"],
-       "testsPass": true,
-       "maxIterations": 50
-     },
-     "prompt": {
-       "file": "TASK.md"
-     }
-   }
+   ```toml
+   adapter = "claude"
+   maxIterations = 10
    ```
 
-3. **Create your task file**
+3. **Create your task prompt**
 
-   Create `TASK.md` with your prompt:
+   Edit `.plans/PROMPT.md` with your task:
 
    ```markdown
    # Task
@@ -134,56 +121,14 @@ pip install aider-chat
    - Use the existing Jest setup
 
    ## Progress
-   Check `PROGRESS.md` for completed work.
+   Check progress.txt for completed work.
 
-   ## Exit Condition
-   When all functions are tested, create a file called `DONE`.
+   ## Completion
+   When all functions are tested, output:
+   <promise>COMPLETE</promise>
    ```
-
-4. **Verify setup**
-
-   ```bash
-   ralph doctor
-   ```
-
-   This checks your configuration and AI tool availability.
 
 </Steps>
-
-## Environment Variables
-
-ralph respects several environment variables:
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `RALPH_TOOL` | Default AI tool to use | `claude` |
-| `RALPH_MAX_ITERATIONS` | Maximum loop iterations | `100` |
-| `RALPH_VERBOSE` | Enable verbose logging | `false` |
-| `RALPH_CONFIG` | Custom config file path | `ralph.config.json` |
-
-## Shell Completion
-
-Enable tab completion for your shell:
-
-<Tabs>
-  <TabItem label="bash">
-    ```bash
-    ralph completion bash >> ~/.bashrc
-    source ~/.bashrc
-    ```
-  </TabItem>
-  <TabItem label="zsh">
-    ```bash
-    ralph completion zsh >> ~/.zshrc
-    source ~/.zshrc
-    ```
-  </TabItem>
-  <TabItem label="fish">
-    ```bash
-    ralph completion fish > ~/.config/fish/completions/ralph.fish
-    ```
-  </TabItem>
-</Tabs>
 
 ## Troubleshooting
 
@@ -200,7 +145,7 @@ export PATH="$PATH:$(npm config get prefix)/bin"
 Make sure your AI tool is installed and accessible:
 
 ```bash
-which claude  # or: which opencode, which aider
+which claude  # or: which opencode
 ```
 
 ### Permission errors

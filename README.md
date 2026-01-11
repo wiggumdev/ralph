@@ -1,6 +1,6 @@
-# ⥁ ralph
+# ralph
 
-<h1 align="center">⥁</h1>
+<h1 align="center">ralph</h1>
 
 <p align="center">
   <strong>AI-agnostic agentic loop CLI</strong>
@@ -22,7 +22,7 @@
 **ralph** runs AI coding agents in iterative loops. Instead of one-shot prompts that hit context limits and get confused, ralph resets the context window between iterations while preserving learnings through your codebase.
 
 ```bash
-ralph run "Add tests for all untested modules"
+ralph run
 ```
 
 The AI works, exits, ralph checks if done, resets context, and loops—until your task is complete.
@@ -47,8 +47,17 @@ You'll also need an AI CLI tool:
 # Claude Code (recommended)
 npm install -g @anthropic-ai/claude-code
 
-# Or OpenCode, Aider, etc.
+# Or OpenCode
+go install github.com/opencode-ai/opencode@latest
 ```
+
+### Supported Adapters
+
+| Adapter | Status |
+|---------|--------|
+| Claude Code | Complete |
+| OpenCode | Complete |
+| Gemini CLI | Under Development |
 
 ## Quick Start
 
@@ -57,19 +66,19 @@ npm install -g @anthropic-ai/claude-code
 cd your-project
 ralph init
 
-# Run a task
-ralph run "Fix all TypeScript errors in this project"
+# Edit your prompt
+nano .plans/PROMPT.md
 
-# Or with a prompt file
-ralph run --prompt TASK.md
+# Run the loop
+ralph run
 ```
 
 ## Features
 
-- **⥁ Context Reset** — Fresh context window each iteration
-- **⥁ State Persistence** — Progress via git, files, and tests
-- **⥁ Smart Exit** — Configurable completion conditions
-- **⥁ Tool Agnostic** — Claude Code, OpenCode, Aider, or any CLI
+- **Context Reset** — Fresh context window each iteration
+- **State Persistence** — Progress via git, files, and tests
+- **Completion Detection** — AI signals when done with `<promise>COMPLETE</promise>`
+- **Lifecycle Hooks** — Run commands at key points in the loop
 
 ## How It Works
 
@@ -91,8 +100,76 @@ Each iteration:
 1. AI starts with fresh context
 2. Reads codebase to understand state
 3. Does work (writes code, runs tests)
-4. ralph checks exit conditions
+4. ralph checks for completion marker
 5. If not done, reset and loop
+
+## Configuration
+
+ralph uses TOML config at `.ralph/config.toml`:
+
+```toml
+adapter = "claude"
+maxIterations = 20
+plansDir = ".plans"
+verbose = false
+tui = true
+
+[hooks]
+ralph_start = ""
+ralph_loop_end = "npm run lint:fix"
+ralph_complete = ""
+```
+
+## Project Structure
+
+After `ralph init`:
+
+```
+project/
+├── .ralph/
+│   └── config.toml      # Configuration
+└── .plans/
+    ├── prd.json         # Feature requirements
+    ├── PROMPT.md        # Your task prompt
+    └── progress.txt     # Learning log
+```
+
+## Commands
+
+```bash
+ralph init              # Initialize ralph in a project
+ralph run               # Start the agentic loop
+ralph check             # Validate prd.json schema
+```
+
+### Run Options
+
+```bash
+ralph run --max-iterations 10   # Limit iterations
+ralph run --once                # Single iteration (no loop)
+ralph run --prompt TASK.md      # Use specific prompt file
+ralph run --no-tui              # Plain text output (for CI)
+ralph run --verbose             # Debug output
+```
+
+## Prompt Pattern
+
+Your prompt in `.plans/PROMPT.md` should include:
+
+```markdown
+# Task
+[What to do]
+
+# Guidelines
+[How to do it]
+
+# Progress
+Check progress.txt for completed work.
+
+# Completion
+When [condition is met], output:
+<promise>COMPLETE</promise>
+```
 
 ## Documentation
 
@@ -100,51 +177,9 @@ Full documentation at **[ralph.dev](https://wiggum.dev)** (coming soon)
 
 Or run locally:
 ```bash
-cd docs
+cd packages/docs
 bun install
 bun dev
-```
-
-### Docs Contents
-
-- **Getting Started** — Installation, quick start
-- **Core Concepts** — The loop, context windows, exit conditions
-- **Usage** — CLI reference, configuration, tool guides
-- **Examples** — Refactors, testing, documentation, migrations
-
-## Configuration
-
-Create `ralph.config.json`:
-
-```json
-{
-  "tool": "claude",
-  "exitConditions": {
-    "command": "npm test",
-    "successExitCode": 0,
-    "maxIterations": 50
-  }
-}
-```
-
-## Examples
-
-### Add Test Coverage
-
-```bash
-ralph run "Add tests until coverage reaches 80%"
-```
-
-### Large Refactor
-
-```bash
-ralph run "Rename UserService to AccountService everywhere"
-```
-
-### Fix All Errors
-
-```bash
-ralph run "Fix all ESLint errors"
 ```
 
 ## Development

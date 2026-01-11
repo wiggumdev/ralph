@@ -7,7 +7,7 @@ import { Aside, Steps } from '@astrojs/starlight/components';
 
 # Using ralph with Claude Code
 
-Claude Code is Anthropic's official CLI for Claude. It's the most popular tool for ralph loops, and ralph has first-class support for it.
+Claude Code is Anthropic's official CLI for Claude. It's ralph's primary adapter with first-class support.
 
 ## Setup
 
@@ -29,50 +29,19 @@ Claude Code is Anthropic's official CLI for Claude. It's the most popular tool f
 
    ```bash
    claude --version
-   ralph doctor
    ```
 
 </Steps>
 
 ## Configuration
 
-Basic configuration for Claude Code:
+Set Claude as your adapter in `.ralph/config.toml`:
 
-```json
-{
-  "tool": "claude",
-  "toolOptions": {
-    "model": "claude-sonnet-4-20250514",
-    "dangerouslyAllowAllCommands": false
-  }
-}
+```toml
+adapter = "claude"
 ```
 
-### Model Selection
-
-| Model | Best For | Cost |
-|-------|----------|------|
-| `claude-sonnet-4-20250514` | Balance of speed and capability | $$ |
-| `claude-opus-4-20250514` | Complex reasoning tasks | $$$$ |
-
-<Aside type="tip" title="Model Recommendation">
-Start with Sonnet. It's fast, capable, and cost-effective for most tasks. Switch to Opus only for tasks requiring deep reasoning.
-</Aside>
-
-### Full Options
-
-```json
-{
-  "tool": "claude",
-  "toolOptions": {
-    "model": "claude-sonnet-4-20250514",
-    "dangerouslyAllowAllCommands": false,
-    "allowedCommands": ["npm", "git", "node"],
-    "maxTurns": 50,
-    "timeout": 600000
-  }
-}
-```
+That's all the ralph-specific config needed. Claude Code handles model selection and other options through its own configuration.
 
 ## Prompt Patterns
 
@@ -84,7 +53,7 @@ Start with Sonnet. It's fast, capable, and cost-effective for most tasks. Switch
 Add comprehensive unit tests for all modules in `src/services/`.
 
 ## Context
-- This is a TypeScript project using Jest
+- TypeScript project using Jest
 - Follow existing test patterns in `src/__tests__/`
 - Each service should have its own test file
 
@@ -94,12 +63,13 @@ Add comprehensive unit tests for all modules in `src/services/`.
 - Mock external API calls
 
 ## Progress Tracking
-1. Check PROGRESS.md for completed work
-2. Update PROGRESS.md after each service is tested
+1. Check progress.txt for completed work
+2. Update progress.txt after each service is tested
 3. Run `npm test` to verify
 
-## Exit Condition
-When `npm test -- --coverage` shows >80% coverage and all tests pass.
+## Completion
+When all tests pass with >80% coverage, output:
+<promise>COMPLETE</promise>
 ```
 
 ### Pattern 2: Refactoring with Verification
@@ -122,8 +92,9 @@ grep -r "oldApi" src/
 ## Verification
 Run `npm run typecheck` after each file change.
 
-## Exit Condition
-`grep -r "oldApi" src/` returns no results.
+## Completion
+When `grep -r "oldApi" src/` returns no results, output:
+<promise>COMPLETE</promise>
 ```
 
 ### Pattern 3: Bug Hunting
@@ -148,76 +119,10 @@ Run `npm test` to see failing tests.
 3. Commit after each fix
 4. Repeat until all pass
 
-## Exit Condition
-`npm test` exits with code 0.
+## Completion
+When `npm test` exits with code 0, output:
+<promise>COMPLETE</promise>
 ```
-
-## Claude Code Hooks
-
-Claude Code supports hooks that can integrate with ralph:
-
-### Stop Hook (The Original Ralph)
-
-The classic ralph pattern uses Claude Code's stop hook:
-
-```json
-// .claude/hooks.json
-{
-  "stop": {
-    "command": "check-if-done.sh",
-    "blocking": true
-  }
-}
-```
-
-When Claude tries to exit, the hook runs. If it returns non-zero, Claude continues with the same prompt.
-
-<Aside type="note" title="ralph vs Hooks">
-ralph provides a higher-level interface than raw hooks, with better logging, state management, and configuration. Use ralph unless you need very custom behavior.
-</Aside>
-
-### Integrating Hooks with ralph
-
-ralph can work alongside Claude Code hooks:
-
-```json
-{
-  "tool": "claude",
-  "toolOptions": {
-    "preserveHooks": true
-  }
-}
-```
-
-## Cost Management
-
-Claude API usage can add up. ralph provides several cost controls:
-
-### Set Spending Limits
-
-```json
-{
-  "exitConditions": {
-    "maxCost": 50.00
-  }
-}
-```
-
-### Monitor Usage
-
-```bash
-ralph run --verbose
-```
-
-Shows token usage and cost per iteration.
-
-### Cost Estimation
-
-```bash
-ralph run --dry-run
-```
-
-Estimates cost based on prompt size and iteration limits.
 
 ## Performance Tips
 
@@ -227,7 +132,7 @@ Large prompts consume tokens every iteration. Keep them concise:
 
 ```markdown
 # Good: Focused prompt
-Add tests for untested functions. Check PROGRESS.md for status.
+Add tests for untested functions. Check progress.txt for status.
 
 # Bad: Overly detailed prompt
 [500 lines of instructions repeated every iteration]
@@ -245,48 +150,11 @@ See CODE_STANDARDS.md for coding guidelines.
 [entire coding standards document embedded in prompt]
 ```
 
-### 3. Efficient Exit Conditions
+### 3. Model Selection
 
-Fast exit conditions reduce overhead:
-
-```json
-{
-  "exitConditions": {
-    // Fast: file existence check
-    "markerFile": "DONE",
-
-    // Slower but more reliable: run tests
-    "command": "npm test"
-  }
-}
-```
-
-### 4. Model Selection by Task
-
-| Task Type | Recommended Model |
-|-----------|-------------------|
-| Mechanical refactoring | Sonnet |
-| Test writing | Sonnet |
-| Complex bug fixing | Opus |
-| Architecture decisions | Opus |
-| Documentation | Sonnet |
+Claude Code defaults to Sonnet, which works well for most tasks. For complex reasoning, you can configure Claude Code to use Opus, but this is handled through Claude Code's own settings, not ralph.
 
 ## Troubleshooting
-
-### "Rate limited"
-
-You've hit API rate limits. Options:
-
-```json
-{
-  "toolOptions": {
-    "retryOnRateLimit": true,
-    "rateLimitBackoff": "exponential"
-  }
-}
-```
-
-Or reduce parallelism in your prompts.
 
 ### "Context too long"
 
@@ -310,61 +178,8 @@ The model exits before completing. Try:
 
 1. Clearer exit conditions in prompt
 2. More explicit "keep going" instructions
-3. Check Claude Code logs for errors
+3. Include the `<promise>COMPLETE</promise>` marker instruction
 
-## Example: Full Test Coverage Run
-
-A complete example of using ralph with Claude Code:
-
-**ralph.config.json:**
-```json
-{
-  "tool": "claude",
-  "toolOptions": {
-    "model": "claude-sonnet-4-20250514"
-  },
-  "prompt": {
-    "file": "TASK.md"
-  },
-  "exitConditions": {
-    "command": "npm test -- --coverage",
-    "successPattern": "All files.*\\|\\s*(8\\d|9\\d|100)",
-    "maxIterations": 30,
-    "maxCost": 25.00
-  },
-  "state": {
-    "progressFile": "PROGRESS.md",
-    "autoCommit": true
-  }
-}
-```
-
-**TASK.md:**
-```markdown
-# Add Test Coverage
-
-Goal: Achieve 80%+ test coverage for src/services/.
-
-## Current Status
-Run `npm test -- --coverage` to see current coverage.
-Check PROGRESS.md for completed services.
-
-## Guidelines
-- One test file per service
-- Test success paths, error paths, edge cases
-- Mock external dependencies
-- Follow patterns in existing tests
-
-## After Each Service
-1. Run tests to verify
-2. Update PROGRESS.md
-3. Commit with message: "test(services): add tests for [name]"
-
-## Done When
-Coverage is 80%+ for all files in src/services/.
-```
-
-**Run:**
-```bash
-ralph run
-```
+<Aside type="tip" title="Completion Marker">
+ralph detects completion when the AI outputs `<promise>COMPLETE</promise>`. Always include this in your prompt's completion instructions.
+</Aside>

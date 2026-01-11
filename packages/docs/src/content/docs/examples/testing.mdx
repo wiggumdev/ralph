@@ -20,21 +20,20 @@ Adding comprehensive tests is tedious. It's also perfect for ralph—systematic,
 
 Add tests until coverage reaches 80%.
 
-### Configuration
+### Setup
 
-```json
-{
-  "tool": "claude",
-  "exitConditions": {
-    "command": "npm test -- --coverage --coverageReporters=text-summary 2>&1 | grep 'All files'",
-    "successPattern": "(8\\d|9\\d|100)%",
-    "maxIterations": 50,
-    "maxCost": 30.00
-  }
-}
+```bash
+ralph init
 ```
 
-### Prompt
+Edit `.ralph/config.toml`:
+
+```toml
+adapter = "claude"
+maxIterations = 50
+```
+
+### Prompt (.plans/PROMPT.md)
 
 ```markdown
 # Add Test Coverage
@@ -86,28 +85,16 @@ describe('ModuleName', () => {
 3. Commit: "test(module): add tests for [name]"
 
 ## Progress Tracking
-Coverage report shows progress. Commit after each tested module.
+Update progress.txt after each tested module.
 
-## Done When
-`npm test -- --coverage` shows 80%+ coverage.
+## Completion
+When `npm test -- --coverage` shows 80%+ coverage, output:
+<promise>COMPLETE</promise>
 ```
 
 ## Example: API Endpoint Tests
 
 Add integration tests for all API endpoints.
-
-### Configuration
-
-```json
-{
-  "tool": "claude",
-  "exitConditions": {
-    "command": "find src/routes -name '*.ts' ! -name '*.test.ts' | wc -l",
-    "successPattern": "^0$|matches test count",
-    "maxIterations": 30
-  }
-}
-```
 
 ### Prompt
 
@@ -159,15 +146,6 @@ describe('GET /api/users', () => {
 
     expect(response.status).toBe(401);
   });
-
-  it('handles pagination', async () => {
-    const response = await request(app)
-      .get('/api/users?page=2&limit=10')
-      .set('Authorization', 'Bearer test-token');
-
-    expect(response.status).toBe(200);
-    expect(response.body.meta.page).toBe(2);
-  });
 });
 ```
 
@@ -177,34 +155,18 @@ describe('GET /api/users', () => {
 - Authorization/permissions (403)
 - Not found (404)
 - Validation errors (400)
-- Server errors (mocked 500)
 
-## Process
-1. Pick an untested route file
-2. Create corresponding .test.ts
-3. Run tests: `npm test src/routes/[name].test.ts`
-4. Commit when passing
+## Progress
+Track completed routes in progress.txt
 
-## Done When
-Every route file has a corresponding test file.
+## Completion
+When every route file has a corresponding test file, output:
+<promise>COMPLETE</promise>
 ```
 
 ## Example: Snapshot Testing
 
 Add snapshot tests for React components.
-
-### Configuration
-
-```json
-{
-  "tool": "claude",
-  "exitConditions": {
-    "command": "npm test -- --coverage --collectCoverageFrom='src/components/**/*.tsx'",
-    "successPattern": "All files.*[89]\\d|100",
-    "maxIterations": 40
-  }
-}
-```
 
 ### Prompt
 
@@ -231,11 +193,6 @@ describe('Button', () => {
     expect(container).toMatchSnapshot();
   });
 
-  it('matches snapshot when disabled', () => {
-    const { container } = render(<Button disabled>Click me</Button>);
-    expect(container).toMatchSnapshot();
-  });
-
   // Behavioral tests
   it('calls onClick when clicked', () => {
     const onClick = jest.fn();
@@ -257,12 +214,6 @@ describe('Button', () => {
 });
 ```
 
-## Test Coverage Goals
-- Snapshot for default render
-- Snapshot for each significant prop variation
-- Behavioral test for all interactions
-- Behavioral test for edge cases
-
 ## Process
 1. Find untested component
 2. Create [Component].test.tsx
@@ -271,92 +222,9 @@ describe('Button', () => {
 5. Run: `npm test -- --updateSnapshot` (first time only)
 6. Commit
 
-## Done When
-All components have test files with passing tests.
-```
-
-## Example: Unit Tests with Mocking
-
-Add unit tests with proper mocking.
-
-### Prompt
-
-```markdown
-# Add Unit Tests with Mocking
-
-Add unit tests for service modules, properly mocking dependencies.
-
-## Mocking Pattern
-
-```typescript
-// services/userService.test.ts
-import { UserService } from './userService';
-import { Database } from '../db';
-import { EmailService } from './emailService';
-
-// Mock dependencies
-jest.mock('../db');
-jest.mock('./emailService');
-
-const mockDb = Database as jest.Mocked<typeof Database>;
-const mockEmail = EmailService as jest.Mocked<typeof EmailService>;
-
-describe('UserService', () => {
-  let service: UserService;
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-    service = new UserService();
-  });
-
-  describe('createUser', () => {
-    it('creates user and sends welcome email', async () => {
-      // Arrange
-      mockDb.users.create.mockResolvedValue({ id: '123', email: 'test@example.com' });
-      mockEmail.sendWelcome.mockResolvedValue(true);
-
-      // Act
-      const result = await service.createUser({ email: 'test@example.com' });
-
-      // Assert
-      expect(mockDb.users.create).toHaveBeenCalledWith({ email: 'test@example.com' });
-      expect(mockEmail.sendWelcome).toHaveBeenCalledWith('test@example.com');
-      expect(result.id).toBe('123');
-    });
-
-    it('throws on database error', async () => {
-      mockDb.users.create.mockRejectedValue(new Error('DB Error'));
-
-      await expect(service.createUser({ email: 'test@example.com' }))
-        .rejects.toThrow('DB Error');
-
-      expect(mockEmail.sendWelcome).not.toHaveBeenCalled();
-    });
-  });
-});
-```
-
-## What to Mock
-- Database calls
-- External API calls
-- Email/SMS services
-- File system (when applicable)
-- Time-dependent functions
-
-## What NOT to Mock
-- Pure functions
-- Internal utilities
-- The module under test
-
-## Process
-1. Identify service module
-2. List its dependencies
-3. Create test file with mocks
-4. Test each public method
-5. Verify all branches covered
-
-## Done When
-All service modules have tests with mocked dependencies.
+## Completion
+When all components have test files with passing tests, output:
+<promise>COMPLETE</promise>
 ```
 
 ## Tips for Test Generation
@@ -402,11 +270,10 @@ List edge cases to test:
 - Null/undefined inputs
 - Maximum length strings
 - Negative numbers
-- Concurrent operations
 ```
 
 <Aside type="tip" title="Test Isolation">
-Ensure each test is independent. The AI sometimes creates tests that depend on previous test state. Include this in your prompt:
+Ensure each test is independent. Include this in your prompt:
 
 ```markdown
 Each test must be independent. Use beforeEach for setup, afterEach for cleanup.

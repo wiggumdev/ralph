@@ -13,20 +13,20 @@ Documentation is often neglected because it's tedious. ralph makes it systematic
 
 Add JSDoc comments to all exported functions.
 
-### Configuration
+### Setup
 
-```json
-{
-  "tool": "claude",
-  "exitConditions": {
-    "command": "npx eslint src/ --rule 'jsdoc/require-jsdoc: error' 2>&1 | grep -c 'error'",
-    "successPattern": "^0$",
-    "maxIterations": 40
-  }
-}
+```bash
+ralph init
 ```
 
-### Prompt
+Edit `.ralph/config.toml`:
+
+```toml
+adapter = "claude"
+maxIterations = 40
+```
+
+### Prompt (.plans/PROMPT.md)
 
 ```markdown
 # Add JSDoc Documentation
@@ -85,32 +85,23 @@ export interface MyInterface {
 - Include @example for complex functions
 - Keep descriptions concise but complete
 
+## Progress
+Track completed files in progress.txt
+
 ## Process
 1. Run ESLint to find undocumented exports
 2. Document one file at a time
 3. Run ESLint again to verify
 4. Commit: "docs(file): add JSDoc comments"
 
-## Done When
-`npx eslint src/ --rule 'jsdoc/require-jsdoc: error'` shows 0 errors.
+## Completion
+When `npx eslint src/ --rule 'jsdoc/require-jsdoc: error'` shows 0 errors, output:
+<promise>COMPLETE</promise>
 ```
 
 ## Example: README Generation
 
 Generate README files for each package in a monorepo.
-
-### Configuration
-
-```json
-{
-  "tool": "claude",
-  "exitConditions": {
-    "command": "find packages -maxdepth 2 -name 'package.json' -exec dirname {} \\; | while read d; do [ -f \"$d/README.md\" ] || echo missing; done | grep -c missing",
-    "successPattern": "^0$",
-    "maxIterations": 20
-  }
-}
-```
 
 ### Prompt
 
@@ -151,19 +142,13 @@ Description of function.
 
 **Returns:** Description
 
-**Example:**
-\`\`\`typescript
-// Example code
-\`\`\`
-
-## Configuration
-
-If applicable, document configuration options.
-
 ## License
 
 MIT
 ```
+
+## Progress
+Track completed packages in progress.txt
 
 ## Process
 1. Find packages without README: `find packages -maxdepth 2 -name 'package.json' -exec dirname {} \;`
@@ -171,26 +156,14 @@ MIT
 3. Generate README following template
 4. Commit: "docs(package): add README"
 
-## Done When
-Every package directory has a README.md.
+## Completion
+When every package directory has a README.md, output:
+<promise>COMPLETE</promise>
 ```
 
 ## Example: API Documentation
 
 Generate OpenAPI/Swagger documentation from code.
-
-### Configuration
-
-```json
-{
-  "tool": "claude",
-  "exitConditions": {
-    "command": "npm run docs:validate",
-    "successExitCode": 0,
-    "maxIterations": 30
-  }
-}
-```
 
 ### Prompt
 
@@ -229,117 +202,9 @@ public async getUser(
 4. Validate with `npm run docs:validate`
 5. Commit
 
-## Generated Output
-API docs are generated to docs/api/openapi.json
-```
-
-## Example: Changelog Updates
-
-Keep CHANGELOG.md updated from git commits.
-
-### Prompt
-
-```markdown
-# Update Changelog
-
-Update CHANGELOG.md based on recent commits.
-
-## Changelog Format (Keep a Changelog)
-
-```markdown
-## [Unreleased]
-
-### Added
-- New features
-
-### Changed
-- Changes in existing functionality
-
-### Deprecated
-- Soon-to-be removed features
-
-### Removed
-- Removed features
-
-### Fixed
-- Bug fixes
-
-### Security
-- Security fixes
-```
-
-## Process
-1. Read current CHANGELOG.md
-2. Run `git log --oneline LAST_TAG..HEAD` to get new commits
-3. Categorize commits by type (feat, fix, etc.)
-4. Add entries to appropriate sections
-5. Commit: "docs: update changelog"
-
-## Commit Type Mapping
-- `feat:` → Added
-- `fix:` → Fixed
-- `refactor:` → Changed
-- `perf:` → Changed
-- `security:` → Security
-- `deprecated:` → Deprecated
-
-## Done When
-All commits since last tag are documented in CHANGELOG.md.
-```
-
-## Example: Architecture Documentation
-
-Generate architecture documentation from code.
-
-### Prompt
-
-```markdown
-# Generate Architecture Docs
-
-Create architecture documentation based on code structure.
-
-## Document Structure
-
-Create `docs/architecture/` with:
-
-### overview.md
-- High-level system description
-- Key design decisions
-- Technology stack
-
-### modules.md
-- Description of each module/package
-- Responsibilities
-- Dependencies
-
-### data-flow.md
-- How data flows through the system
-- Key integration points
-- External services
-
-### patterns.md
-- Design patterns used
-- Coding conventions
-- Common utilities
-
-## Process
-1. Analyze project structure
-2. Read key files (index.ts, main entry points)
-3. Identify patterns and architecture
-4. Generate documentation
-5. Create diagrams (Mermaid syntax)
-
-## Mermaid Diagram Example
-```mermaid
-graph TD
-    A[Client] --> B[API Gateway]
-    B --> C[Auth Service]
-    B --> D[User Service]
-    D --> E[(Database)]
-```
-
-## Done When
-docs/architecture/ contains complete documentation.
+## Completion
+When `npm run docs:validate` passes, output:
+<promise>COMPLETE</promise>
 ```
 
 ## Tips for Documentation Tasks

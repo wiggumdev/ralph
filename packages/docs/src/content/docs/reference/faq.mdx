@@ -17,7 +17,7 @@ ralph is a CLI tool that runs AI coding agents in iterative loops. It resets the
 
 The technique was coined by Geoffrey Huntley, who observed that a simple bash loop running an AI agent could accomplish remarkable things through persistence. He named it after Ralph Wiggum from The Simpsons—capturing the philosophy of being "deterministically stubborn in an undeterministic world."
 
-### How is this different from just using Claude Code / Aider / etc. directly?
+### How is this different from just using Claude Code / OpenCode directly?
 
 When you use an AI tool directly, context accumulates. As the context window fills, model performance degrades. ralph solves this by:
 
@@ -46,11 +46,10 @@ It's like having a fresh developer join the project each morning—they read the
 
 ### What AI tools does ralph support?
 
-ralph is AI-agnostic and supports:
-- **Claude Code** — Anthropic's official CLI (first-class support)
-- **OpenCode** — Open-source alternative
-- **Aider** — Git-focused coding assistant
-- **Custom tools** — Any CLI that takes a prompt
+ralph supports:
+- **Claude Code** — Anthropic's official CLI (recommended)
+- **OpenCode** — Open-source alternative with multi-provider support
+- **Gemini CLI** — Under development
 
 ### Does ralph require an API key?
 
@@ -58,23 +57,17 @@ ralph itself doesn't need an API key—it orchestrates other tools. Your AI tool
 
 ### How does ralph know when to stop?
 
-You configure exit conditions:
+ralph stops when:
+1. **Completion marker** — The AI outputs `<promise>COMPLETE</promise>`
+2. **Max iterations** — Reached the `maxIterations` limit
+3. **Error** — The AI process exits with non-zero code
+4. **User interrupt** — You press Ctrl+C
 
-```json
-{
-  "exitConditions": {
-    "command": "npm test",      // Run this command
-    "successExitCode": 0,       // Stop if exit code is 0
-    "maxIterations": 50         // Safety limit
-  }
-}
+Configure the iteration limit in `.ralph/config.toml`:
+
+```toml
+maxIterations = 20
 ```
-
-Common exit conditions:
-- Tests passing
-- No linting errors
-- Marker file exists
-- Coverage threshold met
 
 ### How does state persist between iterations?
 
@@ -82,7 +75,7 @@ State lives in your codebase:
 - **Git commits** — History of changes
 - **Files** — Updated code, progress markers
 - **Test results** — What passes/fails
-- **Progress files** — Explicit status tracking
+- **progress.txt** — Explicit status tracking
 
 The AI reads these each iteration to understand current state.
 
@@ -91,29 +84,11 @@ The AI reads these each iteration to understand current state.
 Rarely. The model reads what exists and continues from there. Good prompts include:
 
 ```markdown
-Check PROGRESS.md for completed work.
+Check progress.txt for completed work.
 Don't repeat work that's already done.
 ```
 
 If you're seeing this issue, make state more explicit.
-
-### Can I run ralph in CI/CD?
-
-Yes! ralph works in any environment with Node.js and your AI tool:
-
-```yaml
-# GitHub Actions example
-jobs:
-  ralph:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-      - run: npm install -g @wiggumdev/ralph @anthropic-ai/claude-code
-      - run: ralph run --max-iterations 20
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-```
 
 ---
 
@@ -127,16 +102,6 @@ Typical costs vary by task:
 - Small refactor: $5-20
 - Test coverage project: $20-50
 - Large migration: $50-200
-
-Set cost limits to prevent surprises:
-
-```json
-{
-  "exitConditions": {
-    "maxCost": 50.00
-  }
-}
-```
 
 ### How can I reduce costs?
 
@@ -155,31 +120,19 @@ Depends on the task:
 
 Each iteration typically takes 2-10 minutes depending on model and task complexity.
 
-### Why is each iteration slow?
-
-Each iteration involves:
-1. Model reading your codebase
-2. Model reasoning about the task
-3. Model writing code
-4. Your exit conditions running
-
-This is intentional—the model does real work each iteration.
-
 ---
 
 ## Troubleshooting
 
 ### ralph loops forever / never exits
 
-Check your exit conditions:
-```bash
-ralph check-exit --verbose
-```
+Check your prompt includes a clear completion instruction:
 
-Common issues:
-- Exit command never succeeds
-- Pattern doesn't match
-- Marker file never created
+```markdown
+## Completion
+When all tests pass, output:
+<promise>COMPLETE</promise>
+```
 
 Always set `maxIterations` as a safety net.
 
@@ -189,7 +142,7 @@ Your prompt might not be clear about checking existing work:
 
 ```markdown
 ## Before Starting
-1. Check PROGRESS.md for completed items
+1. Check progress.txt for completed items
 2. Run `git log --oneline -5` to see recent changes
 3. Only work on items NOT already done
 ```
@@ -198,18 +151,12 @@ Your prompt might not be clear about checking existing work:
 
 The AI might have introduced bugs. Options:
 1. Add test requirements to your prompt
-2. Use exit conditions that require tests to pass
+2. Include verification commands
 3. Review changes before merging
 
-```json
-{
-  "exitConditions": {
-    "all": [
-      { "command": "npm test", "successExitCode": 0 },
-      { "command": "npm run lint", "successExitCode": 0 }
-    ]
-  }
-}
+```markdown
+## After Each Change
+Run `npm test` to verify tests still pass.
 ```
 
 ### ralph uses too many tokens
@@ -224,7 +171,7 @@ Use:
 
 ```markdown
 See TASK.md for detailed instructions.
-Check PROGRESS.md for status.
+Check progress.txt for status.
 ```
 
 ### The AI forgets instructions
@@ -243,7 +190,7 @@ With context resets, the AI only knows what it reads. Ensure important instructi
 1. **Clear goal** — What's the end state?
 2. **Verification** — How does the AI check its work?
 3. **Progress tracking** — How does state persist?
-4. **Exit criteria** — When is it done?
+4. **Exit criteria** — When should it output the completion marker?
 
 Example structure:
 ```markdown
@@ -259,8 +206,8 @@ Example structure:
 # Progress
 [How to track and check progress]
 
-# Done When
-[Clear exit criteria]
+# Completion
+[When to output <promise>COMPLETE</promise>]
 ```
 
 ### Should I use ralph for everything?
@@ -286,51 +233,6 @@ For reference:
 - Simple task: 10-20 iterations
 - Medium task: 20-40 iterations
 - Complex task: 40-100 iterations
-
-### Can multiple people run ralph on the same repo?
-
-Yes, but coordinate:
-- Use different branches
-- Don't run conflicting tasks simultaneously
-- Merge carefully
-
----
-
-## Philosophy
-
-### Why does resetting context help?
-
-AI models have limited attention. As context accumulates:
-- Instructions get lost in noise
-- Old errors and corrections confuse the model
-- Performance degrades
-
-Fresh context means:
-- Full attention capacity
-- Clear instructions
-- Peak performance
-
-### Isn't it wasteful to "throw away" context?
-
-Conversation memory is unreliable—the model might not attend to the right parts. File-based state is:
-- Reliable (files don't hallucinate)
-- Inspectable (you can see what the model knows)
-- Persistent (survives any number of resets)
-
-### What if my task needs conversation context?
-
-Externalize it. Instead of:
-> "Remember, we decided to use approach X"
-
-Create `DECISIONS.md`:
-```markdown
-## Decisions
-- Approach: X
-- Reason: Better performance
-```
-
-Then in your prompt:
-> "Check DECISIONS.md for previous decisions"
 
 <Aside type="tip" title="Still have questions?">
 Check the [GitHub Issues](https://github.com/wiggumdev/ralph/issues) or start a discussion. The community is friendly!

@@ -13,21 +13,6 @@ Migrations require careful, systematic changes across a codebase. ralph's iterat
 
 Migrate from one schema to another.
 
-### Configuration
-
-```json
-{
-  "tool": "claude",
-  "exitConditions": {
-    "all": [
-      { "command": "npm run db:migrate:status", "successPattern": "All migrations applied" },
-      { "command": "npm test", "successExitCode": 0 }
-    ],
-    "maxIterations": 25
-  }
-}
-```
-
 ### Prompt
 
 ```markdown
@@ -63,12 +48,6 @@ CREATE TABLE addresses (
   city VARCHAR(100),
   country_id INT REFERENCES countries(id)
 );
-
-CREATE TABLE countries (
-  id INT PRIMARY KEY,
-  name VARCHAR(100),
-  code CHAR(2)
-);
 ```
 
 ## Migration Steps
@@ -96,25 +75,20 @@ CREATE TABLE countries (
 - All tests pass
 - No references to old column names
 
-## Done When
-Schema fully migrated, all tests passing.
+## Completion
+When schema is fully migrated and all tests pass, output:
+<promise>COMPLETE</promise>
 ```
 
 ## TypeScript Upgrade
 
 Upgrade TypeScript and fix all new errors.
 
-### Configuration
+### Setup
 
-```json
-{
-  "tool": "claude",
-  "exitConditions": {
-    "command": "npm run typecheck",
-    "successExitCode": 0,
-    "maxIterations": 40
-  }
-}
+```toml
+adapter = "claude"
+maxIterations = 40
 ```
 
 ### Prompt
@@ -140,18 +114,7 @@ import { Type } from './types';
 import type { Type } from './types';
 ```
 
-### 2. Enum Changes
-```typescript
-// Issues with const enums in certain contexts
-// May need to use regular enums or union types
-```
-
-### 3. Decorator Metadata
-```typescript
-// Check experimentalDecorators and emitDecoratorMetadata
-```
-
-### 4. Module Resolution
+### 2. Module Resolution
 ```typescript
 // moduleResolution: "bundler" is new option
 // May need to update tsconfig.json
@@ -170,29 +133,14 @@ May need to update:
 - `moduleResolution`
 - `strict` options
 
-## Done When
-`npm run typecheck` exits with 0.
+## Completion
+When `npm run typecheck` exits with 0, output:
+<promise>COMPLETE</promise>
 ```
 
 ## Node.js Version Upgrade
 
 Upgrade Node.js version and fix compatibility issues.
-
-### Configuration
-
-```json
-{
-  "tool": "claude",
-  "exitConditions": {
-    "all": [
-      { "command": "node --version", "successPattern": "v20" },
-      { "command": "npm test", "successExitCode": 0 },
-      { "command": "npm run build", "successExitCode": 0 }
-    ],
-    "maxIterations": 30
-  }
-}
-```
 
 ### Prompt
 
@@ -219,20 +167,10 @@ Node 20 has native fetch. Can remove:
 - `cross-fetch`
 - polyfills
 
-### 3. Native Test Runner
-Consider migrating to native test runner (optional).
-
-### 4. Deprecated APIs
+### 3. Deprecated APIs
 Check for deprecated APIs:
 - `url.parse()` → `new URL()`
 - `querystring` → `URLSearchParams`
-- `path.resolve()` behavior changes
-
-### 5. ESM Handling
-Native ESM support improved. Check:
-- `"type": "module"` in package.json
-- `import.meta` usage
-- Dynamic imports
 
 ## Process
 1. Update .nvmrc to `20`
@@ -248,28 +186,14 @@ Update GitHub Actions / other CI:
 node-version: '20'
 ```
 
-## Done When
-All tests pass on Node.js 20.
+## Completion
+When all tests pass on Node.js 20, output:
+<promise>COMPLETE</promise>
 ```
 
 ## Framework Migration
 
 Migrate from Express to Fastify (example).
-
-### Configuration
-
-```json
-{
-  "tool": "claude",
-  "exitConditions": {
-    "all": [
-      { "command": "grep -r \"from 'express'\" src/", "successPattern": "^$" },
-      { "command": "npm test", "successExitCode": 0 }
-    ],
-    "maxIterations": 50
-  }
-}
-```
 
 ### Prompt
 
@@ -315,19 +239,6 @@ await app.register(fastifyCors);
 // JSON parsing is automatic
 ```
 
-### Error Handling
-```typescript
-// Express
-app.use((err, req, res, next) => {
-  res.status(500).json({ error: err.message });
-});
-
-// Fastify
-app.setErrorHandler((error, request, reply) => {
-  reply.status(500).send({ error: error.message });
-});
-```
-
 ## Migration Order
 1. Install Fastify: `npm install fastify @fastify/cors`
 2. Create new app.ts with Fastify setup
@@ -342,10 +253,9 @@ app.setErrorHandler((error, request, reply) => {
 3. Run tests after each file
 4. Commit after each successful migration
 
-## Done When
-- No Express imports remain
-- All tests pass
-- Application starts and responds
+## Completion
+When no Express imports remain and all tests pass, output:
+<promise>COMPLETE</promise>
 ```
 
 ## CSS Framework Migration
@@ -382,15 +292,6 @@ import styles from './Button.module.css';
 <div className={`p-4 rounded shadow ${isActive ? 'ring-2 ring-blue-500' : ''}`}>
 ```
 
-### Responsive
-```jsx
-// Before
-// @media (min-width: 768px) { .container { width: 100%; } }
-
-// After
-<div className="w-full md:w-auto lg:max-w-4xl">
-```
-
 ## Process
 1. Ensure Tailwind is configured
 2. Pick a component
@@ -405,12 +306,13 @@ import styles from './Button.module.css';
 find src -name "*.module.css" | head -1
 ```
 
-## Done When
-No .module.css files remain in src/.
+## Completion
+When no .module.css files remain in src/, output:
+<promise>COMPLETE</promise>
 ```
 
 <Aside type="tip" title="Migration Testing">
-For migrations, visual testing is important. Consider adding a "Visual Verification" section with screenshots before and after using `npm run test:visual` and compare for regressions.
+For migrations, visual testing is important. Consider adding screenshot comparisons before and after.
 </Aside>
 
 ## Tips for Migration Tasks
@@ -454,5 +356,4 @@ Specify what to migrate first:
 - Build: `npm run build`
 - Typecheck: `npm run typecheck`
 - Test: `npm test`
-- Lint: `npm run lint`
 ```

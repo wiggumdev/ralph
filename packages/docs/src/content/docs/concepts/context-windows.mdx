@@ -130,47 +130,20 @@ The sweet spot depends on task complexity:
 
 ralph handles this automatically. The model works until it tries to exit, then ralph resets and continues.
 
-## Context Window Strategies
+## How ralph Handles Resets
 
-### Strategy 1: Natural Exits
+ralph resets context automatically when:
 
-Let the model work until it naturally pauses. This respects the model's sense of a "unit of work."
+1. **The AI exits** — Each time the AI tool exits (naturally or via tool exit), ralph can restart it with fresh context
+2. **Max iterations reached** — The `maxIterations` config acts as a safety limit
 
-```yaml
-# ralph.config.json
-exitConditions:
-  waitForNaturalExit: true
+Configure the maximum iterations in `.ralph/config.toml`:
+
+```toml
+maxIterations = 20
 ```
 
-### Strategy 2: Time-Based
-
-Reset after a fixed duration to prevent deep degradation.
-
-```yaml
-exitConditions:
-  timeout: 300000  # 5 minutes per iteration
-```
-
-### Strategy 3: Progress-Based
-
-Reset after measurable progress (tests pass, files complete, etc.).
-
-```yaml
-exitConditions:
-  command: "npm test"
-  # Resets after each test run
-```
-
-### Strategy 4: Hybrid
-
-Combine strategies for robustness.
-
-```yaml
-exitConditions:
-  timeout: 600000           # Hard limit: 10 minutes
-  waitForNaturalExit: true  # But let it finish naturally if possible
-  maxTokens: 80000          # Reset if context gets too large
-```
+The AI signals task completion by outputting `<promise>COMPLETE</promise>`, at which point ralph stops looping.
 
 ## Measuring the Impact
 

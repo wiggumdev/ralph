@@ -1,359 +1,199 @@
 ---
 title: Exit Conditions
-description: Configure when ralph stops looping and declares victory.
+description: How ralph knows when to stop looping.
 ---
 
-import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+import { Aside } from '@astrojs/starlight/components';
 
 # Exit Conditions
 
-Exit conditions tell ralph when the job is done. Without them, ralph would loop forever. With good exit conditions, ralph knows exactly when to stop.
+Exit conditions tell ralph when the job is done. Without them, ralph would loop forever.
 
-## The Exit Check
+## How ralph Exits
 
-After each iteration, ralph asks: "Is the task complete?"
+ralph checks for exit conditions after each iteration:
 
 ```
 ┌─────────────┐     ┌──────────────┐     ┌─────────────┐
 │  AI exits   │ ──▶ │ Check exit   │ ──▶ │   Done?     │
 │  iteration  │     │  conditions  │     │             │
 └─────────────┘     └──────────────┘     └──────┬──────┘
-                                                │
-                           ┌────────────────────┼────────────────────┐
-                           │                    │                    │
-                           ▼                    ▼                    ▼
-                    ┌──────────┐         ┌──────────┐         ┌──────────┐
-                    │   Yes    │         │    No    │         │  Max     │
-                    │  ─────   │         │  ─────   │         │ reached  │
-                    │  Exit    │         │  Loop    │         │  ─────   │
-                    │  ralph   │         │  again   │         │  Exit    │
-                    └──────────┘         └──────────┘         └──────────┘
+                                               │
+                          ┌────────────────────┼────────────────────┐
+                          │                    │                    │
+                          ▼                    ▼                    ▼
+                   ┌──────────┐         ┌──────────┐         ┌──────────┐
+                   │ Complete │         │    No    │         │  Max     │
+                   │  marker  │         │  ─────   │         │ reached  │
+                   │  ─────   │         │  Loop    │         │  ─────   │
+                   │  Exit    │         │  again   │         │  Exit    │
+                   └──────────┘         └──────────┘         └──────────┘
 ```
 
-## Types of Exit Conditions
+## Exit Reasons
 
-### 1. Command-Based
+ralph exits for one of these reasons:
 
-Run a command and check the result:
+### 1. Complete
 
-```json
-{
-  "exitConditions": {
-    "command": "npm test",
-    "successExitCode": 0
-  }
-}
+The AI outputs the completion marker `<promise>COMPLETE</promise>`. This is the success case—the task is done.
+
+### 2. Max Iterations
+
+Reached the `maxIterations` limit from config. This is a safety net to prevent runaway loops.
+
+### 3. Error
+
+The AI process exited with a non-zero code.
+
+### 4. User Abort
+
+User interrupted with Ctrl+C.
+
+## The Completion Marker
+
+ralph detects task completion when the AI outputs:
+
+```
+<promise>COMPLETE</promise>
 ```
 
-If `npm test` returns exit code 0, the task is complete.
+Include this in your prompt instructions:
 
-You can also match output patterns:
-
-```json
-{
-  "exitConditions": {
-    "command": "npm test",
-    "successPattern": "All tests passed",
-    "failPattern": "failed"
-  }
-}
+```markdown
+## Completion
+When all tests pass, output:
+<promise>COMPLETE</promise>
 ```
 
-### 2. File-Based
-
-Check for the existence of a marker file:
-
-```json
-{
-  "exitConditions": {
-    "markerFile": "DONE"
-  }
-}
-```
-
-Or check file contents:
-
-```json
-{
-  "exitConditions": {
-    "file": "PROGRESS.md",
-    "contains": "Status: Complete"
-  }
-}
-```
-
-### 3. Iteration Limits
-
-Always set a maximum to prevent runaway loops:
-
-```json
-{
-  "exitConditions": {
-    "maxIterations": 50
-  }
-}
-```
-
-<Aside type="caution" title="Always Set a Maximum">
-Even if you have other exit conditions, always set `maxIterations`. It's your safety net against infinite loops and runaway API costs.
+<Aside type="tip" title="Why This Marker?">
+The marker gives the AI explicit control over when to signal completion. This is more reliable than trying to parse test output or exit codes, which vary between tools and projects.
 </Aside>
 
-### 4. Time Limits
+## Max Iterations
 
-Limit total execution time:
+Always configure a reasonable `maxIterations` in `.ralph/config.toml`:
 
-```json
-{
-  "exitConditions": {
-    "maxDuration": "2h",
-    "maxDurationPerIteration": "10m"
-  }
-}
+```toml
+maxIterations = 20
 ```
 
-### 5. Cost Limits
+This prevents:
+- Runaway API costs
+- Infinite loops when the AI can't complete the task
+- Wasted time on impossible tasks
 
-Stop when spending reaches a threshold:
-
-```json
-{
-  "exitConditions": {
-    "maxCost": 50.00
-  }
-}
-```
-
-<Aside type="note">
-Cost tracking requires the AI tool to report usage. Works with Claude Code and other tools that expose this data.
+<Aside type="caution" title="Always Set a Limit">
+Even well-designed prompts can get stuck. Always set `maxIterations` as a safety net.
 </Aside>
 
-## Combining Conditions
+### Choosing a Limit
 
-Exit conditions can be combined with AND/OR logic:
+| Task Type | Suggested Limit |
+|-----------|-----------------|
+| Simple fixes | 5-10 |
+| Test coverage | 15-30 |
+| Large refactors | 30-50 |
+| Complex migrations | 50-100 |
 
-<Tabs>
-  <TabItem label="All Must Pass (AND)">
-    ```json
-    {
-      "exitConditions": {
-        "all": [
-          { "command": "npm test", "successExitCode": 0 },
-          { "command": "npm run lint", "successExitCode": 0 },
-          { "command": "npm run typecheck", "successExitCode": 0 }
-        ],
-        "maxIterations": 30
-      }
-    }
-    ```
-  </TabItem>
-  <TabItem label="Any Can Pass (OR)">
-    ```json
-    {
-      "exitConditions": {
-        "any": [
-          { "markerFile": "DONE" },
-          { "file": "PROGRESS.md", "contains": "All complete" }
-        ],
-        "maxIterations": 30
-      }
-    }
-    ```
-  </TabItem>
-</Tabs>
+Start conservative and increase if needed.
 
-## Designing Good Exit Conditions
+## Designing for Completion
 
-### Be Specific
+### Be Explicit
 
-Bad:
-```json
-{ "command": "npm test" }
-```
+Tell the AI exactly when to signal completion:
 
-Good:
-```json
-{
-  "command": "npm test -- --coverage",
-  "successPattern": "Coverage: [89]\\d|100",
-  "successExitCode": 0
-}
-```
-
-The good version checks both that tests pass AND that coverage is at least 80%.
-
-### Make Them Measurable
-
-Bad:
-```
-Exit when the code is "good enough"
-```
-
-Good:
-```json
-{
-  "command": "npm run lint && npm test && npm run typecheck",
-  "successExitCode": 0
-}
-```
-
-Measurable conditions are objective. ralph can check them automatically.
-
-### Match Your Prompt
-
-Your exit conditions should match what you asked the AI to do:
-
-| Prompt | Exit Condition |
-|--------|---------------|
-| "Add tests until coverage is 80%" | Coverage command shows ≥80% |
-| "Fix all TypeScript errors" | `tsc` returns exit code 0 |
-| "Document all public functions" | No undocumented exports found |
-| "Migrate from X to Y" | No imports from X remain |
-
-### Include Safety Limits
-
-Always have fallbacks:
-
-```json
-{
-  "exitConditions": {
-    "primary": {
-      "command": "npm test",
-      "successExitCode": 0
-    },
-    "limits": {
-      "maxIterations": 50,
-      "maxDuration": "4h",
-      "maxCost": 100.00
-    }
-  }
-}
-```
-
-## Exit Condition Patterns
-
-### Pattern: Test-Driven
-
-```json
-{
-  "exitConditions": {
-    "command": "npm test",
-    "successExitCode": 0,
-    "maxIterations": 30
-  }
-}
-```
-
-Loop until all tests pass.
-
-### Pattern: Coverage Target
-
-```json
-{
-  "exitConditions": {
-    "command": "npm test -- --coverage --coverageReporters=text",
-    "successPattern": "All files.*\\|\\s*(8\\d|9\\d|100)\\s*\\|",
-    "maxIterations": 50
-  }
-}
-```
-
-Loop until coverage hits 80%+.
-
-### Pattern: Zero Errors
-
-```json
-{
-  "exitConditions": {
-    "command": "npm run lint",
-    "successPattern": "0 errors",
-    "maxIterations": 20
-  }
-}
-```
-
-Loop until linting shows no errors.
-
-### Pattern: Marker File
-
-Tell the AI in your prompt:
 ```markdown
-When all work is complete, create an empty file called `DONE`.
+## Completion
+When `npm test` passes AND coverage is above 80%, output:
+<promise>COMPLETE</promise>
 ```
 
-Config:
-```json
-{
-  "exitConditions": {
-    "markerFile": "DONE",
-    "maxIterations": 100
-  }
-}
-```
+### Make Progress Visible
 
-This gives the AI explicit control over when to signal completion.
+Help the AI track what's done:
 
-### Pattern: Progress File
-
-Tell the AI to update progress:
 ```markdown
-Update PROGRESS.md after each major milestone.
-When done, change status to "Complete".
+## Progress
+1. Check progress.txt for completed items
+2. Update progress.txt after each task
+3. When all items are done, output the completion marker
 ```
 
-Config:
-```json
-{
-  "exitConditions": {
-    "file": "PROGRESS.md",
-    "contains": "Status: Complete",
-    "maxIterations": 100
-  }
-}
+### Include Verification Steps
+
+Tell the AI how to verify success:
+
+```markdown
+## Verification
+Before signaling completion:
+1. Run `npm test` - all tests pass
+2. Run `npm run lint` - no errors
+3. Run `npm run build` - builds successfully
 ```
 
-### Pattern: Git-Based
+## Example Prompts
 
-Check for specific commits or no changes:
+### Test Coverage
 
-```json
-{
-  "exitConditions": {
-    "command": "git status --porcelain",
-    "successPattern": "^$",
-    "maxIterations": 20
-  }
-}
+```markdown
+# Task: Add Test Coverage
+
+Add tests for all untested functions in src/utils/.
+
+## Check Progress
+- Run `npm test -- --coverage` to see coverage
+- Check progress.txt for completed files
+
+## Guidelines
+- One test file per module
+- Test success and error paths
+- Mock external dependencies
+
+## Completion
+When coverage for src/utils/ is 80%+, output:
+<promise>COMPLETE</promise>
 ```
 
-Exit when there are no uncommitted changes (AI has committed everything).
+### Migration
 
-## Debugging Exit Conditions
+```markdown
+# Task: Migrate from lodash to native
 
-If ralph isn't exiting when expected:
+Replace lodash functions with native equivalents.
 
-1. **Check the command manually**
-   ```bash
-   npm test
-   echo $?  # Should be 0 for success
-   ```
+## Find work
+`grep -r "import.*lodash" src/`
 
-2. **Check pattern matching**
-   ```bash
-   npm test 2>&1 | grep -E "your-pattern"
-   ```
+## Migration
+- `_.map()` → `Array.map()`
+- `_.filter()` → `Array.filter()`
+- `_.get()` → optional chaining
 
-3. **Use verbose mode**
-   ```bash
-   ralph run --verbose
-   ```
-   This shows exactly what conditions are checked and why they passed/failed.
+## Completion
+When no lodash imports remain, output:
+<promise>COMPLETE</promise>
+```
 
-4. **Test conditions in isolation**
-   ```bash
-   ralph check-exit  # Runs exit conditions without starting a loop
-   ```
+### Bug Fixing
+
+```markdown
+# Task: Fix Failing Tests
+
+Fix all failing tests.
+
+## Process
+1. Run `npm test` to see failures
+2. Fix one test at a time
+3. Commit after each fix
+
+## Completion
+When `npm test` exits with code 0, output:
+<promise>COMPLETE</promise>
+```
 
 ## Next Steps
 
 - **[State Persistence](/concepts/state-persistence/)** — How state survives between iterations
-- **[CLI Reference](/usage/cli/)** — All exit condition options
+- **[The Loop](/concepts/the-loop/)** — Understanding the core loop mechanism

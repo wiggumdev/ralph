@@ -17,14 +17,14 @@ ralph is designed to be simple, composable, and tool-agnostic. This document exp
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐     │
-│  │  Config  │──▶│  Loop    │──▶│  Tool    │──▶│  Exit    │     │
-│  │  Loader  │   │  Engine  │   │  Runner  │   │  Checker │     │
+│  │  Config  │──▶│  Loop    │──▶│ Adapter  │──▶│ Complete │     │
+│  │  Loader  │   │  Engine  │   │  Runner  │   │ Checker  │     │
 │  └──────────┘   └────┬─────┘   └──────────┘   └──────────┘     │
 │                      │                                          │
 │                      ▼                                          │
 │               ┌──────────┐                                      │
-│               │  State   │                                      │
-│               │  Manager │                                      │
+│               │  Hooks   │                                      │
+│               │ Executor │                                      │
 │               └──────────┘                                      │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
@@ -33,10 +33,10 @@ ralph is designed to be simple, composable, and tool-agnostic. This document exp
 ┌─────────────────────────────────────────────────────────────────┐
 │                     AI Tool (External)                          │
 │                                                                  │
-│    ┌────────┐   ┌────────┐   ┌────────┐   ┌────────┐          │
-│    │ Claude │   │OpenCode│   │ Aider  │   │ Custom │          │
-│    │  Code  │   │        │   │        │   │  Tool  │          │
-│    └────────┘   └────────┘   └────────┘   └────────┘          │
+│         ┌────────┐   ┌────────┐   ┌────────┐                   │
+│         │ Claude │   │OpenCode│   │ Gemini │                   │
+│         │  Code  │   │        │   │  (dev) │                   │
+│         └────────┘   └────────┘   └────────┘                   │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -45,21 +45,15 @@ ralph is designed to be simple, composable, and tool-agnostic. This document exp
 
 ### Config Loader
 
-Responsible for loading and validating configuration from multiple sources.
+Loads and validates configuration from multiple sources.
 
 ```
 Priority (lowest to highest):
 1. Default values
-2. ralph.config.json
-3. Environment variables
+2. ~/.ralph/config.toml (user config)
+3. .ralph/config.toml (project config)
 4. CLI arguments
 ```
-
-Key responsibilities:
-- Schema validation
-- Environment variable expansion
-- Configuration merging
-- Default value application
 
 ### Loop Engine
 
@@ -74,79 +68,65 @@ async function runLoop(config: Config): Promise<Result> {
     iteration++;
 
     // Pre-iteration hooks
-    await runHooks('beforeIteration', { iteration });
+    await runHooks('ralph_loop_start', { iteration });
 
     // Run the AI tool
-    const toolResult = await runTool(config.tool, config.prompt);
+    const result = await runAdapter(config.adapter, config.prompt);
 
     // Post-iteration hooks
-    await runHooks('afterIteration', { iteration, toolResult });
+    await runHooks('ralph_loop_end', { iteration });
 
-    // Check exit conditions
-    const exitResult = await checkExitConditions(config.exitConditions);
-
-    if (exitResult.shouldExit) {
+    // Check for completion marker
+    if (result.output.includes('<promise>COMPLETE</promise>')) {
+      await runHooks('ralph_complete', { iteration });
       return { success: true, iterations: iteration };
     }
   }
 
+  await runHooks('ralph_max_iterations', { iteration });
   return { success: false, reason: 'maxIterations' };
 }
 ```
 
-### Tool Runner
+### Adapter Runner
 
 Abstracts the interface to different AI tools.
 
 ```typescript
-interface ToolRunner {
-  // Start the tool with a prompt
-  start(prompt: string, options: ToolOptions): Promise<void>;
-
-  // Wait for the tool to exit
-  waitForExit(): Promise<ToolResult>;
-
-  // Force stop the tool
-  stop(): Promise<void>;
-
-  // Get current status
-  getStatus(): ToolStatus;
+interface Adapter {
+  name: string;
+  supportedFormats: OutputFormat[];
+  buildArgs(prompt: string): string[];
+  checkAvailability(): boolean;
 }
 ```
 
-Each supported tool has an adapter implementing this interface:
-- `ClaudeCodeRunner`
-- `OpenCodeRunner`
-- `AiderRunner`
-- `CustomToolRunner`
+Each supported tool has an adapter:
+- `ClaudeAdapter` — for Claude Code
+- `OpenCodeAdapter` — for OpenCode
+- `GeminiAdapter` — for Gemini (under development)
 
-### Exit Checker
+### Completion Checker
 
-Evaluates exit conditions after each iteration.
+Evaluates if the task is complete after each iteration.
 
 ```typescript
-interface ExitCondition {
-  type: 'command' | 'file' | 'marker' | 'limit';
-  check(): Promise<{ met: boolean; reason?: string }>;
-}
-
-// Conditions can be combined
-interface ExitConditionGroup {
-  mode: 'all' | 'any';  // AND vs OR
-  conditions: ExitCondition[];
+function checkCompletion(output: string): boolean {
+  return output.includes('<promise>COMPLETE</promise>');
 }
 ```
 
-### State Manager
+### Hooks Executor
 
-Handles state persistence between iterations.
+Runs shell commands at key points in the lifecycle.
 
-```
-State Channels:
-├── Git (commits, history)
-├── Progress files (PROGRESS.md)
-├── Ralph directory (.ralph/)
-└── Environment variables
+```typescript
+type HookPoint =
+  | 'ralph_start'         // Before first iteration
+  | 'ralph_loop_start'    // Before each iteration
+  | 'ralph_loop_end'      // After each iteration
+  | 'ralph_complete'      // When task completes
+  | 'ralph_max_iterations'; // When limit reached
 ```
 
 ## Data Flow
@@ -157,8 +137,8 @@ State Channels:
 CLI args → Config Loader → Validated Config
                               │
                               ├── Load prompt file
-                              ├── Initialize tool runner
-                              └── Set up state manager
+                              ├── Initialize adapter
+                              └── Run ralph_start hook
 ```
 
 ### 2. Each Iteration
@@ -166,22 +146,20 @@ CLI args → Config Loader → Validated Config
 ```
 Loop Engine
     │
-    ├── 1. beforeIteration hooks
+    ├── 1. ralph_loop_start hook
     │
-    ├── 2. Tool Runner
+    ├── 2. Adapter Runner
     │       │
-    │       ├── Format prompt (variables)
-    │       ├── Start tool process
+    │       ├── Start AI process
     │       ├── Stream output
+    │       ├── Track tokens
     │       └── Wait for exit
     │
-    ├── 3. afterIteration hooks
+    ├── 3. ralph_loop_end hook
     │
-    ├── 4. Exit Checker
+    ├── 4. Completion Checker
     │       │
-    │       ├── Run exit commands
-    │       ├── Check files
-    │       └── Evaluate limits
+    │       └── Check for <promise>COMPLETE</promise>
     │
     └── 5. Decision: Continue or Exit
 ```
@@ -189,198 +167,75 @@ Loop Engine
 ### 3. Completion
 
 ```
-Exit Checker returns "met"
+Completion marker found
     │
-    ├── Run onComplete hooks
-    ├── Generate summary
-    ├── Clean up resources
-    └── Return result
+    ├── Run ralph_complete hook
+    ├── Display summary (tokens, cost, iterations)
+    └── Exit with code 0
 ```
 
-## Tool Adapters
+## Adapters
 
-### Claude Code Adapter
+### Claude Adapter
 
 ```typescript
-class ClaudeCodeRunner implements ToolRunner {
-  async start(prompt: string, options: ToolOptions) {
-    this.process = spawn('claude', [
-      '--print', prompt,
-      '--model', options.model || 'claude-sonnet-4-20250514',
-      '--dangerously-skip-permissions',  // if configured
-    ]);
+class ClaudeAdapter implements Adapter {
+  name = 'claude';
+  supportedFormats = ['stream-json', 'text'];
 
-    this.setupOutputHandlers();
-  }
-
-  async waitForExit(): Promise<ToolResult> {
-    return new Promise((resolve) => {
-      this.process.on('exit', (code) => {
-        resolve({
-          exitCode: code,
-          output: this.capturedOutput,
-          duration: Date.now() - this.startTime,
-        });
-      });
-    });
+  buildArgs(prompt: string): string[] {
+    return [
+      '--permission-mode', 'acceptEdits',
+      '--prompt', prompt
+    ];
   }
 }
 ```
 
-### Custom Tool Adapter
+### OpenCode Adapter
 
 ```typescript
-class CustomToolRunner implements ToolRunner {
-  constructor(private config: CustomToolConfig) {}
+class OpenCodeAdapter implements Adapter {
+  name = 'opencode';
+  supportedFormats = ['opencode-json', 'text'];
 
-  async start(prompt: string, options: ToolOptions) {
-    const args = this.config.args.map(arg =>
-      arg.replace('{{prompt}}', prompt)
-         .replace('{{promptFile}}', this.promptFile)
-    );
-
-    this.process = spawn(this.config.command, args, {
-      env: { ...process.env, ...this.config.env },
-      shell: this.config.shell,
-    });
+  buildArgs(prompt: string): string[] {
+    return ['run', '--prompt', prompt];
   }
 }
 ```
 
-## Exit Condition Evaluation
+## Project Structure
+
+```
+project/
+├── .ralph/
+│   └── config.toml      # Configuration
+└── .plans/
+    ├── prd.json         # Feature requirements
+    ├── PROMPT.md        # System prompt
+    └── progress.txt     # Learning log
+```
+
+## Configuration Schema
 
 ```typescript
-async function checkExitConditions(
-  conditions: ExitConditionConfig
-): Promise<ExitResult> {
-  // Always check limits first (fail-safe)
-  if (await checkLimits(conditions.limits)) {
-    return { shouldExit: true, reason: 'limit_reached' };
-  }
-
-  // Check primary conditions
-  const results = await Promise.all(
-    conditions.primary.map(c => c.check())
-  );
-
-  const mode = conditions.mode || 'all';
-
-  if (mode === 'all') {
-    const allMet = results.every(r => r.met);
-    return { shouldExit: allMet, results };
-  } else {
-    const anyMet = results.some(r => r.met);
-    return { shouldExit: anyMet, results };
-  }
+interface Config {
+  adapter: 'claude' | 'opencode' | 'gemini';
+  plansDir: string;
+  maxIterations: number;
+  verbose: boolean;
+  tui: boolean;
+  showUsage: boolean;
+  hooks: {
+    ralph_start?: string;
+    ralph_loop_start?: string;
+    ralph_loop_end?: string;
+    ralph_complete?: string;
+    ralph_max_iterations?: string;
+  };
 }
 ```
-
-## Hook System
-
-Hooks allow customization at key points:
-
-```typescript
-type HookPoint =
-  | 'preRun'           // Before loop starts
-  | 'postRun'          // After loop ends
-  | 'beforeIteration'  // Before each iteration
-  | 'afterIteration'   // After each iteration
-  | 'onError'          // On any error
-  | 'onComplete';      // When exit conditions met
-
-interface HookContext {
-  iteration: number;
-  elapsed: number;
-  config: Config;
-  toolResult?: ToolResult;
-  exitResult?: ExitResult;
-}
-
-async function runHooks(
-  point: HookPoint,
-  context: HookContext
-): Promise<void> {
-  const hooks = config.hooks[point];
-  if (!hooks) return;
-
-  for (const hook of Array.isArray(hooks) ? hooks : [hooks]) {
-    await executeHook(hook, context);
-  }
-}
-```
-
-## Logging and Telemetry
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│                        Logging                                │
-├──────────────────────────────────────────────────────────────┤
-│                                                               │
-│  Console Output ──────────────────────────┐                  │
-│  (user-facing)                            │                  │
-│                                            ▼                  │
-│  Log File ────────────────────────▶  Log Aggregator          │
-│  (.ralph/logs/)                           │                  │
-│                                            │                  │
-│  Telemetry ───────────────────────────────┘                  │
-│  (optional, local only)                                       │
-│                                                               │
-└──────────────────────────────────────────────────────────────┘
-```
-
-Logs include:
-- Iteration start/end times
-- Tool output (optionally)
-- Exit condition results
-- Errors and warnings
-- Cost/token tracking (if available)
-
-## Error Handling
-
-```typescript
-class RalphError extends Error {
-  constructor(
-    message: string,
-    public code: ErrorCode,
-    public recoverable: boolean,
-    public context?: Record<string, unknown>
-  ) {
-    super(message);
-  }
-}
-
-// Error codes
-enum ErrorCode {
-  CONFIG_INVALID = 'CONFIG_INVALID',
-  TOOL_NOT_FOUND = 'TOOL_NOT_FOUND',
-  TOOL_CRASH = 'TOOL_CRASH',
-  EXIT_CHECK_FAILED = 'EXIT_CHECK_FAILED',
-  LIMIT_EXCEEDED = 'LIMIT_EXCEEDED',
-  HOOK_FAILED = 'HOOK_FAILED',
-}
-```
-
-Recoverable errors trigger the `onError` hook and may continue.
-Non-recoverable errors stop the loop immediately.
-
-## Performance Considerations
-
-### Memory
-
-- Tool output is streamed, not buffered entirely
-- Large logs are rotated automatically
-- State files are read on-demand
-
-### Process Management
-
-- Tools run as child processes
-- Proper signal handling (SIGINT, SIGTERM)
-- Zombie process prevention
-
-### File System
-
-- Atomic writes for state files
-- File watching uses efficient mechanisms (inotify, FSEvents)
 
 <Aside type="note" title="Design Philosophy">
 ralph is intentionally simple. Complex orchestration should happen in your AI tool's prompts, not in ralph's code. ralph just handles the loop.

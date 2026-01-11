@@ -3,7 +3,7 @@ title: Quick Start
 description: Run your first ralph loop in 5 minutes.
 ---
 
-import { Aside, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+import { Aside, Steps } from '@astrojs/starlight/components';
 
 # Quick Start
 
@@ -15,18 +15,49 @@ This guide assumes you've [installed ralph](/guides/installation/) and have an A
 
 ## The 5-Minute Version
 
-If you just want to see ralph in action:
+<Steps>
 
-```bash
-# In any project directory
-ralph run --tool claude "Fix all TypeScript errors in this project"
-```
+1. **Initialize ralph**
+
+   ```bash
+   cd your-project
+   ralph init
+   ```
+
+   Select your adapter (claude recommended) when prompted.
+
+2. **Edit your prompt**
+
+   Open `.plans/PROMPT.md` and add your task:
+
+   ```markdown
+   # Task: Fix All TypeScript Errors
+
+   Fix all TypeScript errors in this project.
+
+   ## Process
+   1. Run `npx tsc --noEmit` to see errors
+   2. Fix one error at a time
+   3. Re-run to verify fix
+
+   ## Completion
+   When `npx tsc --noEmit` exits with code 0, output:
+   <promise>COMPLETE</promise>
+   ```
+
+3. **Run the loop**
+
+   ```bash
+   ralph run
+   ```
+
+</Steps>
 
 That's it. ralph will:
-1. Start Claude Code with your prompt
-2. Wait for it to work and try to exit
+1. Start your AI tool with the prompt
+2. Let it work until it exits
 3. Reset context and feed the same prompt
-4. Repeat until no TypeScript errors remain
+4. Repeat until the AI outputs `<promise>COMPLETE</promise>` or max iterations
 
 ## A Proper Example
 
@@ -37,8 +68,6 @@ Let's do something more structured. We'll add tests to a Node.js project.
 1. **Set up the example**
 
    ```bash
-   # Clone a simple project (or use your own)
-   git clone https://github.com/example/node-starter my-project
    cd my-project
    npm install
    ```
@@ -49,22 +78,24 @@ Let's do something more structured. We'll add tests to a Node.js project.
    ralph init
    ```
 
-   This creates `ralph.config.json`. Edit it:
+   This creates:
+   - `.ralph/config.toml` — Configuration
+   - `.plans/prd.json` — Feature definitions
+   - `.plans/PROMPT.md` — Your task prompt
+   - `.plans/progress.txt` — Progress tracking
 
-   ```json
-   {
-     "tool": "claude",
-     "exitConditions": {
-       "command": "npm test",
-       "successPattern": "All tests passed",
-       "maxIterations": 20
-     }
-   }
+3. **Configure ralph**
+
+   Edit `.ralph/config.toml`:
+
+   ```toml
+   adapter = "claude"
+   maxIterations = 20
    ```
 
-3. **Create your task prompt**
+4. **Create your task prompt**
 
-   Create a file called `TASK.md`:
+   Edit `.plans/PROMPT.md`:
 
    ```markdown
    # Task: Add Comprehensive Tests
@@ -79,146 +110,99 @@ Let's do something more structured. We'll add tests to a Node.js project.
 
    ## How to Check Progress
    1. Run `npm test` to see current status
-   2. Run `npm run coverage` to check coverage %
+   2. Check progress.txt for what's done
 
-   ## When You're Done
-   All tests should pass. Coverage should be >80%.
-   If complete, just exit normally.
+   ## Update Progress
+   After completing each module, add it to progress.txt
+
+   ## Completion
+   When `npm test -- --coverage` shows >80% coverage and all tests pass, output:
+   <promise>COMPLETE</promise>
    ```
 
-4. **Run the loop**
+5. **Run the loop**
 
    ```bash
-   ralph run --prompt TASK.md
+   ralph run
    ```
 
-5. **Watch it work**
-
-   You'll see output like:
-
-   ```
-   ┌─────────────────────────────────────────────────┐
-   │  ralph v1.0.0                                   │
-   │  Loop iteration: 1                              │
-   └─────────────────────────────────────────────────┘
-
-   → Starting claude with prompt from TASK.md
-   → Waiting for AI to work...
-
-   [Claude Code output here]
-
-   → AI exited. Checking exit conditions...
-   → Running: npm test
-   → Tests: 3 passing, 5 failing
-   → Condition not met. Starting iteration 2...
-
-   ┌─────────────────────────────────────────────────┐
-   │  Loop iteration: 2                              │
-   └─────────────────────────────────────────────────┘
-
-   → Starting claude with prompt from TASK.md
-   ...
-   ```
+6. **Watch it work**
 
    Each iteration:
-   - Claude reads the prompt and current codebase
+   - The AI reads the prompt and current codebase
    - Makes progress (adds tests, fixes issues)
-   - ralph checks if tests pass
+   - Updates progress.txt
+   - ralph checks if the AI signaled completion
    - If not done, loops again with fresh context
 
 </Steps>
 
 ## Understanding the Output
 
-Here's what a typical ralph session looks like:
+ralph displays:
+- Current iteration number
+- Token usage per iteration
+- Exit reason when complete
 
-```
-$ ralph run --prompt TASK.md
-
-ralph v1.0.0 — the loop that keeps going
-
-╭──────────────────────────────────────────╮
-│ Iteration 1 of 20                        │
-╰──────────────────────────────────────────╯
-
-▸ Tool: claude
-▸ Prompt: TASK.md (247 words)
-▸ Exit condition: npm test → "All tests passed"
-
-Starting AI session...
-
-[... Claude works, you see its output ...]
-
-Session ended. Checking conditions...
-
-  ✗ Exit command returned: 5 tests failed
-
-Continuing to iteration 2...
-
-╭──────────────────────────────────────────╮
-│ Iteration 2 of 20                        │
-╰──────────────────────────────────────────╯
-
-[... continues ...]
-
-╭──────────────────────────────────────────╮
-│ Iteration 7 of 20                        │
-╰──────────────────────────────────────────╯
-
-[... Claude works ...]
-
-Session ended. Checking conditions...
-
-  ✓ Exit command returned: All tests passed
-
-╭──────────────────────────────────────────╮
-│ Complete!                                │
-├──────────────────────────────────────────┤
-│ Iterations: 7                            │
-│ Duration: 12m 34s                        │
-│ Files modified: 14                       │
-│ Tests added: 23                          │
-╰──────────────────────────────────────────╯
-```
+The run ends when:
+- AI outputs `<promise>COMPLETE</promise>` (success)
+- Max iterations reached
+- User interrupts (Ctrl+C)
+- Error occurs
 
 ## Common Patterns
 
 ### Pattern 1: Fix All Errors
 
-```bash
-ralph run "Fix all ESLint errors. Run 'npm run lint' to check."
-```
+```markdown
+# Task: Fix Linting Errors
 
-Exit condition: `npm run lint` returns zero.
+Fix all ESLint errors.
+
+## Process
+Run `npm run lint` to see errors. Fix them one at a time.
+
+## Completion
+When `npm run lint` exits with code 0, output:
+<promise>COMPLETE</promise>
+```
 
 ### Pattern 2: Migration
 
-```bash
-ralph run --prompt migration.md --max-iterations 50
-```
+```markdown
+# Task: Migrate API Calls
 
-Where `migration.md` describes the migration and how to verify progress.
+Migrate all usages of `oldApi` to `newApi`.
+
+## Find work
+`grep -r "oldApi" src/`
+
+## Migration rules
+- `oldApi.fetch()` → `newApi.get()`
+- `oldApi.send()` → `newApi.post()`
+
+## Completion
+When grep returns no results, output:
+<promise>COMPLETE</promise>
+```
 
 ### Pattern 3: Documentation
 
-```bash
-ralph run "Add JSDoc comments to all exported functions in src/"
-```
-
-Exit condition: No undocumented exports remain.
-
-### Pattern 4: Marker File
-
-Create a task that ends with:
-
 ```markdown
-When complete, create an empty file called `DONE` in the project root.
-```
+# Task: Add JSDoc Comments
 
-Then:
+Add JSDoc comments to all exported functions in src/.
 
-```bash
-ralph run --prompt TASK.md --exit-file DONE
+## Guidelines
+- Include @param and @returns
+- Keep descriptions concise
+
+## Progress
+Track completed files in progress.txt
+
+## Completion
+When all exports are documented, output:
+<promise>COMPLETE</promise>
 ```
 
 ## Tips for Effective Prompts
@@ -239,8 +223,8 @@ The same prompt runs every iteration. Make it clear, self-contained, and include
 # Checking Progress
 [How to see what's already done]
 
-# Definition of Done
-[Clear exit criteria]
+# Completion
+[When to output <promise>COMPLETE</promise>]
 ```
 
 **Include these elements:**
@@ -248,12 +232,12 @@ The same prompt runs every iteration. Make it clear, self-contained, and include
 1. **Context** — What's the project? What's the goal?
 2. **Constraints** — Style guides, patterns to follow
 3. **Progress markers** — How to check what's done
-4. **Exit criteria** — When is the task complete?
+4. **Completion signal** — When to output the completion marker
 
 ## Next Steps
 
 Now that you've run your first loop:
 
 - **[The Loop](/concepts/the-loop/)** — Understand why this works
-- **[Exit Conditions](/concepts/exit-conditions/)** — Configure when to stop
+- **[Configuration](/usage/configuration/)** — All config options
 - **[CLI Reference](/usage/cli/)** — All commands and options
