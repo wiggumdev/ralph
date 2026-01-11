@@ -16,7 +16,7 @@ export function createParser(
 ): OutputParser {
   switch (format) {
     case "stream-json":
-      return new StreamJsonParser();
+      return new StreamJsonParser(completionMarker);
     case "opencode-json":
       return new OpenCodeJsonParser(completionMarker);
     case "text":

@@ -151,6 +151,47 @@ describe("StreamJsonParser", () => {
       const result = parser.getResult();
       expect(result.complete).toBe(false);
     });
+
+    /**
+     * Tests that custom completion markers are detected.
+     * Adapters should be able to configure their own markers.
+     */
+    test("detects custom completion marker from constructor", () => {
+      const customParser = new StreamJsonParser("DONE");
+      const chunk = '{"type":"result","subtype":"success","result":"DONE"}\n';
+      customParser.processChunk(chunk);
+      const result = customParser.getResult();
+
+      expect(result.complete).toBe(true);
+    });
+
+    /**
+     * Tests that custom marker doesn't match default marker.
+     * Parser should use configured marker, not hardcoded one.
+     */
+    test("custom marker does not match default marker", () => {
+      const customParser = new StreamJsonParser("FINISHED");
+      const chunk =
+        '{"type":"result","subtype":"success","result":"<promise>COMPLETE</promise>"}\n';
+      customParser.processChunk(chunk);
+      const result = customParser.getResult();
+
+      expect(result.complete).toBe(false);
+    });
+
+    /**
+     * Tests that marker is required in constructor.
+     * Without a marker, parser cannot detect completion.
+     */
+    test("uses default marker when not provided", () => {
+      const defaultParser = new StreamJsonParser();
+      const chunk =
+        '{"type":"result","subtype":"success","result":"<promise>COMPLETE</promise>"}\n';
+      defaultParser.processChunk(chunk);
+      const result = defaultParser.getResult();
+
+      expect(result.complete).toBe(true);
+    });
   });
 
   describe("rich message parsing", () => {

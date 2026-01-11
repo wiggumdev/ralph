@@ -23,6 +23,11 @@ export class StreamJsonParser implements OutputParser {
     number,
     { json: string; name?: string }
   >();
+  private readonly completionMarker: string;
+
+  constructor(completionMarker = "<promise>COMPLETE</promise>") {
+    this.completionMarker = completionMarker;
+  }
 
   processChunk(chunk: string): ParsedChunk[] {
     this.buffer += chunk;
@@ -109,7 +114,7 @@ export class StreamJsonParser implements OutputParser {
     if (msg.type === "result") {
       this.hasResult = true;
       const resultText = typeof msg.result === "string" ? msg.result : "";
-      this.resultSuccess = resultText.includes("<promise>COMPLETE</promise>");
+      this.resultSuccess = resultText.includes(this.completionMarker);
       chunk.isResult = true;
       chunk.resultSuccess = this.resultSuccess;
 
