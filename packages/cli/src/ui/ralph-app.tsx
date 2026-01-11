@@ -487,6 +487,9 @@ function RalphApp(props: RalphAppProps) {
   };
 
   const handleChunk = (chunk: ParsedChunk) => {
+    if (chunk.sessionId) {
+      setLastSessionId(chunk.sessionId);
+    }
     if (chunk.richMessage) {
       processRichMessage(chunk.richMessage);
     }
@@ -546,8 +549,9 @@ function RalphApp(props: RalphAppProps) {
         break;
       }
 
-      // Reset todos for new iteration
+      // Reset state for new iteration
       setTodos([]);
+      setMessages([]);
 
       // Execute ralph_loop_start hook
       if (hookExecutor) {
