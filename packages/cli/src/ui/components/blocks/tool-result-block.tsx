@@ -75,7 +75,7 @@ export function ToolResultBlock(props: ToolResultBlockProps) {
 
   return (
     <box flexDirection="column">
-      <Show when={resultText()}>
+      <Show when={resultText() && summary()}>
         <text>
           <span style={{ fg: "#666666" }}> ⎿ {summary()}</span>
         </text>

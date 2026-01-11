@@ -6,7 +6,12 @@ import {
   watchFile,
 } from "node:fs";
 import { resolve } from "node:path";
-import { render, useKeyboard, useRenderer } from "@opentui/solid";
+import {
+  render,
+  useKeyboard,
+  useRenderer,
+  useSelectionHandler,
+} from "@opentui/solid";
 import {
   createEffect,
   createSignal,
@@ -31,7 +36,7 @@ import { FooterPanel } from "#ui/components/footer-panel";
 import { MessageList } from "#ui/components/message-list";
 import { type PassFilter, PrdItemsTab } from "#ui/components/prd-items-tab";
 import type { TodoItem } from "#ui/components/session-panel";
-import { TabBar, type TabView } from "#ui/components/tab-bar";
+import type { TabView } from "#ui/components/tab-bar";
 import { JsonLogger } from "#utils/json-logger";
 import { readStream } from "#utils/stream";
 import { isTodoItemArray } from "#utils/validation";
@@ -367,6 +372,23 @@ function RalphApp(props: RalphAppProps) {
     }
     if (key.name === "q" || key.name === "escape") {
       handleQuit();
+    }
+  });
+
+  // Copy selected text to clipboard when selection completes
+  useSelectionHandler((selection) => {
+    if (!selection) {
+      return;
+    }
+    const text = selection.getSelectedText();
+    if (text) {
+      const cmd =
+        process.platform === "darwin"
+          ? ["pbcopy"]
+          : ["xclip", "-selection", "clipboard"];
+      const proc = Bun.spawn(cmd, { stdin: "pipe" });
+      proc.stdin.write(text);
+      proc.stdin.end();
     }
   });
 
@@ -757,6 +779,7 @@ export function runLoopTUI(
     };
 
     render(() => <RalphApp {...props} onComplete={onComplete} />, {
+      useMouse: true,
       onDestroy: () => {
         // Renderer cleanup complete, now safe to resolve
         setTimeout(() => {

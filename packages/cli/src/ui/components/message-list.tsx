@@ -4,14 +4,12 @@ import {
   isMessage,
   isPartialToolInput,
   isResultMessage,
-  isSystemMessage,
   isTextDelta,
 } from "#parsers/message-types";
 import { PartialToolBlock } from "./blocks/partial-tool-block";
 import { TextDeltaBlock } from "./blocks/text-delta-block";
 import { MessageItem } from "./message-item";
 import { ResultMessage } from "./result-message";
-import { SystemMessage } from "./system-message";
 
 export interface MessageListProps {
   messages: RichMessage[];
@@ -29,13 +27,6 @@ export function MessageList(props: MessageListProps) {
         {(msg) => (
           <box style={{ marginBottom: 1 }}>
             <Switch>
-              <Match when={isSystemMessage(msg)}>
-                <SystemMessage
-                  message={
-                    msg as import("#parsers/message-types").SystemMessage
-                  }
-                />
-              </Match>
               <Match when={isMessage(msg)}>
                 <MessageItem
                   expanded={props.expanded}

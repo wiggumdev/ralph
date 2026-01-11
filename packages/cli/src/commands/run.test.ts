@@ -15,9 +15,9 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { trackTokensFromChunk } from "./run-helpers";
-import type { ParsedChunk, OutputParser } from "#parsers";
+import type { ParsedChunk } from "#parsers";
 import type { Message, ResultMessage } from "#parsers/message-types";
+import { trackTokensFromChunk } from "./run-helpers";
 
 describe("run command useTui logic", () => {
   /**
