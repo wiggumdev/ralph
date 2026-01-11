@@ -29,10 +29,10 @@ import {
 import { type PrdFeature, validatePrd } from "#schema/prd";
 import { MessageList } from "#ui/components/message-list";
 import { type PassFilter, PrdItemsTab } from "#ui/components/prd-items-tab";
-import { SessionPanel, type TodoItem } from "#ui/components/session-panel";
-import { isTodoItemArray } from "#utils/validation";
+import type { TodoItem } from "#ui/components/session-panel";
 import { JsonLogger } from "#utils/json-logger";
 import { readStream } from "#utils/stream";
+import { isTodoItemArray } from "#utils/validation";
 
 /** Max items to keep in output buffer */
 const OUTPUT_BUFFER_SIZE = 50;
@@ -428,6 +428,28 @@ function RalphApp(props: RalphAppProps) {
     }
   };
 
+  const getTodoIcon = (todoStatus: string): string => {
+    switch (todoStatus) {
+      case "completed":
+        return "☑";
+      case "in_progress":
+        return "◐";
+      default:
+        return "☐";
+    }
+  };
+
+  const getTodoColor = (todoStatus: string): string => {
+    switch (todoStatus) {
+      case "completed":
+        return "#00ff00";
+      case "in_progress":
+        return "#ffff00";
+      default:
+        return "#888888";
+    }
+  };
+
   const formatTokens = (count: number): string => {
     if (count >= 1000) {
       return `${(count / 1000).toFixed(1)}k`;
@@ -640,113 +662,49 @@ function RalphApp(props: RalphAppProps) {
 
   return (
     <box flexDirection="column" style={{ padding: 1 }}>
+      {/* Tab bar - at top */}
       <box>
         <text>
-          <span style={{ fg: "#00aaff" }}>{RALPH_ICON}</span>{" "}
-          <strong>Ralph Agent Loop</strong>
-          <span style={{ fg: "#666666" }}>
-            {" "}
-            | [e] toggle | [r] {richMode() ? "plain" : "rich"} | [Tab] switch |
-            [q] quit
+          <span
+            style={{
+              fg: currentTab() === "output" ? "#00ff00" : "#666666",
+            }}
+          >
+            {currentTab() === "output" ? "▶ " : "  "}
+            Output
           </span>
+          <span style={{ fg: "#666666" }}> | </span>
+          <span
+            style={{
+              fg: currentTab() === "progress" ? "#00ff00" : "#666666",
+            }}
+          >
+            {currentTab() === "progress" ? "▶ " : "  "}
+            Progress
+          </span>
+          <span style={{ fg: "#666666" }}> | </span>
+          <span
+            style={{
+              fg: currentTab() === "prd" ? "#00ff00" : "#666666",
+            }}
+          >
+            {currentTab() === "prd" ? "▶ " : "  "}
+            PRD
+          </span>
+          <Show when={currentTab() === "prd"}>
+            <span style={{ fg: "#666666" }}> | {prdHelpText()}</span>
+          </Show>
         </text>
       </box>
 
       {/* Main content area */}
       <box flexDirection="column" style={{ flexGrow: 1 }}>
-        {/* Tab bar */}
-        <box style={{ marginTop: 1 }}>
-          <text>
-            <span
-              style={{
-                fg: currentTab() === "output" ? "#00ff00" : "#666666",
-              }}
-            >
-              {currentTab() === "output" ? "▶ " : "  "}
-              Output
-            </span>
-            <span style={{ fg: "#666666" }}> | </span>
-            <span
-              style={{
-                fg: currentTab() === "progress" ? "#00ff00" : "#666666",
-              }}
-            >
-              {currentTab() === "progress" ? "▶ " : "  "}
-              Progress
-            </span>
-            <span style={{ fg: "#666666" }}> | </span>
-            <span
-              style={{
-                fg: currentTab() === "prd" ? "#00ff00" : "#666666",
-              }}
-            >
-              {currentTab() === "prd" ? "▶ " : "  "}
-              PRD
-            </span>
-            <Show when={currentTab() === "prd"}>
-              <span style={{ fg: "#666666" }}> | {prdHelpText()}</span>
-            </Show>
-          </text>
-        </box>
-
-        <box style={{ marginTop: 1 }}>
-          <text>
-            <span style={{ fg: statusColor() }}>{statusIcon()} </span>
-            Iteration {iteration()}/{props.maxIterations}{" "}
-            <span style={{ fg: "#666666" }}>{progressBar()}</span>
-          </text>
-        </box>
-
-        <Show when={hasUsageData()}>
-          <box>
-            <text>
-              <span style={{ fg: "#00aaff" }}>
-                Tokens: {formatTokens(totalInputTokens())} in /{" "}
-                {formatTokens(totalOutputTokens())} out
-              </span>
-              <Show when={totalCost() > 0}>
-                <span style={{ fg: "#ffaa00" }}>
-                  {" "}
-                  | Cost: {formatCost(totalCost())}
-                </span>
-              </Show>
-            </text>
-          </box>
-        </Show>
-
-        <box style={{ marginTop: 1 }}>
-          <Show when={status() === "complete" && exitReason() === "complete"}>
-            <text>
-              <span style={{ fg: "#00ff00" }}>
-                ✓ Task marked complete by agent
-              </span>
-            </text>
-          </Show>
-          <Show
-            when={status() === "complete" && exitReason() === "max_iterations"}
-          >
-            <text>
-              <span style={{ fg: "#ffff00" }}>
-                ⚠ Reached max iterations ({props.maxIterations})
-              </span>
-            </text>
-          </Show>
-          <Show when={status() === "error"}>
-            <text>
-              <span style={{ fg: "#ff0000" }}>
-                ✗ Error in iteration {iteration()}
-              </span>
-            </text>
-          </Show>
-        </box>
-
         {/* Output tab view */}
         <Show when={currentTab() === "output"}>
           <Show when={expanded()}>
             <Show
               fallback={
                 <scrollbox
-                  border
                   stickyScroll
                   stickyStart="bottom"
                   style={{ marginTop: 1, flexGrow: 1 }}
@@ -776,7 +734,6 @@ function RalphApp(props: RalphAppProps) {
         {/* Progress tab view */}
         <Show when={currentTab() === "progress"}>
           <scrollbox
-            border
             stickyScroll
             stickyStart="bottom"
             style={{ marginTop: 1, flexGrow: 1 }}
@@ -808,13 +765,78 @@ function RalphApp(props: RalphAppProps) {
         </Show>
       </box>
 
-      {/* Footer: session panel */}
-      <SessionPanel
-        iteration={iteration()}
-        maxIterations={props.maxIterations}
-        sessionId={lastSessionId()}
-        todos={todos()}
-      />
+      {/* Footer */}
+      <box flexDirection="column" style={{ paddingTop: 1 }}>
+        {/* Header line */}
+        <text>
+          <span style={{ fg: "#00aaff" }}>{RALPH_ICON}</span>{" "}
+          <strong>Ralph Agent Loop</strong>
+          <span style={{ fg: "#666666" }}>
+            {" "}
+            | [e] toggle | [r] {richMode() ? "plain" : "rich"} | [Tab] switch |
+            [q] quit
+          </span>
+        </text>
+
+        {/* Progress bar */}
+        <text>
+          <span style={{ fg: statusColor() }}>{statusIcon()} </span>
+          Iteration {iteration()}/{props.maxIterations}{" "}
+          <span style={{ fg: "#666666" }}>{progressBar()}</span>
+          <Show when={hasUsageData()}>
+            <span style={{ fg: "#444444" }}> | </span>
+            <span style={{ fg: "#00aaff" }}>
+              {formatTokens(totalInputTokens())} in /{" "}
+              {formatTokens(totalOutputTokens())} out
+            </span>
+            <Show when={totalCost() > 0}>
+              <span style={{ fg: "#ffaa00" }}>
+                {" "}
+                | {formatCost(totalCost())}
+              </span>
+            </Show>
+          </Show>
+        </text>
+
+        {/* Status messages */}
+        <Show when={status() === "complete" && exitReason() === "complete"}>
+          <text>
+            <span style={{ fg: "#00ff00" }}>
+              ✓ Task marked complete by agent
+            </span>
+          </text>
+        </Show>
+        <Show
+          when={status() === "complete" && exitReason() === "max_iterations"}
+        >
+          <text>
+            <span style={{ fg: "#ffff00" }}>
+              ⚠ Reached max iterations ({props.maxIterations})
+            </span>
+          </text>
+        </Show>
+        <Show when={status() === "error"}>
+          <text>
+            <span style={{ fg: "#ff0000" }}>
+              ✗ Error in iteration {iteration()}
+            </span>
+          </text>
+        </Show>
+
+        {/* Tasks */}
+        <Show when={todos().length > 0}>
+          <For each={todos()}>
+            {(todo) => (
+              <text>
+                <span style={{ fg: getTodoColor(todo.status) }}>
+                  {getTodoIcon(todo.status)}
+                </span>
+                <span style={{ fg: "#aaaaaa" }}> {todo.content}</span>
+              </text>
+            )}
+          </For>
+        </Show>
+      </box>
     </box>
   );
 }

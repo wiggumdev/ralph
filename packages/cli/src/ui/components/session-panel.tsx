@@ -36,45 +36,34 @@ function getTodoColor(status: string): string {
 
 export function SessionPanel(props: SessionPanelProps) {
   return (
-    <box flexDirection="row" style={{ paddingTop: 1 }}>
+    <box flexDirection="column" style={{ paddingTop: 1 }}>
+      {/* Session info line */}
       <text>
         <span style={{ fg: "#888888" }}>Iteration: </span>
         <span>
           {props.iteration}/{props.maxIterations}
         </span>
-      </text>
-      <Show when={props.sessionId}>
-        <text>
+        <Show when={props.sessionId}>
           <span style={{ fg: "#444444" }}> | </span>
           <span style={{ fg: "#888888" }}>ID: </span>
           <span style={{ fg: "#606060" }}>
             {props.sessionId?.slice(0, 12)}...
           </span>
-        </text>
-      </Show>
+        </Show>
+      </text>
+
+      {/* Task list - one per line */}
       <Show when={props.todos.length > 0}>
-        <text>
-          <span style={{ fg: "#444444" }}> | </span>
-          <span style={{ fg: "#888888" }}>Tasks: </span>
-          <For each={props.todos}>
-            {(todo, index) => (
-              <>
-                <span style={{ fg: getTodoColor(todo.status) }}>
-                  {getTodoIcon(todo.status)}
-                </span>
-                <span style={{ fg: "#aaaaaa" }}>
-                  {" "}
-                  {todo.content.length > 20
-                    ? `${todo.content.slice(0, 20)}...`
-                    : todo.content}
-                </span>
-                <Show when={index() < props.todos.length - 1}>
-                  <span style={{ fg: "#444444" }}> | </span>
-                </Show>
-              </>
-            )}
-          </For>
-        </text>
+        <For each={props.todos}>
+          {(todo) => (
+            <text>
+              <span style={{ fg: getTodoColor(todo.status) }}>
+                {getTodoIcon(todo.status)}
+              </span>
+              <span style={{ fg: "#aaaaaa" }}> {todo.content}</span>
+            </text>
+          )}
+        </For>
       </Show>
     </box>
   );

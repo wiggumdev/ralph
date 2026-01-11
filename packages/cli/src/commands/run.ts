@@ -415,6 +415,7 @@ export const runCommand: CommandModule<object, RunArgs> = {
         describe: "Write raw stream-json output to file",
       }),
 
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: CLI handler requires multiple config checks
   handler: async (argv) => {
     const cwd = argv.cwd ?? process.cwd();
     const config = await loadConfig({ cwd });

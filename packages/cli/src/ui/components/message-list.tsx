@@ -21,7 +21,6 @@ export interface MessageListProps {
 export function MessageList(props: MessageListProps) {
   return (
     <scrollbox
-      border
       stickyScroll
       stickyStart="bottom"
       style={{ marginTop: 1, flexGrow: 1 }}
