@@ -320,4 +320,173 @@ describe("HookExecutor", () => {
       delete process.env[testEnvVar];
     });
   });
+
+  describe("hook timeout", () => {
+    /**
+     * Tests that hanging hooks are terminated after timeout.
+     */
+    test("terminates hanging hook after timeout", async () => {
+      const executor = createHookExecutor({
+        hooks: {
+          ralph_start: "sleep 10", // Would hang for 10 seconds
+        },
+        cwd: tempDir,
+        timeout: 100, // 100ms timeout
+      });
+
+      const start = Date.now();
+      await executor.executeRalphStart(0, 1);
+      const duration = Date.now() - start;
+
+      // Should terminate around 100ms, not wait full 10 seconds
+      expect(duration).toBeLessThan(1000);
+    });
+
+    /**
+     * Tests that hooks complete normally within timeout.
+     */
+    test("allows hooks to complete within timeout", async () => {
+      const executor = createHookExecutor({
+        hooks: {
+          ralph_start: `echo "done" > ${outputFile}`,
+        },
+        cwd: tempDir,
+        timeout: 1000,
+      });
+
+      await executor.executeRalphStart(0, 1);
+
+      expect(existsSync(outputFile)).toBe(true);
+    });
+
+    /**
+     * Tests that timeout is optional (default behavior allows indefinite execution).
+     */
+    test("no timeout by default", async () => {
+      const executor = createHookExecutor({
+        hooks: {
+          ralph_start: "sleep 0.2 && echo 'completed'",
+        },
+        cwd: tempDir,
+      });
+
+      // Should complete without error
+      await executor.executeRalphStart(0, 1);
+    });
+  });
+
+  describe("hook failure logging", () => {
+    /**
+     * Tests that hook failures are logged even when verbose=false.
+     */
+    test("logs hook failures regardless of verbose flag", async () => {
+      const logSpy: Array<{ level: string; message: string; extra?: any }> = [];
+
+      const executor = createHookExecutor({
+        hooks: {
+          ralph_start: "exit 42",
+        },
+        cwd: tempDir,
+        verbose: false,
+        logger: {
+          error: (message: string, extra?: any) => {
+            logSpy.push({ level: "error", message, extra });
+          },
+          warn: (message: string, extra?: any) => {
+            logSpy.push({ level: "warn", message, extra });
+          },
+          info: (message: string, extra?: any) => {
+            logSpy.push({ level: "info", message, extra });
+          },
+          debug: (message: string, extra?: any) => {
+            logSpy.push({ level: "debug", message, extra });
+          },
+        },
+      });
+
+      await executor.executeRalphStart(0, 1);
+
+      // Should have logged the failure
+      const errorLogs = logSpy.filter((log) => log.level === "error");
+      expect(errorLogs.length).toBeGreaterThan(0);
+      expect(errorLogs[0]?.message).toContain("ralph_start");
+      expect(errorLogs[0]?.extra?.exitCode).toBe(42);
+    });
+
+    /**
+     * Tests that successful hooks are logged at info level.
+     */
+    test("logs successful hook execution at info level", async () => {
+      const logSpy: Array<{ level: string; message: string; extra?: any }> = [];
+
+      const executor = createHookExecutor({
+        hooks: {
+          ralph_start: "exit 0",
+        },
+        cwd: tempDir,
+        verbose: false,
+        logger: {
+          error: (message: string, extra?: any) => {
+            logSpy.push({ level: "error", message, extra });
+          },
+          warn: (message: string, extra?: any) => {
+            logSpy.push({ level: "warn", message, extra });
+          },
+          info: (message: string, extra?: any) => {
+            logSpy.push({ level: "info", message, extra });
+          },
+          debug: (message: string, extra?: any) => {
+            logSpy.push({ level: "debug", message, extra });
+          },
+        },
+      });
+
+      await executor.executeRalphStart(0, 1);
+
+      const infoLogs = logSpy.filter((log) => log.level === "info");
+      expect(infoLogs.length).toBeGreaterThan(0);
+      expect(infoLogs.some((log) => log.message.includes("ralph_start"))).toBe(
+        true
+      );
+    });
+
+    /**
+     * Tests that timeout events are logged.
+     */
+    test("logs timeout events", async () => {
+      const logSpy: Array<{ level: string; message: string; extra?: any }> = [];
+
+      const executor = createHookExecutor({
+        hooks: {
+          ralph_start: "sleep 10",
+        },
+        cwd: tempDir,
+        timeout: 100,
+        logger: {
+          error: (message: string, extra?: any) => {
+            logSpy.push({ level: "error", message, extra });
+          },
+          warn: (message: string, extra?: any) => {
+            logSpy.push({ level: "warn", message, extra });
+          },
+          info: (message: string, extra?: any) => {
+            logSpy.push({ level: "info", message, extra });
+          },
+          debug: (message: string, extra?: any) => {
+            logSpy.push({ level: "debug", message, extra });
+          },
+        },
+      });
+
+      await executor.executeRalphStart(0, 1);
+
+      const warnLogs = logSpy.filter((log) => log.level === "warn");
+      expect(warnLogs.length).toBeGreaterThan(0);
+      expect(
+        warnLogs.some(
+          (log) => log.message.includes("timeout") || log.extra?.timeout
+        )
+      ).toBe(true);
+    });
+  });
 });

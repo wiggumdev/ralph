@@ -44,17 +44,33 @@ export interface HookExecutorOptions {
   hooks: Hooks;
   cwd: string;
   verbose?: boolean;
+  timeout?: number;
+  logger?: {
+    info(message: string, extra?: Record<string, any>): void;
+    warn(message: string, extra?: Record<string, any>): void;
+    error(message: string, extra?: Record<string, any>): void;
+    debug(message: string, extra?: Record<string, any>): void;
+  };
 }
 
 export class HookExecutor {
   private readonly hooks: Hooks;
   private readonly cwd: string;
   private readonly verbose: boolean;
+  private readonly timeout?: number;
+  private readonly logger?: {
+    info(message: string, extra?: Record<string, any>): void;
+    warn(message: string, extra?: Record<string, any>): void;
+    error(message: string, extra?: Record<string, any>): void;
+    debug(message: string, extra?: Record<string, any>): void;
+  };
 
   constructor(options: HookExecutorOptions) {
     this.hooks = options.hooks;
     this.cwd = options.cwd;
     this.verbose = options.verbose ?? false;
+    this.timeout = options.timeout;
+    this.logger = options.logger;
   }
 
   private async executeHook(hookType: HookType, env: HookEnv): Promise<void> {
@@ -67,6 +83,8 @@ export class HookExecutor {
       console.log(`[HOOK] Executing ${hookType}: ${command}`);
     }
 
+    this.logger?.debug(`Executing hook ${hookType}`, { command });
+
     const proc = Bun.spawn(["sh", "-c", command], {
       cwd: this.cwd,
       env: {
@@ -77,12 +95,44 @@ export class HookExecutor {
       stderr: this.verbose ? "inherit" : "ignore",
     });
 
-    const exitCode = await proc.exited;
+    let exitCode: number;
+    let timedOut = false;
 
-    if (this.verbose) {
-      if (exitCode !== 0) {
+    if (this.timeout) {
+      // Race between process completion and timeout
+      const timeoutPromise = new Promise<void>((resolve) => {
+        setTimeout(() => {
+          timedOut = true;
+          proc.kill();
+          resolve();
+        }, this.timeout);
+      });
+
+      await Promise.race([proc.exited, timeoutPromise]);
+      exitCode = proc.exitCode ?? -1;
+    } else {
+      exitCode = await proc.exited;
+    }
+
+    // Log results to logger (always, regardless of verbose flag)
+    if (timedOut) {
+      const message = `Hook ${hookType} timed out after ${this.timeout}ms`;
+      this.logger?.warn(message, { hookType, timeout: this.timeout });
+      if (this.verbose) {
+        console.log(`[HOOK] ${message}`);
+      }
+    } else if (exitCode !== 0) {
+      const message = `Hook ${hookType} failed with exit code ${exitCode}`;
+      this.logger?.error(message, { hookType, exitCode, command });
+      if (this.verbose) {
         console.log(`[HOOK] ${hookType} exited with code ${exitCode}`);
-      } else {
+      }
+    } else {
+      this.logger?.info(`Hook ${hookType} completed successfully`, {
+        hookType,
+        exitCode,
+      });
+      if (this.verbose) {
         console.log(`[HOOK] ${hookType} completed successfully`);
       }
     }

@@ -13,25 +13,27 @@ interface TodoItem {
 }
 
 function getKeyParam(name: string, input: Record<string, unknown>): string {
-  switch (name) {
-    case "Read":
-    case "Edit":
-    case "Write":
+  const lowerName = name.toLowerCase();
+  switch (lowerName) {
+    case "read":
+    case "edit":
+    case "write":
       return (input.file_path as string) || "";
-    case "Grep": {
+    case "grep": {
       const pattern = input.pattern as string;
       const path = input.path as string;
       return path ? `pattern: "${pattern}", path: "${path}"` : `"${pattern}"`;
     }
-    case "Glob":
+    case "glob":
       return (input.pattern as string) || "";
-    case "Bash": {
+    case "bash": {
       const cmd = (input.command as string) || "";
       return cmd.length > 60 ? `${cmd.slice(0, 60)}...` : cmd;
     }
-    case "Task":
+    case "task":
       return (input.description as string) || "";
-    case "TodoWrite":
+    case "todowrite":
+    case "todo_write":
       return "";
     default: {
       for (const val of Object.values(input)) {
@@ -84,10 +86,12 @@ export function ToolUseBlock(props: ToolUseBlockProps) {
 
   const keyParam = () => getKeyParam(props.block.name, input());
 
-  const isTodoWrite = () => props.block.name === "TodoWrite";
+  const toolName = () => props.block.name.toLowerCase();
+  const isTodoWrite = () =>
+    toolName() === "todowrite" || toolName() === "todo_write";
   const todos = () => (input().todos as TodoItem[]) || [];
 
-  const isEdit = () => props.block.name === "Edit";
+  const isEdit = () => toolName() === "edit";
   const diffLines = () => {
     if (!isEdit()) {
       return [];
