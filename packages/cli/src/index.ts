@@ -6,6 +6,7 @@ import { checkCommand } from "#commands/check";
 import { initCommand } from "#commands/init";
 import { runCommand } from "#commands/run";
 import { Log } from "#log";
+import pkg from "../package.json";
 
 process.on("unhandledRejection", (e) => {
   Log.Default.error("rejection", {
@@ -31,5 +32,6 @@ await yargs(hideBin(process.argv))
   .strict()
   .help("help", "Show help")
   .alias("h", "help")
-  .version(false)
+  .version(pkg.version)
+  .alias("v", "version")
   .parse();
