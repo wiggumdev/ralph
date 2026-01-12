@@ -226,9 +226,39 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  verify-npm:
+    name: Verify npm (${{ matrix.name }})
+    needs: [publish-npm]
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.dry_run }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x64-glibc
+            platform: linux/amd64
+            image: node:20
+          - name: linux-x64-musl
+            platform: linux/amd64
+            image: node:20-alpine
+          - name: linux-arm64-glibc
+            platform: linux/arm64
+            image: node:20
+          - name: linux-arm64-musl
+            platform: linux/arm64
+            image: node:20-alpine
+    steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Verify npm install
+        run: |
+          docker run --rm --platform ${{ matrix.platform }} ${{ matrix.image }} \
+            sh -c 'npm install -g @wiggumdev/ralph && ralph --version'
+
   create-release:
     name: Create GitHub Release
-    needs: [build, smoke-test, publish-npm]
+    needs: [build, smoke-test, publish-npm, verify-npm]
     runs-on: ubuntu-latest
     if: ${{ !inputs.dry_run }}
     steps:
