@@ -23,6 +23,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Global } from "./global";
 import { Log } from "./log";
 
 // Regex patterns defined at top level for performance
@@ -246,21 +247,12 @@ describe("Log", () => {
         await Bun.write(join(logDir, filename), `log ${i}`);
       }
 
-      // Mock Global.Path.log
-      const originalLog = (global as any).Global?.Path?.log;
-      if (!(global as any).Global) {
-        (global as any).Global = {};
-      }
-      if (!(global as any).Global.Path) {
-        (global as any).Global.Path = {};
-      }
-      (global as any).Global.Path.log = logDir;
+      // Modify Global.Path.log directly
+      const originalLog = Global.Path.log;
+      Global.Path.log = logDir;
 
       // Init triggers cleanup
       await Log.init({ print: false, dev: false });
-
-      // Allow cleanup to complete
-      await Bun.sleep(50);
 
       // Count remaining log files
       const files = readdirSync(logDir).filter((f) => ISO_DATE_PATTERN.test(f));
@@ -269,9 +261,7 @@ describe("Log", () => {
       expect(files.length).toBeLessThanOrEqual(11); // 10 old + 1 new
 
       // Restore original path
-      if (originalLog !== undefined) {
-        (global as any).Global.Path.log = originalLog;
-      }
+      Global.Path.log = originalLog;
     });
 
     test("does not cleanup when fewer than 5 files exist", async () => {
@@ -285,18 +275,11 @@ describe("Log", () => {
         await Bun.write(join(logDir, filename), `log ${i}`);
       }
 
-      // Mock Global.Path.log
-      const originalLog = (global as any).Global?.Path?.log;
-      if (!(global as any).Global) {
-        (global as any).Global = {};
-      }
-      if (!(global as any).Global.Path) {
-        (global as any).Global.Path = {};
-      }
-      (global as any).Global.Path.log = logDir;
+      // Modify Global.Path.log directly
+      const originalLog = Global.Path.log;
+      Global.Path.log = logDir;
 
       await Log.init({ print: false, dev: false });
-      await Bun.sleep(50);
 
       // Count log files
       const files = readdirSync(logDir).filter((f) => ISO_DATE_PATTERN.test(f));
@@ -305,9 +288,7 @@ describe("Log", () => {
       expect(files.length).toBeGreaterThanOrEqual(3);
 
       // Restore original path
-      if (originalLog !== undefined) {
-        (global as any).Global.Path.log = originalLog;
-      }
+      Global.Path.log = originalLog;
     });
   });
 });

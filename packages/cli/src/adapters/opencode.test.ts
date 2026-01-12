@@ -40,71 +40,81 @@ describe("OpenCodeAdapter", () => {
     });
 
     /**
-     * Tests that supported formats only includes text.
-     * OpenCode CLI doesn't support stream-json format.
+     * Tests that supported formats include text and opencode-json.
+     * OpenCode CLI supports its own JSON format.
      */
-    test("only supports text format", () => {
+    test("supports text and opencode-json formats", () => {
       expect(adapter.supportedFormats).toContain("text");
+      expect(adapter.supportedFormats).toContain("opencode-json");
       expect(adapter.supportedFormats).not.toContain("stream-json");
-      expect(adapter.supportedFormats).toHaveLength(1);
+      expect(adapter.supportedFormats).toHaveLength(2);
     });
   });
 
   describe("buildArgs", () => {
     /**
-     * Tests that basic args include opencode command and non-interactive flag.
-     * Non-interactive mode is required for automated execution.
+     * Tests that basic args include opencode command and run subcommand.
+     * Uses 'opencode run' for automated execution.
      */
-    test("includes base command and non-interactive flag", () => {
+    test("includes base command and run subcommand", () => {
       const args = adapter.buildArgs("Test prompt", {});
 
       expect(args[0]).toBe("opencode");
-      expect(args).toContain("--non-interactive");
+      expect(args[1]).toBe("run");
     });
 
     /**
-     * Tests that prompt is passed with -m flag.
-     * OpenCode uses -m for message/prompt input.
+     * Tests that prompt is passed as the last argument.
+     * OpenCode run takes prompt as positional argument.
      */
-    test("includes prompt with -m flag", () => {
+    test("includes prompt as last argument", () => {
       const prompt = "Do something useful";
       const args = adapter.buildArgs(prompt, {});
 
-      const promptIndex = args.indexOf("-m");
-      expect(promptIndex).toBeGreaterThan(-1);
-      expect(args[promptIndex + 1]).toBe(prompt);
+      expect(args.at(-1)).toBe(prompt);
     });
 
     /**
-     * Tests that verbose option adds verbose flag.
-     * Verbose flag provides additional logging output.
+     * Tests that verbose option adds --print-logs flag.
+     * Print-logs flag provides additional logging output.
      */
-    test("adds verbose flag when verbose is true", () => {
+    test("adds --print-logs flag when verbose is true", () => {
       const args = adapter.buildArgs("Prompt", { verbose: true });
 
-      expect(args).toContain("--verbose");
+      expect(args).toContain("--print-logs");
     });
 
     /**
-     * Tests that verbose false doesn't add verbose flag.
+     * Tests that verbose false doesn't add --print-logs flag.
      * Default should not include verbose output.
      */
-    test("does not add verbose flag when verbose is false", () => {
+    test("does not add --print-logs flag when verbose is false", () => {
       const args = adapter.buildArgs("Prompt", { verbose: false });
 
-      expect(args).not.toContain("--verbose");
+      expect(args).not.toContain("--print-logs");
     });
 
     /**
-     * Tests that output format is ignored (only text supported).
-     * OpenCode doesn't support stream-json, so format option is ignored.
+     * Tests that opencode-json format adds --format json flag.
+     * OpenCode supports its own JSON format.
      */
-    test("ignores output format option", () => {
-      const args = adapter.buildArgs("Prompt", { outputFormat: "stream-json" });
+    test("adds --format json for opencode-json format", () => {
+      const args = adapter.buildArgs("Prompt", {
+        outputFormat: "opencode-json",
+      });
 
-      // Should not add any output format flags
-      expect(args).not.toContain("--output-format");
-      expect(args).not.toContain("stream-json");
+      expect(args).toContain("--format");
+      expect(args).toContain("json");
+    });
+
+    /**
+     * Tests that text format doesn't add format flag.
+     * Text is the default output.
+     */
+    test("does not add format flag for text format", () => {
+      const args = adapter.buildArgs("Prompt", { outputFormat: "text" });
+
+      expect(args).not.toContain("--format");
     });
 
     /**
@@ -114,14 +124,14 @@ describe("OpenCodeAdapter", () => {
     test("combines options correctly", () => {
       const args = adapter.buildArgs("Complex prompt", {
         verbose: true,
-        outputFormat: "text",
+        outputFormat: "opencode-json",
       });
 
       expect(args).toContain("opencode");
-      expect(args).toContain("--non-interactive");
-      expect(args).toContain("--verbose");
-      expect(args).toContain("-m");
-      expect(args).toContain("Complex prompt");
+      expect(args).toContain("run");
+      expect(args).toContain("--print-logs");
+      expect(args).toContain("--format");
+      expect(args.at(-1)).toBe("Complex prompt");
     });
 
     /**
@@ -132,8 +142,7 @@ describe("OpenCodeAdapter", () => {
       const prompt = 'Create a "test" with\nmultiple lines';
       const args = adapter.buildArgs(prompt, {});
 
-      const promptIndex = args.indexOf("-m");
-      expect(args[promptIndex + 1]).toBe(prompt);
+      expect(args.at(-1)).toBe(prompt);
     });
 
     /**
@@ -143,9 +152,7 @@ describe("OpenCodeAdapter", () => {
     test("handles empty prompt", () => {
       const args = adapter.buildArgs("", {});
 
-      const promptIndex = args.indexOf("-m");
-      expect(promptIndex).toBeGreaterThan(-1);
-      expect(args[promptIndex + 1]).toBe("");
+      expect(args.at(-1)).toBe("");
     });
 
     /**
@@ -161,17 +168,17 @@ describe("OpenCodeAdapter", () => {
 
     /**
      * Tests that args order is correct.
-     * Command should come first, then flags, then message.
+     * Command should come first, then flags, then prompt.
      */
     test("maintains correct argument order", () => {
       const args = adapter.buildArgs("Prompt", { verbose: true });
 
       // opencode should be first
       expect(args[0]).toBe("opencode");
-
-      // -m and prompt should be at the end
-      const mIndex = args.indexOf("-m");
-      expect(mIndex).toBe(args.length - 2);
+      // run should be second
+      expect(args[1]).toBe("run");
+      // prompt should be at the end
+      expect(args.at(-1)).toBe("Prompt");
     });
   });
 
@@ -257,15 +264,15 @@ describe("Adapter comparison", () => {
   });
 
   /**
-   * Tests that Claude supports more formats than OpenCode.
-   * Claude has richer output format options.
+   * Tests that both adapters support the same number of formats.
+   * Both now support 2 formats each.
    */
-  test("Claude supports more formats than OpenCode", async () => {
+  test("both adapters support same number of formats", async () => {
     const { ClaudeAdapter } = await import("./claude");
     const claude = new ClaudeAdapter();
     const opencode = new OpenCodeAdapter();
 
-    expect(claude.supportedFormats.length).toBeGreaterThan(
+    expect(claude.supportedFormats.length).toBe(
       opencode.supportedFormats.length
     );
   });

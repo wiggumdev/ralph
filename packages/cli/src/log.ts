@@ -61,8 +61,12 @@ export namespace Log {
     if (options.level) {
       level = options.level;
     }
-    cleanup(Global.Path.log);
+    await cleanup(Global.Path.log);
     if (options.print) {
+      write = (msg: any) => {
+        process.stderr.write(msg);
+        return msg.length;
+      };
       return;
     }
     logpath = path.join(
@@ -98,6 +102,8 @@ export namespace Log {
       return;
     }
 
+    // Sort by filename (timestamp-based) to ensure oldest files are deleted
+    files.sort();
     const filesToDelete = files.slice(0, -10);
     await Promise.all(
       filesToDelete.map((file) =>
@@ -189,7 +195,8 @@ export namespace Log {
         return result;
       },
       clone() {
-        return Log.create({ ...tags });
+        const { service: _, ...rest } = tags || {};
+        return Log.create(rest);
       },
       time(message: string, extra?: Record<string, any>) {
         const now = Date.now();

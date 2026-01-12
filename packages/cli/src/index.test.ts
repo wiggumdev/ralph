@@ -15,6 +15,7 @@ import { resolve } from "node:path";
 import { spawn } from "bun";
 
 const CLI_PATH = resolve(import.meta.dir, "./index.ts");
+const CLI_DIR = resolve(import.meta.dir, "..");
 const SEMVER_REGEX = /^\d+\.\d+\.\d+/;
 
 describe("CLI version flag", () => {
@@ -23,9 +24,10 @@ describe("CLI version flag", () => {
    * Should output version number and exit with code 0.
    */
   test("ralph --version displays version", async () => {
-    const proc = spawn(["bun", CLI_PATH, "--version"], {
+    const proc = spawn(["bun", "run", "--bun", CLI_PATH, "--version"], {
       stdout: "pipe",
       stderr: "pipe",
+      cwd: CLI_DIR,
     });
 
     const output = await new Response(proc.stdout).text();
@@ -40,9 +42,10 @@ describe("CLI version flag", () => {
    * Should have same behavior as --version.
    */
   test("ralph -v displays version", async () => {
-    const proc = spawn(["bun", CLI_PATH, "-v"], {
+    const proc = spawn(["bun", "run", "--bun", CLI_PATH, "-v"], {
       stdout: "pipe",
       stderr: "pipe",
+      cwd: CLI_DIR,
     });
 
     const output = await new Response(proc.stdout).text();
@@ -57,9 +60,10 @@ describe("CLI version flag", () => {
    * Version should come from package.json.
    */
   test("version matches package.json", async () => {
-    const proc = spawn(["bun", CLI_PATH, "--version"], {
+    const proc = spawn(["bun", "run", "--bun", CLI_PATH, "--version"], {
       stdout: "pipe",
       stderr: "pipe",
+      cwd: CLI_DIR,
     });
 
     const output = await new Response(proc.stdout).text();
