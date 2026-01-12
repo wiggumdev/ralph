@@ -108,6 +108,12 @@ await $`mkdir -p ./dist/${metaDirName}`;
 await $`cp -r ./bin ./dist/${metaDirName}/bin`;
 await $`cp ./script/postinstall.mjs ./dist/${metaDirName}/postinstall.mjs`;
 
+// Add .npmignore to exclude any stale artifacts
+await Bun.file(`./dist/${metaDirName}/.npmignore`).write(`*.tgz
+*.tar.gz
+*.zip
+`);
+
 // Build optionalDependencies with scoped package names
 const optionalDeps: Record<string, string> = {};
 for (const [, info] of Object.entries(binaries)) {
