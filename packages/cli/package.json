@@ -1,6 +1,6 @@
 {
   "name": "@wiggumdev/ralph",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "module": "src/index.ts",
   "type": "module",
   "private": false,
@@ -16,8 +16,12 @@
   "keywords": [
     "claude-code",
     "opencode",
+    "codex",
+    "gemini-cli",
     "ai",
+    "ai-agents",
     "ralph",
+    "wiggum",
     "agent",
     "agentic",
     "cli"
