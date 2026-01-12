@@ -152,6 +152,9 @@ for (const item of targets) {
     bin: {
       ralph: item.os === "win32" ? "./bin/ralph.exe" : "./bin/ralph",
     },
+    publishConfig: {
+      access: "public",
+    },
   };
   await Bun.file(`dist/${dirName}/package.json`).write(
     JSON.stringify(platformPkg, null, 2)

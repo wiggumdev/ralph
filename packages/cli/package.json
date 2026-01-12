@@ -4,6 +4,9 @@
   "module": "src/index.ts",
   "type": "module",
   "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "ralph": "./src/ralph"
   },

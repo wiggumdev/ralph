@@ -126,6 +126,9 @@ const metaPkg = {
     postinstall: "node ./postinstall.mjs",
   },
   optionalDependencies: optionalDeps,
+  publishConfig: {
+    access: "public",
+  },
   repository: {
     type: "git",
     url: "git+https://github.com/wiggumdev/ralph.git",
