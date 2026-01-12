@@ -6,7 +6,7 @@ This document describes how to release new versions of Ralph.
 
 Ralph uses a multi-platform release strategy:
 
-- **npm**: Platform-specific binary packages + meta package (`ralph-ai`)
+- **npm**: Platform-specific binary packages + meta package (`@wiggumdev/ralph`)
 - **GitHub Releases**: Archives for direct download
 - **Docker**: Multi-arch images on GitHub Container Registry
 
@@ -128,7 +128,7 @@ Ralph builds for these platforms:
 
 The release creates these packages:
 
-- `ralph-ai` - Meta package (installs correct binary via optional deps)
+- `@wiggumdev/ralph` - Meta package (installs correct binary via optional deps)
 - `ralph-linux-x64` - Linux x64 binary
 - `ralph-linux-arm64` - Linux arm64 binary
 - `ralph-darwin-x64` - macOS Intel binary
@@ -138,7 +138,7 @@ The release creates these packages:
 
 Users install with:
 ```bash
-npm install -g ralph-ai
+npm install -g @wiggumdev/ralph
 ```
 
 The postinstall script automatically selects the right binary for their platform.
@@ -150,9 +150,9 @@ The postinstall script automatically selects the right binary for their platform
 
 Install specific version:
 ```bash
-npm install -g ralph-ai@latest   # Latest stable
-npm install -g ralph-ai@preview  # Latest preview
-npm install -g ralph-ai@1.0.0    # Specific version
+npm install -g @wiggumdev/ralph@latest   # Latest stable
+npm install -g @wiggumdev/ralph@preview  # Latest preview
+npm install -g @wiggumdev/ralph@1.0.0    # Specific version
 ```
 
 ## Docker Images
@@ -254,4 +254,4 @@ bun run build --single
 - [ ] Verify npm packages are published
 - [ ] Verify Docker images are pushed
 - [ ] Verify GitHub release is created
-- [ ] Test installation: `npm install -g ralph-ai`
+- [ ] Test installation: `npm install -g @wiggumdev/ralph`

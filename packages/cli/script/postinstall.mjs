@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { execSync } from "node:child_process";
 import fs from "node:fs";
 import { createRequire } from "node:module";
 import os from "node:os";
@@ -50,9 +51,30 @@ function detectPlatformAndArch() {
   return { platform, arch };
 }
 
+function isMusl() {
+  if (os.platform() !== "linux") {
+    return false;
+  }
+  try {
+    // Check for musl dynamic linker
+    const files = fs.readdirSync("/lib");
+    if (files.some((f) => f.startsWith("ld-musl-"))) {
+      return true;
+    }
+    // Fallback: check ldd output
+    const lddOutput = execSync("ldd --version 2>&1 || true", {
+      encoding: "utf8",
+    });
+    return lddOutput.toLowerCase().includes("musl");
+  } catch {
+    return false;
+  }
+}
+
 function findBinary() {
   const { platform, arch } = detectPlatformAndArch();
-  const packageName = `${NPM_SCOPE}/ralph-${platform}-${arch}`;
+  const suffix = isMusl() ? "-musl" : "";
+  const packageName = `${NPM_SCOPE}/ralph-${platform}-${arch}${suffix}`;
   const binaryName = platform === "windows" ? "ralph.exe" : "ralph";
 
   try {

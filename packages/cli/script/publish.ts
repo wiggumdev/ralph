@@ -120,7 +120,7 @@ for (const [, info] of Object.entries(binaries)) {
   optionalDeps[info.scopedName] = info.version;
 }
 
-const metaPkgName = scope ? `${scope}/${baseName}-ai` : `${baseName}-ai`;
+const metaPkgName = scope ? `${scope}/${baseName}` : baseName;
 const metaPkg = {
   name: metaPkgName,
   version,
@@ -185,7 +185,7 @@ if (publishFlag && !dryRunFlag) {
   // Publish platform packages first
   for (const [dirName, info] of Object.entries(binaries)) {
     console.log(`   Publishing ${info.scopedName}...`);
-    await $`npm publish *.tgz --access public --tag ${npmTag}`.cwd(
+    await $`bun publish *.tgz --access public --tag ${npmTag}`.cwd(
       `./dist/${dirName}`
     );
     console.log(`   ✓ Published ${info.scopedName}`);
@@ -193,7 +193,7 @@ if (publishFlag && !dryRunFlag) {
 
   // Publish meta package
   console.log(`   Publishing ${metaPkgName}...`);
-  await $`npm publish *.tgz --access public --tag ${npmTag}`.cwd(
+  await $`bun publish *.tgz --access public --tag ${npmTag}`.cwd(
     `./dist/${metaDirName}`
   );
   console.log(`   ✓ Published ${metaPkgName}\n`);
@@ -204,11 +204,11 @@ if (publishFlag && !dryRunFlag) {
   console.log("🔍 Dry run - would publish:");
   for (const [dirName, info] of Object.entries(binaries)) {
     console.log(
-      `   npm publish dist/${dirName}/*.tgz --access public --tag ${npmTag} (${info.scopedName})`
+      `   bun publish dist/${dirName}/*.tgz --access public --tag ${npmTag} (${info.scopedName})`
     );
   }
   console.log(
-    `   npm publish dist/${metaDirName}/*.tgz --access public --tag ${npmTag} (${metaPkgName})\n`
+    `   bun publish dist/${metaDirName}/*.tgz --access public --tag ${npmTag} (${metaPkgName})\n`
   );
 } else {
   console.log("📝 Packages ready for publishing.");
