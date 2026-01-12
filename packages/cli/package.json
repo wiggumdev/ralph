@@ -1,11 +1,11 @@
 {
-  "name": "ralph",
+  "name": "@wiggumdev/ralph",
   "version": "0.0.1",
   "module": "src/index.ts",
   "type": "module",
   "private": false,
   "bin": {
-    "ralph": "./src/index.ts"
+    "ralph": "./src/ralph"
   },
   "exports": {
     "./*": "./src/*.ts"

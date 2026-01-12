@@ -1,0 +1,6 @@
+dist/
+*.tgz
+*.tar.gz
+*.zip
+node_modules/
+.turbo/

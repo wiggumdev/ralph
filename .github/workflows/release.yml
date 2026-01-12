@@ -135,14 +135,19 @@ jobs:
     needs: [build, smoke-test]
     runs-on: ubuntu-latest
     if: ${{ !inputs.dry_run }}
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/download-artifact@v4
         with:
           name: npm-packages
           path: npm-packages
 
-      - name: Setup npm auth
-        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
 
       - name: Determine npm tag
         id: npm_tag
@@ -158,12 +163,10 @@ jobs:
         run: |
           TAG="${{ steps.npm_tag.outputs.tag }}"
           echo "Publishing with tag: $TAG"
-
-          # Publish all packages
           for pkg in npm-packages/*.tgz; do
             if [ -f "$pkg" ]; then
               echo "Publishing $pkg..."
-              npm publish "$pkg" --access public --tag "$TAG"
+              npm publish "$pkg" --access public --tag "$TAG" --provenance
             fi
           done
 

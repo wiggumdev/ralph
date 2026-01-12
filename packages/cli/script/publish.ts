@@ -23,6 +23,11 @@ import { fileURLToPath } from "node:url";
 import { $ } from "bun";
 import pkg from "../package.json";
 
+// Extract base name from scoped package (e.g., "@wiggumdev/ralph" -> "ralph")
+const baseName = pkg.name.replace(/^@[^/]+\//, "");
+// Extract scope if present (e.g., "@wiggumdev/ralph" -> "@wiggumdev")
+const scope = pkg.name.startsWith("@") ? pkg.name.split("/")[0] : "";
+
 const dir = fileURLToPath(new URL("..", import.meta.url));
 process.chdir(dir);
 
@@ -50,22 +55,29 @@ console.log(
 console.log("");
 
 // Build all platform binaries
+// binaries maps dirName -> { version, scopedName }
+interface BinaryInfo {
+  version: string;
+  scopedName: string;
+}
+let binaries: Record<string, BinaryInfo>;
+
 if (skipBuild) {
   // Read binaries from existing dist directory
   const fs = await import("node:fs");
-  const distDirs = fs.readdirSync("dist").filter((d) => d.startsWith("ralph-"));
-  const binaries: Record<string, string> = {};
-  for (const dir of distDirs) {
-    binaries[dir] = version;
+  const distDirs = fs
+    .readdirSync("dist")
+    .filter((d) => d.startsWith(`${baseName}-`));
+  binaries = {};
+  for (const dirName of distDirs) {
+    const scopedName = scope ? `${scope}/${dirName}` : dirName;
+    binaries[dirName] = { version, scopedName };
   }
-  globalThis.__binaries = binaries;
 } else {
   console.log("🔨 Building all platforms...\n");
-  const { binaries } = await import("./build.ts");
-  globalThis.__binaries = binaries;
+  const buildModule = await import("./build.ts");
+  binaries = buildModule.binaries;
 }
-
-const binaries = globalThis.__binaries as Record<string, string>;
 
 // Smoke test: run the binary for current platform
 {
@@ -75,12 +87,12 @@ const binaries = globalThis.__binaries as Record<string, string>;
     win32: "windows",
   };
   const platform = platformMap[process.platform] || process.platform;
-  const name = `${pkg.name}-${platform}-${process.arch}`;
+  const dirName = `${baseName}-${platform}-${process.arch}`;
 
-  if (binaries[name]) {
-    console.log(`\n🧪 Smoke test: ${name}`);
+  if (binaries[dirName]) {
+    console.log(`\n🧪 Smoke test: ${dirName}`);
     try {
-      await $`./dist/${name}/bin/ralph --version`;
+      await $`./dist/${dirName}/bin/ralph --version`;
       console.log("   ✓ Smoke test passed\n");
     } catch {
       console.error("   ✗ Smoke test failed\n");
@@ -91,21 +103,29 @@ const binaries = globalThis.__binaries as Record<string, string>;
 
 // Create meta package
 console.log("📋 Creating meta package...");
-await $`mkdir -p ./dist/${pkg.name}`;
-await $`cp -r ./bin ./dist/${pkg.name}/bin`;
-await $`cp ./script/postinstall.mjs ./dist/${pkg.name}/postinstall.mjs`;
+const metaDirName = baseName;
+await $`mkdir -p ./dist/${metaDirName}`;
+await $`cp -r ./bin ./dist/${metaDirName}/bin`;
+await $`cp ./script/postinstall.mjs ./dist/${metaDirName}/postinstall.mjs`;
 
+// Build optionalDependencies with scoped package names
+const optionalDeps: Record<string, string> = {};
+for (const [, info] of Object.entries(binaries)) {
+  optionalDeps[info.scopedName] = info.version;
+}
+
+const metaPkgName = scope ? `${scope}/${baseName}-ai` : `${baseName}-ai`;
 const metaPkg = {
-  name: `${pkg.name}-ai`,
+  name: metaPkgName,
   version,
   description: "AI-agnostic agentic loop CLI",
   bin: {
-    [pkg.name]: `./bin/${pkg.name}`,
+    [baseName]: `./bin/${baseName}`,
   },
   scripts: {
     postinstall: "node ./postinstall.mjs",
   },
-  optionalDependencies: binaries,
+  optionalDependencies: optionalDeps,
   repository: {
     type: "git",
     url: "git+https://github.com/wiggumdev/ralph.git",
@@ -116,35 +136,35 @@ const metaPkg = {
   },
 };
 
-await Bun.file(`./dist/${pkg.name}/package.json`).write(
+await Bun.file(`./dist/${metaDirName}/package.json`).write(
   JSON.stringify(metaPkg, null, 2)
 );
-console.log(`   ✓ Created ${pkg.name}-ai meta package\n`);
+console.log(`   ✓ Created ${metaPkgName} meta package\n`);
 
 // Pack all platform packages
 console.log("📦 Packing platform packages...");
-const packTasks = Object.keys(binaries).map(async (name) => {
+const packTasks = Object.entries(binaries).map(async ([dirName, info]) => {
   if (process.platform !== "win32") {
-    await $`chmod -R 755 .`.cwd(`./dist/${name}`);
+    await $`chmod -R 755 .`.cwd(`./dist/${dirName}`);
   }
-  await $`bun pm pack`.cwd(`./dist/${name}`).quiet();
-  console.log(`   ✓ Packed ${name}`);
+  await $`bun pm pack`.cwd(`./dist/${dirName}`).quiet();
+  console.log(`   ✓ Packed ${info.scopedName}`);
 });
 await Promise.all(packTasks);
 
 // Pack meta package
-await $`bun pm pack`.cwd(`./dist/${pkg.name}`).quiet();
-console.log(`   ✓ Packed ${pkg.name}-ai\n`);
+await $`bun pm pack`.cwd(`./dist/${metaDirName}`).quiet();
+console.log(`   ✓ Packed ${metaPkgName}\n`);
 
 // Create archives for GitHub releases
 console.log("📁 Creating release archives...");
-for (const name of Object.keys(binaries)) {
-  if (name.includes("linux")) {
-    await $`tar -czf ../../${name}.tar.gz *`.cwd(`dist/${name}/bin`);
-    console.log(`   ✓ ${name}.tar.gz`);
+for (const dirName of Object.keys(binaries)) {
+  if (dirName.includes("linux")) {
+    await $`tar -czf ../../${dirName}.tar.gz *`.cwd(`dist/${dirName}/bin`);
+    console.log(`   ✓ ${dirName}.tar.gz`);
   } else {
-    await $`zip -rq ../../${name}.zip *`.cwd(`dist/${name}/bin`);
-    console.log(`   ✓ ${name}.zip`);
+    await $`zip -rq ../../${dirName}.zip *`.cwd(`dist/${dirName}/bin`);
+    console.log(`   ✓ ${dirName}.zip`);
   }
 }
 console.log("");
@@ -154,32 +174,32 @@ if (publishFlag && !dryRunFlag) {
   console.log(`🚀 Publishing to npm with tag "${npmTag}"...\n`);
 
   // Publish platform packages first
-  for (const name of Object.keys(binaries)) {
-    console.log(`   Publishing ${name}...`);
+  for (const [dirName, info] of Object.entries(binaries)) {
+    console.log(`   Publishing ${info.scopedName}...`);
     await $`npm publish *.tgz --access public --tag ${npmTag}`.cwd(
-      `./dist/${name}`
+      `./dist/${dirName}`
     );
-    console.log(`   ✓ Published ${name}`);
+    console.log(`   ✓ Published ${info.scopedName}`);
   }
 
   // Publish meta package
-  console.log(`   Publishing ${pkg.name}-ai...`);
+  console.log(`   Publishing ${metaPkgName}...`);
   await $`npm publish *.tgz --access public --tag ${npmTag}`.cwd(
-    `./dist/${pkg.name}`
+    `./dist/${metaDirName}`
   );
-  console.log(`   ✓ Published ${pkg.name}-ai\n`);
+  console.log(`   ✓ Published ${metaPkgName}\n`);
 
-  console.log(`✅ Successfully published ralph v${version} to npm!`);
-  console.log(`   Install with: npm install -g ${pkg.name}-ai@${npmTag}\n`);
+  console.log(`✅ Successfully published ${baseName} v${version} to npm!`);
+  console.log(`   Install with: npm install -g ${metaPkgName}@${npmTag}\n`);
 } else if (dryRunFlag) {
   console.log("🔍 Dry run - would publish:");
-  for (const name of Object.keys(binaries)) {
+  for (const [dirName, info] of Object.entries(binaries)) {
     console.log(
-      `   npm publish dist/${name}/*.tgz --access public --tag ${npmTag}`
+      `   npm publish dist/${dirName}/*.tgz --access public --tag ${npmTag} (${info.scopedName})`
     );
   }
   console.log(
-    `   npm publish dist/${pkg.name}/*.tgz --access public --tag ${npmTag}\n`
+    `   npm publish dist/${metaDirName}/*.tgz --access public --tag ${npmTag} (${metaPkgName})\n`
   );
 } else {
   console.log("📝 Packages ready for publishing.");

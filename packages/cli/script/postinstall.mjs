@@ -9,6 +9,9 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 
+// npm scope for scoped package names
+const NPM_SCOPE = "@wiggumdev";
+
 function detectPlatformAndArch() {
   // Map platform names
   let platform;
@@ -49,7 +52,7 @@ function detectPlatformAndArch() {
 
 function findBinary() {
   const { platform, arch } = detectPlatformAndArch();
-  const packageName = `ralph-${platform}-${arch}`;
+  const packageName = `${NPM_SCOPE}/ralph-${platform}-${arch}`;
   const binaryName = platform === "windows" ? "ralph.exe" : "ralph";
 
   try {

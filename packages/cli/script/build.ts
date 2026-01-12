@@ -15,6 +15,11 @@ process.chdir(dir);
 
 import pkg from "../package.json";
 
+// Extract base name from scoped package (e.g., "@wiggumdev/ralph" -> "ralph")
+const baseName = pkg.name.replace(/^@[^/]+\//, "");
+// Extract scope if present (e.g., "@wiggumdev/ralph" -> "@wiggumdev")
+const scope = pkg.name.startsWith("@") ? pkg.name.split("/")[0] : "";
+
 const singleFlag = process.argv.includes("--single");
 const baselineFlag = process.argv.includes("--baseline");
 const skipInstall = process.argv.includes("--skip-install");
@@ -96,15 +101,16 @@ const targets = singleFlag
 
 await $`rm -rf dist`;
 
-const binaries: Record<string, string> = {};
+const binaries: Record<string, { version: string; scopedName: string }> = {};
 
 if (!skipInstall) {
   await $`bun install --os="*" --cpu="*" @opentui/core@${pkg.dependencies["@opentui/core"]}`;
 }
 
 for (const item of targets) {
-  const name = [
-    pkg.name,
+  // Directory name uses base name (no scope) for filesystem compatibility
+  const dirName = [
+    baseName,
     // changing to win32 flags npm for some reason
     item.os === "win32" ? "windows" : item.os,
     item.arch,
@@ -113,9 +119,11 @@ for (const item of targets) {
   ]
     .filter(Boolean)
     .join("-");
+  // Package name includes scope for npm publishing
+  const name = scope ? `${scope}/${dirName}` : dirName;
 
   console.log(`building ${name}`);
-  await $`mkdir -p dist/${name}/bin`;
+  await $`mkdir -p dist/${dirName}/bin`;
 
   await Bun.build({
     target: "bun",
@@ -128,8 +136,8 @@ for (const item of targets) {
       //@ts-expect-error (bun types aren't up to date)
       autoloadTsconfig: true,
       autoloadPackageJson: true,
-      target: name.replace(pkg.name, "bun") as any,
-      outfile: `dist/${name}/bin/ralph`,
+      target: dirName.replace(baseName, "bun") as any,
+      outfile: `dist/${dirName}/bin/ralph`,
       windows: {},
     },
     entrypoints: ["./src/index.ts"],
@@ -145,24 +153,24 @@ for (const item of targets) {
       ralph: item.os === "win32" ? "./bin/ralph.exe" : "./bin/ralph",
     },
   };
-  await Bun.file(`dist/${name}/package.json`).write(
+  await Bun.file(`dist/${dirName}/package.json`).write(
     JSON.stringify(platformPkg, null, 2)
   );
 
-  // Track for optional dependencies
-  binaries[name] = pkg.version;
+  // Track for optional dependencies (dirName -> { version, scopedName })
+  binaries[dirName] = { version: pkg.version, scopedName: name };
 }
 
 // Auto-symlink ralph-dev to ~/.local/bin when building for current platform
 if (singleFlag) {
   const binDir = path.join(os.homedir(), ".local", "bin");
   const symlinkPath = path.join(binDir, "ralph-dev");
-  const platformName = [
-    pkg.name,
+  const platformDirName = [
+    baseName,
     process.platform === "win32" ? "windows" : process.platform,
     process.arch,
   ].join("-");
-  const binaryPath = path.resolve(dir, `dist/${platformName}/bin/ralph`);
+  const binaryPath = path.resolve(dir, `dist/${platformDirName}/bin/ralph`);
 
   await fs.promises.mkdir(binDir, { recursive: true });
   await fs.promises.rm(symlinkPath, { force: true });
