@@ -1,8 +1,15 @@
+import cloudflare from "@astrojs/cloudflare"
 import starlight from "@astrojs/starlight";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "astro/config";
+import config from "./config.mjs"
 
 export default defineConfig({
+  site: config.url,
+  output: "static",
+  adapter: cloudflare({
+    imageService: "passthrough",
+  }),
   vite: {
     plugins: [tailwindcss()],
   },

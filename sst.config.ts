@@ -9,5 +9,7 @@ export default $config({
       home: "cloudflare",
     };
   },
-  async run() {},
+  async run() {
+    await import("./infra/web.js");
+  },
 });
