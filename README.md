@@ -84,17 +84,16 @@ ralph run
 ## How It Works
 
 ```mermaid
-graph LR
-    Start --> RunAI[Run AI]
-    RunAI --> Check
-    Check --> Done{Done?}
-    Done -->|No| Reset
-    Reset --> Start
-    Done -->|Yes| Exit
+flowchart TD
+    Start --> RunAI[Run AI];
+    RunAI --> Check;
+    Check --> Learn;
+    Learn --> Done{Done?};
+    Done -->|No| Reset;
+    Reset --> Start;
+    Done -->|Yes| Exit;
 
     Note[State persists via:<br/>git, files, tests]
-
-    style Note fill:#f9f9f9,stroke:#ccc,stroke-dasharray: 5 5
 ```
 
 Each iteration:
