@@ -14,8 +14,8 @@ ralph is distributed as an npm package and works on macOS, Linux, and Windows (v
 Before installing ralph, ensure you have:
 
 - **Node.js 18+** — ralph uses modern JavaScript features
-- **An AI CLI tool** — Claude Code or OpenCode
-- **Git** — For state persistence between iterations
+- **An AI CLI tool** — Claude Code or OpenCode currently supported.
+- **VCS** — For state persistence between iterations use git, jj or your preferred version control system.
 
 <Aside type="note">
 ralph orchestrates other AI tools—it doesn't include an AI model itself. You'll need at least one AI CLI tool installed.
@@ -55,32 +55,6 @@ ralph --version
 ## Install an AI Tool
 
 ralph needs an AI CLI tool to orchestrate. Here are the supported options:
-
-### Claude Code (Recommended)
-
-Anthropic's official CLI for Claude:
-
-```bash
-npm install -g @anthropic-ai/claude-code
-```
-
-Set your API key:
-
-```bash
-export ANTHROPIC_API_KEY="your-key-here"
-```
-
-### OpenCode
-
-Open-source AI coding assistant with multi-provider support:
-
-```bash
-go install github.com/opencode-ai/opencode@latest
-```
-
-### Gemini CLI (Under Development)
-
-Support for Gemini CLI is under development.
 
 ## Configuration
 

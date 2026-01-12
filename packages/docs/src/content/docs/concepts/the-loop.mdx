@@ -53,7 +53,7 @@ Each iteration:
 1. **Fresh Context** — The AI starts with an empty context window
 2. **Read State** — It reads your prompt, checks files, runs commands
 3. **Do Work** — Makes progress (writes code, fixes bugs, adds tests)
-4. **Save State** — Commits changes, updates progress markers
+4. **Save State** — Commits changes, persists learning and updates progress markers
 5. **Exit** — The AI session ends (either naturally or via timeout)
 6. **Check Conditions** — ralph evaluates if the task is complete
 7. **Loop or Exit** — Continue if not done, stop if complete
@@ -80,9 +80,10 @@ Anthropic's engineering team found that model performance degrades significantly
 ralph solves this by **resetting context between iterations**:
 
 ```
-Iteration 1: Fresh model → reads files → does work → exits
-Iteration 2: Fresh model → reads updated files → does more work → exits
-Iteration 3: Fresh model → reads further updates → finishes → exits
+Iteration 1: Fresh model → reads files → does work → persists learning → exits
+Iteration 2: Fresh model → reads updated files and learning → work → learn → exits
+...
+Iteration N: Fresh model → reads further updates and learning → finishes → exits
 ```
 
 Each iteration, the model:
@@ -113,7 +114,7 @@ No, because the codebase changes. Consider this prompt:
 
 ```markdown
 Add unit tests for all untested functions in src/.
-Check PROGRESS.md for what's already done.
+Check progress.txt for what's already done.
 ```
 
 - **Iteration 1**: Finds 20 untested functions. Tests 5 of them.
