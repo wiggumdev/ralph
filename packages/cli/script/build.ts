@@ -133,7 +133,6 @@ for (const item of targets) {
     compile: {
       autoloadBunfig: false,
       autoloadDotenv: false,
-      //@ts-expect-error (bun types aren't up to date)
       autoloadTsconfig: true,
       autoloadPackageJson: true,
       target: dirName.replace(baseName, "bun") as any,
@@ -147,6 +146,11 @@ for (const item of targets) {
   const platformPkg = {
     name,
     version: pkg.version,
+    description: pkg.description,
+    repository: pkg.repository,
+    homepage: pkg.homepage,
+    bugs: pkg.bugs,
+    keywords: pkg.keywords,
     os: [item.os === "win32" ? "win32" : item.os],
     cpu: [item.arch],
     bin: {

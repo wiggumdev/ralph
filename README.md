@@ -1,6 +1,4 @@
-# ralph
-
-<h1 align="center">ralph</h1>
+# [ralph](https://wiggum.dev)
 
 <p align="center">
   <strong>AI-agnostic agentic loop CLI</strong>
@@ -19,13 +17,13 @@
 
 ## What is ralph?
 
-**ralph** runs AI coding agents in iterative loops. Instead of one-shot prompts that hit context limits and get confused, ralph resets the context window between iterations while preserving learnings through your codebase.
+**ralph** runs AI coding agents in iterative loops. Instead of trying to one-shot prompts that hit context limits and get confused, ralph resets the context window between iterations while preserving the learning from each loop through your codebase.
 
 ```bash
-ralph run
+ralph run -n 10 -p ./plans/PROMPT.md
 ```
 
-The AI works, exits, ralph checks if done, resets context, and loops—until your task is complete.
+The AI does work, commits changes, saves insights,exits, ralph checks if done, resets context, and loops—until your task is complete.
 
 ## Why "Ralph Wiggum"?
 
@@ -48,7 +46,7 @@ You'll also need an AI CLI tool:
 npm install -g @anthropic-ai/claude-code
 
 # Or OpenCode
-go install github.com/opencode-ai/opencode@latest
+npm i -g opencode-ai
 ```
 
 ### Supported Adapters
@@ -66,8 +64,11 @@ go install github.com/opencode-ai/opencode@latest
 cd your-project
 ralph init
 
-# Edit your prompt
-nano .plans/PROMPT.md
+# Use your agent to generate a plan and write
+zed .plans/prd.json
+
+# Edit your prompt to your specific needs
+zed .plans/PROMPT.md
 
 # Run the loop
 ralph run
@@ -82,18 +83,18 @@ ralph run
 
 ## How It Works
 
-```
-┌─────────────────────────────────────────────┐
-│                                             │
-│   Start ──▶ Run AI ──▶ Check ──▶ Done? ──┐ │
-│     ▲                           │        │ │
-│     └────── Reset ◀─── No ◀─────┘        │ │
-│                                          │ │
-│              Yes ──▶ Exit ◀──────────────┘ │
-│                                             │
-│   State persists via: git, files, tests    │
-│                                             │
-└─────────────────────────────────────────────┘
+```mermaid
+graph LR
+    Start --> RunAI[Run AI]
+    RunAI --> Check
+    Check --> Done{Done?}
+    Done -->|No| Reset
+    Reset --> Start
+    Done -->|Yes| Exit
+
+    Note[State persists via:<br/>git, files, tests]
+
+    style Note fill:#f9f9f9,stroke:#ccc,stroke-dasharray: 5 5
 ```
 
 Each iteration:
@@ -117,7 +118,7 @@ tui = true
 [hooks]
 ralph_start = ""
 ralph_loop_end = "npm run lint:fix"
-ralph_complete = ""
+ralph_complete = "say 'Ralph is done!'"
 ```
 
 ## Project Structure
@@ -130,7 +131,7 @@ project/
 │   └── config.toml      # Configuration
 └── .plans/
     ├── prd.json         # Feature requirements
-    ├── PROMPT.md        # Your task prompt
+    ├── PROMPT.md        # Your ralph loop prompt
     └── progress.txt     # Learning log
 ```
 
@@ -152,49 +153,50 @@ ralph run --no-tui              # Plain text output (for CI)
 ralph run --verbose             # Debug output
 ```
 
-## Prompt Pattern
+## Loop Prompt Example
 
 Your prompt in `.plans/PROMPT.md` should include:
 
 ```markdown
-# Task
-[What to do]
+@.plans/prd.json @.plans/progress.txt
 
-# Guidelines
-[How to do it]
+1. Find the highest-priority feature to work on and work ONLY on that feature. This should be the one YOU decide has the highest priority - not necessarily the first in the list
 
-# Progress
-Check progress.txt for completed work.
+2. Before making changes, search codebase (don't assume not implemented).
 
-# Completion
-When [condition is met], output:
-<promise>COMPLETE</promise>
+3. Implement the requirements for the selected feature using TDD.
+
+3. Run typecheck and tests: `bun run typecheck && bun run test`
+
+4. Update prd.json marking completed work (CAREFULLY!)
+
+**YOU CAN ONLY MODIFY ONE FIELD: "passes"**
+
+After thorough verification, change:
+\`\`\`json
+"passes": false
+\`\`\`
+to:
+\`\`\`json
+"passes": true
+\`\`\`
+
+5. Append learning to .plans/progress.txt for future iterations.
+
+6. Commit changes: `jj commit -m "description"`
+
+ONLY WORK ON A SINGLE FEATURE PER ITERATION.
+
+If all features complete, output <promise>COMPLETE</promise>
+
+When you learn something new about how to run commands or patterns in the code make sure you update @CLAUDE.md using a subagent but keep it brief.
+
+Remember: You have unlimited time across many sessions. Focus on quality over speed. Production-ready is the goal.
 ```
 
 ## Documentation
 
-Full documentation at **[ralph.dev](https://wiggum.dev)** (coming soon)
-
-Or run locally:
-```bash
-cd packages/docs
-bun install
-bun dev
-```
-
-## Development
-
-```bash
-# Build binary for current platform + symlink to ~/.local/bin/ralph-dev
-cd packages/cli
-bun run build --single
-
-# Copy binary to ~/.local/bin/ralph (manual install)
-bun run install-bin
-
-# Remove both ralph and ralph-dev from ~/.local/bin
-bun run unlink
-```
+Full documentation at **[wiggum.dev](https://wiggum.dev)**
 
 ## Based On
 

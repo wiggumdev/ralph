@@ -107,6 +107,7 @@ const metaDirName = baseName;
 await $`mkdir -p ./dist/${metaDirName}`;
 await $`cp -r ./bin ./dist/${metaDirName}/bin`;
 await $`cp ./script/postinstall.mjs ./dist/${metaDirName}/postinstall.mjs`;
+await $`cp ../../README.md ./dist/${metaDirName}/README.md`;
 
 // Add .npmignore to exclude any stale artifacts
 await Bun.file(`./dist/${metaDirName}/.npmignore`).write(`*.tgz
@@ -124,7 +125,11 @@ const metaPkgName = scope ? `${scope}/${baseName}` : baseName;
 const metaPkg = {
   name: metaPkgName,
   version,
-  description: "AI-agnostic agentic loop CLI",
+  description: pkg.description,
+  keywords: pkg.keywords,
+  repository: pkg.repository,
+  homepage: pkg.homepage,
+  bugs: pkg.bugs,
   bin: {
     [baseName]: `./bin/${baseName}`,
   },
@@ -134,10 +139,6 @@ const metaPkg = {
   optionalDependencies: optionalDeps,
   publishConfig: {
     access: "public",
-  },
-  repository: {
-    type: "git",
-    url: "git+https://github.com/wiggumdev/ralph.git",
   },
   license: "MIT",
   engines: {
