@@ -3,12 +3,15 @@
 /* eslint-disable */
 /* deno-fmt-ignore-file */
 
-import "sst";
+import "sst"
 declare module "sst" {
   export interface Resource {
-    RalphDocs: {
-      type: "sst.cloudflare.Astro";
-      url: string;
-    };
+    "RalphDocs": {
+      "type": "sst.cloudflare.Astro"
+      "url": string
+    }
   }
 }
+
+import "sst"
+export {}

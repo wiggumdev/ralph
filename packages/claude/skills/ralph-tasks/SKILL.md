@@ -137,17 +137,11 @@ The PRD reader may be a junior developer or AI agent. Therefore:
 - **Location:** `./plans`
 - **Filename:** `prd.md`
 
-Before saving the PRD:
+Before writing prd.json, verify:
 
 - [ ] Asked clarifying questions
 - [ ] Incorporated user's answers
-- [ ] PRD items are small, specific and verifiable
-- [ ] Saved to `./plans/prd.json`
-
-
-Before writing prd.json, verify:
-
-- [ ] Each item is completable in one iteration (small enough)
+- [ ] PRD item is completable in one iteration (small enough)
 - [ ] UI stories have "Verify in browser using dev-browser skill" as criterion
 - [ ] Acceptance criteria are verifiable (not vague)
-- [ ] No story depends on a later story
+- [ ] Saved to `./plans/prd.json`

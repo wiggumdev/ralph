@@ -1,0 +1,14 @@
+{
+  "name": "ralph-marketplace",
+  "metadata": {
+    "description": "Ralph plugins marketplace"
+  },
+  "plugins": [
+    {
+      "name": "ralph",
+      "source": "./packages/claude",
+      "version": "1.0.0",
+      "description": "A plugin to help with Ralph's tasks"
+    }
+  ]
+}

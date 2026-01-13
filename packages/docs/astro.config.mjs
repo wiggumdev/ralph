@@ -22,6 +22,7 @@ export default defineConfig({
         { icon: "github", label: "GitHub", href: "https://github.com/wiggumdev/ralph" },
       ],
       customCss: ["./src/styles/custom.css", "./src/styles/tailwind.css"],
+      tableOfContents: { minHeadingLevel: 2, maxHeadingLevel: 2 },
       head: [
         {
           tag: "meta",
