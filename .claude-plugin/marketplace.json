@@ -1,5 +1,8 @@
 {
   "name": "ralph-marketplace",
+  "owner": {
+    "name": "wiggumdev"
+  },
   "metadata": {
     "description": "Ralph plugins marketplace"
   },

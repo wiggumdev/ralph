@@ -3,7 +3,7 @@ title: Claude Code Plugin
 description: Install and use the Ralph plugin for Claude Code.
 ---
 
-import { Aside, Card, CardGrid, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+import { Aside, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
 # Claude Code Plugin
 
@@ -38,14 +38,10 @@ cd packages/claude && claude plugins add .
 
 ## Available Skills
 
-<CardGrid>
-  <Card title="ralph-prd" icon="rocket">
-    Generate a new PRD from scratch with guided clarifying questions.
-  </Card>
-  <Card title="ralph-tasks" icon="document">
-    Convert existing PRD documents to Ralph's prd.json format.
-  </Card>
-</CardGrid>
+| Skill | Description |
+|-------|-------------|
+| `ralph-prd` | Generate a new PRD from scratch with guided clarifying questions |
+| `ralph-tasks` | Convert existing PRD documents to Ralph's prd.json format |
 
 ---
 
