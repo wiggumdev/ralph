@@ -76,19 +76,17 @@ export default defineConfig({
           items: [
             { label: "CLI Reference", slug: "usage/cli" },
             { label: "Configuration", slug: "usage/configuration" },
-            { label: "With Claude Code", slug: "usage/claude-code" },
-            { label: "With OpenCode", slug: "usage/opencode" },
           ],
         },
-        {
-          label: "Examples",
-          items: [
-            { label: "Large Refactors", slug: "examples/refactors" },
-            { label: "Test Coverage", slug: "examples/testing" },
-            { label: "Documentation", slug: "examples/documentation" },
-            { label: "Migrations", slug: "examples/migrations" },
-          ],
-        },
+        // {
+        //   label: "Examples",
+        //   items: [
+        //     { label: "Large Refactors", slug: "examples/refactors" },
+        //     { label: "Test Coverage", slug: "examples/testing" },
+        //     { label: "Documentation", slug: "examples/documentation" },
+        //     { label: "Migrations", slug: "examples/migrations" },
+        //   ],
+        // },
         {
           label: "Reference",
           items: [

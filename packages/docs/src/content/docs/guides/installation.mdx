@@ -80,27 +80,50 @@ ralph needs an AI CLI tool to orchestrate. Here are the supported options:
    maxIterations = 10
    ```
 
-3. **Create your task prompt**
+3. **Use your agent to plan**
+
+   - Use the `ralph-prd` skill
+
+   or
+
+   - Use your ai tool create a plan for the functionlality you want to implememt.
+   - Review the plan and make any required changes.
+   - Ask your AI to break down the plan into the ralph prd.json file
+
+4. **Create your task prompt**
 
    Edit `.plans/PROMPT.md` with your task:
 
-   ```markdown
-   # Task
+   ````markdown
+   @.plans/prd.json @.plans/progress.txt
+   run `git log --limit 10`
 
-   Add unit tests for all functions in the `src/utils/` directory.
+   1. Select the highest-priority feature to work on and work ONLY on that feature. This should be the one YOU decide has the highest priority - not necessarily the first in the list. `cat .plans/prd.json | jq '[.[] | select(.passes == false)]'`
+   2. Before making changes, search codebase (don't assume not implemented).
+   3. Implement the requirements for the selected feature using TDD.
+   3. Run typecheck and tests: `bun run typecheck && bun run test`
+   4. Update prd.json marking completed work (CAREFULLY!)
+       **YOU CAN ONLY MODIFY ONE FIELD: "passes"**
+       After thorough verification, change:
+       ```json
+       "passes": false
+       ```
+       to:
+       ```json
+       "passes": true
+       ```
+   5. Reflect on what you have done and APPEND learning to .plans/progress.txt for future iterations.
+   6. Commit changes: `git add . && git commit -m "<description/>"`
+   7. If all features complete, output `<promise>COMPLETE</promise>`
 
-   ## Requirements
-   - Each function should have at least 3 test cases
-   - Cover edge cases and error conditions
-   - Use the existing Jest setup
 
-   ## Progress
-   Check progress.txt for completed work.
+   IMPORTANT RULES:
+   - ONLY WORK ON A SINGLE FEATURE PER ITERATION.
+   - When you learn something new about how to run commands or patterns in the code make sure you update @CLAUDE.md using a subagent but keep it brief.
+   - If you find a bug or issue, add it to the .plans/next.md
 
-   ## Completion
-   When all functions are tested, output:
-   <promise>COMPLETE</promise>
-   ```
+   REMEMBER: You have unlimited time across many sessions. Focus on quality over speed. Production-ready is the goal.
+   ````
 
 </Steps>
 

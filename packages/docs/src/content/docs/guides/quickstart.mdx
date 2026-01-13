@@ -30,22 +30,48 @@ This guide assumes you've [installed ralph](/guides/installation/) and have an A
 
    Open `.plans/PROMPT.md` and add your task:
 
-   ```markdown
-   # Task: Fix All TypeScript Errors
+   ````markdown
+   @.plans/prd.json @.plans/progress.txt
+   run `git log --limit 10`
 
-   Fix all TypeScript errors in this project.
+   1. Select the highest-priority feature to work on and work ONLY on that feature. This should be the one YOU decide has the highest priority - not necessarily the first in the list. `cat .plans/prd.json | jq '[.[] | select(.passes == false)]'`
+   2. Before making changes, search codebase (don't assume not implemented).
+   3. Implement the requirements for the selected feature using TDD.
+   3. Run typecheck and tests: `bun run typecheck && bun run test`
+   4. Update prd.json marking completed work (CAREFULLY!)
+       **YOU CAN ONLY MODIFY ONE FIELD: "passes"**
+       After thorough verification, change:
+       ```json
+       "passes": false
+       ```
+       to:
+       ```json
+       "passes": true
+       ```
+   5. Reflect on what you have done and APPEND learning to .plans/progress.txt for future iterations.
+   6. Commit changes: `git add . && git commit -m "<description/>"`
+   7. If all features complete, output `<promise>COMPLETE</promise>`
 
-   ## Process
-   1. Run `npx tsc --noEmit` to see errors
-   2. Fix one error at a time
-   3. Re-run to verify fix
 
-   ## Completion
-   When `npx tsc --noEmit` exits with code 0, output:
-   <promise>COMPLETE</promise>
-   ```
+   IMPORTANT RULES:
+   - ONLY WORK ON A SINGLE FEATURE PER ITERATION.
+   - When you learn something new about how to run commands or patterns in the code make sure you update @CLAUDE.md using a subagent but keep it brief.
+   - If you find a bug or issue, add it to the .plans/next.md
 
-3. **Run the loop**
+   REMEMBER: You have unlimited time across many sessions. Focus on quality over speed. Production-ready is the goal.
+   ````
+
+3. **Use your agent to plan**
+
+    - Use the `ralph-prd` skill
+
+    or
+
+    - Use your ai tool create a plan for the functionlality you want to implememt.
+    - Review the plan and make any required changes.
+    - Ask your AI to break down the plan into the ralph prd.json file
+
+4. **Run the loop**
 
    ```bash
    ralph run
@@ -59,91 +85,6 @@ That's it. ralph will:
 3. Reset context and feed the same prompt
 4. Repeat until the AI outputs `<promise>COMPLETE</promise>` or max iterations
 
-## A Proper Example
-
-Let's do something more structured. We'll add tests to a Node.js project.
-
-<Steps>
-
-1. **Set up the example**
-
-   ```bash
-   cd my-project
-   npm install
-   ```
-
-2. **Initialize ralph**
-
-   ```bash
-   ralph init
-   ```
-
-   This creates:
-   - `.ralph/config.toml` — Configuration
-   - `.plans/prd.json` — Feature definitions
-   - `.plans/PROMPT.md` — Your task prompt
-   - `.plans/progress.txt` — Progress tracking
-
-3. **Configure ralph**
-
-   Edit `.ralph/config.toml`:
-
-   ```toml
-   adapter = "claude"
-   maxIterations = 20
-   ```
-
-4. **Create your task prompt**
-
-   Edit `.plans/PROMPT.md`:
-
-   ```markdown
-   # Task: Add Comprehensive Tests
-
-   Add unit tests for all modules in `src/`.
-
-   ## Guidelines
-   - Use Jest (already configured)
-   - Each module should have a corresponding `.test.js` file
-   - Aim for >80% coverage
-   - Test both success and error paths
-
-   ## How to Check Progress
-   1. Run `npm test` to see current status
-   2. Check progress.txt for what's done
-
-   ## Update Progress
-   After completing each module, add it to progress.txt
-
-   ## Completion
-   When `npm test -- --coverage` shows >80% coverage and all tests pass, output:
-   <promise>COMPLETE</promise>
-   ```
-
-5. **Run the loop**
-
-   ```bash
-   ralph run
-   ```
-
-6. **Watch it work**
-
-   Each iteration:
-   - The AI reads the prompt and current codebase
-   - Makes progress (adds tests, fixes issues)
-   - Updates progress.txt
-   - ralph checks if the AI signaled completion
-   - If not done, loops again with fresh context
-
-</Steps>
-
-## Understanding the Output
-
-ralph displays:
-- Current iteration number
-- Token usage per iteration
-- Exit reason when complete
-
 The run ends when:
 - AI outputs `<promise>COMPLETE</promise>` (success)
 - Max iterations reached
@@ -152,15 +93,24 @@ The run ends when:
 
 ## Common Patterns
 
+Prompt that can be used without needing the prd.json
+
 ### Pattern 1: Fix All Errors
 
 ```markdown
-# Task: Fix Linting Errors
+@.plans/progress.txt
+run `git log --limit 10`
 
 Fix all ESLint errors.
 
 ## Process
-Run `npm run lint` to see errors. Fix them one at a time.
+1. Run `npm run lint` to see errors.
+2. Select a single file with errors. Only update a single file at a time.
+3. Add make the required change to fix the errors.
+4. Run typecheck and tests to verify correctness.
+5. Reflect on what you have done and APPEND learning to .plans/progress.txt for future iterations.
+6. Commit changes with a descriptive message.
+
 
 ## Completion
 When `npm run lint` exits with code 0, output:
@@ -170,12 +120,19 @@ When `npm run lint` exits with code 0, output:
 ### Pattern 2: Migration
 
 ```markdown
-# Task: Migrate API Calls
+@.plans/progress.txt
+run `git log --limit 10`
 
 Migrate all usages of `oldApi` to `newApi`.
 
-## Find work
-`grep -r "oldApi" src/`
+1. Find work
+   `grep -r "oldApi" src/`
+
+2. Select the first file. Only update a single file at a time.
+3. Make the required change to migrate the api.
+4. Run typecheck and tests to verify correctness.
+5. Reflect on what you have done and APPEND learning to .plans/progress.txt for future iterations.
+6. Commit changes with a descriptive message.
 
 ## Migration rules
 - `oldApi.fetch()` → `newApi.get()`
@@ -189,9 +146,18 @@ When grep returns no results, output:
 ### Pattern 3: Documentation
 
 ```markdown
+@.plans/progress.txt
+run `git log --limit 10`
+
 # Task: Add JSDoc Comments
 
-Add JSDoc comments to all exported functions in src/.
+1. Add JSDoc comments to all exported functions in src/.
+2. Select a module that needs documentation. Only update a single module at a time.
+3. Add JSDoc comments to all functions in that module.
+4. Run typecheck and tests to verify correctness.
+5. Reflect on what you have done and APPEND learning to .plans/progress.txt for future iterations.
+6. Commit changes with a descriptive message.
+
 
 ## Guidelines
 - Include @param and @returns
@@ -214,6 +180,9 @@ The same prompt runs every iteration. Make it clear, self-contained, and include
 **Good prompt structure:**
 
 ```markdown
+# Orientation
+[Plans, history and learning e.g. @.plans/prd.json @.plans/progress.txt run `git log --limit 10`]
+
 # Task
 [What needs to be done]
 
