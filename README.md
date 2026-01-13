@@ -25,6 +25,8 @@ ralph run -n 10 -p ./plans/PROMPT.md
 
 The AI does work, commits changes, saves insights,exits, ralph checks if done, resets context, and loops—until your task is complete.
 
+Full documentation can be found at [https://wiggum.dev](https://wiggum.dev).
+
 ## Why "Ralph Wiggum"?
 
 The technique was coined by [Geoffrey Huntley](https://ghuntley.com/ralph/):
