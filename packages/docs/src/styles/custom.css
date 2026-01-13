@@ -160,6 +160,20 @@ header.header {
   font-weight: 700 !important;
   letter-spacing: -0.02em;
   transition: color var(--ralph-transition);
+  color: var(--sl-color-black);
+}
+
+:root[data-theme="dark"] .site-title {
+  color: var(--sl-color-white);
+}
+
+/* Social icons (GitHub) */
+.social-icons a {
+  color: var(--sl-color-gray-4);
+}
+
+:root[data-theme="dark"] .social-icons a {
+  color: var(--sl-color-gray-1);
 }
 
 .site-title::before {
@@ -184,6 +198,18 @@ header.header {
 }
 
 /* Theme toggle */
+starlight-theme-select,
+starlight-theme-select label,
+starlight-theme-select select {
+  color: hsl(40 10% 30%) !important;
+}
+
+:root[data-theme="dark"] starlight-theme-select,
+:root[data-theme="dark"] starlight-theme-select label,
+:root[data-theme="dark"] starlight-theme-select select {
+  color: hsl(45 5% 80%) !important;
+}
+
 starlight-theme-select button {
   transition: background-color var(--ralph-transition), transform var(--ralph-transition);
 }
@@ -197,10 +223,25 @@ starlight-theme-select button:hover {
 site-search button {
   border-radius: 0.5rem !important;
   transition: all var(--ralph-transition);
+  background-color: transparent !important;
+  border: 1px solid var(--sl-color-hairline) !important;
+  color: var(--sl-color-gray-3) !important;
+}
+
+site-search button kbd {
+  background-color: var(--sl-color-gray-1) !important;
+  color: var(--sl-color-gray-4) !important;
+  border-color: var(--sl-color-hairline) !important;
+}
+
+:root[data-theme="dark"] site-search button kbd {
+  background-color: var(--sl-color-gray-5) !important;
+  color: var(--sl-color-gray-2) !important;
 }
 
 site-search button:hover {
   border-color: var(--sl-color-accent) !important;
+  background-color: var(--sl-color-accent-low) !important;
   box-shadow: var(--ralph-glow);
 }
 
@@ -223,13 +264,19 @@ nav.sidebar-content {
   font-size: 0.8125rem;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: var(--sl-color-gray-5) !important;
   padding: 0.5rem 0.75rem;
 }
 
-:root[data-theme="dark"] .sidebar-content .top-level > li > details > summary,
-:root[data-theme="dark"] .sidebar-content .top-level > li > a {
-  color: var(--sl-color-gray-2) !important;
+/* Sidebar heading text - light mode */
+.sidebar-content .group-label,
+.sidebar-content .group-label .large {
+  color: hsl(40 10% 25%) !important;
+}
+
+/* Sidebar heading text - dark mode */
+:root[data-theme="dark"] .sidebar-content .group-label,
+:root[data-theme="dark"] .sidebar-content .group-label .large {
+  color: hsl(45 5% 85%) !important;
 }
 
 /* Sidebar links */
@@ -458,8 +505,11 @@ nav.sidebar a[aria-current="page"]:hover {
   border-collapse: separate;
   border-spacing: 0;
   width: 100%;
+  min-width: 100%;
   margin: 1.5rem 0;
   font-size: 0.9375rem;
+  display: table;
+  table-layout: auto;
 }
 
 .sl-markdown-content th {
@@ -468,6 +518,11 @@ nav.sidebar a[aria-current="page"]:hover {
   text-align: left;
   padding: 0.875rem 1rem;
   border-bottom: 1px solid var(--sl-color-hairline);
+  color: var(--sl-color-black);
+}
+
+:root[data-theme="dark"] .sl-markdown-content th {
+  color: var(--sl-color-white);
 }
 
 .sl-markdown-content td {
@@ -619,6 +674,49 @@ mobile-starlight-toc .dropdown a:hover {
 /* ----------------------------------------
    Custom Components
    ---------------------------------------- */
+
+/* Starlight Card Grid - Light Mode Fix */
+.card-grid .card {
+  background: hsl(45 10% 92%);
+  border: 1px solid var(--sl-color-hairline);
+}
+
+.card-grid .card .title {
+  color: hsl(40 12% 15%);
+}
+
+.card-grid .card .title .icon {
+  color: hsl(40 100% 40%);
+}
+
+.card-grid .card .body {
+  color: hsl(40 8% 35%);
+}
+
+/* Card icon variants for visual distinction */
+.card-grid .card:nth-child(1) .icon { color: hsl(45 100% 45%); }
+.card-grid .card:nth-child(2) .icon { color: hsl(300 60% 55%); }
+.card-grid .card:nth-child(3) .icon { color: hsl(150 70% 40%); }
+.card-grid .card:nth-child(4) .icon { color: hsl(150 70% 45%); }
+
+/* Dark mode - keep original dark style */
+:root[data-theme="dark"] .card-grid .card {
+  background: hsl(40 10% 12%);
+  border-color: hsl(40 8% 20%);
+}
+
+:root[data-theme="dark"] .card-grid .card .title {
+  color: hsl(45 5% 95%);
+}
+
+:root[data-theme="dark"] .card-grid .card .body {
+  color: hsl(45 5% 70%);
+}
+
+:root[data-theme="dark"] .card-grid .card:nth-child(1) .icon { color: hsl(45 100% 62%); }
+:root[data-theme="dark"] .card-grid .card:nth-child(2) .icon { color: hsl(300 80% 75%); }
+:root[data-theme="dark"] .card-grid .card:nth-child(3) .icon { color: hsl(150 80% 55%); }
+:root[data-theme="dark"] .card-grid .card:nth-child(4) .icon { color: hsl(150 80% 60%); }
 
 /* Feature cards */
 .feature-grid {
