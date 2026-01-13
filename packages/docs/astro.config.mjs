@@ -76,6 +76,8 @@ export default defineConfig({
           items: [
             { label: "CLI Reference", slug: "usage/cli" },
             { label: "Configuration", slug: "usage/configuration" },
+            { label: "Hooks", slug: "usage/hooks" },
+            { label: "Claude Code Plugin", slug: "usage/claude-code" },
           ],
         },
         // {

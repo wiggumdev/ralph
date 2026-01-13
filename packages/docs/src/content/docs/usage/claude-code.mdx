@@ -1,0 +1,247 @@
+---
+title: Claude Code Plugin
+description: Install and use the Ralph plugin for Claude Code.
+---
+
+import { Aside, Card, CardGrid, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+
+# Claude Code Plugin
+
+Ralph provides a Claude Code plugin with skills to generate and convert PRDs for autonomous execution.
+
+## Installation
+
+<Steps>
+1. **Add the plugin from marketplace**
+   ```
+   /plugin marketplace add wiggumdev/ralph
+   ```
+
+2. **Install the plugin**
+   ```
+   /plugin install ralph@wiggumdev/ralph
+   ```
+
+3. **Verify installation**
+   ```
+   /plugins
+   ```
+   You should see `ralph` in the list of installed plugins.
+</Steps>
+
+<Aside type="tip" title="Local Development">
+If you've cloned the repo, install locally with:
+```bash
+cd packages/claude && claude plugins add .
+```
+</Aside>
+
+## Available Skills
+
+<CardGrid>
+  <Card title="ralph-prd" icon="rocket">
+    Generate a new PRD from scratch with guided clarifying questions.
+  </Card>
+  <Card title="ralph-tasks" icon="document">
+    Convert existing PRD documents to Ralph's prd.json format.
+  </Card>
+</CardGrid>
+
+---
+
+## ralph-prd
+
+Generate a Product Requirements Document from a feature description.
+
+### Usage
+
+```
+/ralph-prd
+```
+
+Or trigger naturally with phrases like:
+- "create a ralph prd"
+- "write ralph prd for [feature]"
+- "plan this feature with ralph"
+- "ralph requirements for [feature]"
+
+### How It Works
+
+1. **Describe your feature** — Tell Claude what you want to build
+2. **Answer clarifying questions** — Claude asks 3-5 questions with lettered options (respond with "1A, 2C, 3B")
+3. **Review the PRD** — Claude generates structured requirements
+4. **Save to `.plans/prd.json`** — Ready for Ralph to execute
+
+### Example
+
+```
+User: /ralph-prd I want to add user authentication to my app
+
+Claude: I'll help create a PRD for user authentication. A few questions:
+
+1. What authentication method?
+   A. Email/password only
+   B. OAuth providers (Google, GitHub)
+   C. Both email and OAuth
+   D. Magic link (passwordless)
+
+2. What's the scope?
+   A. Login/logout only
+   B. Full auth (login, signup, password reset)
+   C. Full auth + profile management
+   D. Other: [specify]
+
+3. Where should auth state live?
+   A. JWT tokens (stateless)
+   B. Server sessions
+   C. Both (hybrid)
+
+User: 1C, 2B, 3A
+
+Claude: [Generates PRD and saves to .plans/prd.json]
+```
+
+---
+
+## ralph-tasks
+
+Convert an existing PRD document to Ralph's JSON format.
+
+### Usage
+
+```
+/ralph-tasks
+```
+
+Or trigger naturally with phrases like:
+- "convert this prd"
+- "turn this into ralph format"
+- "create prd.json from this"
+
+### How It Works
+
+1. **Provide the PRD** — Paste markdown or reference a file
+2. **Claude converts** — Parses requirements into structured JSON
+3. **Save to `.plans/prd.json`** — Ready for Ralph to execute
+
+### Example
+
+```
+User: /ralph-tasks Convert this PRD:
+
+## User Dashboard
+- Show user stats
+- Display recent activity
+- Allow profile editing
+
+Claude: [Converts to prd.json format with proper acceptance criteria]
+```
+
+---
+
+## PRD Format
+
+Both skills output to `.plans/prd.json` using this structure:
+
+```json
+[
+  {
+    "id": "user-auth",
+    "category": "Authentication",
+    "title": "User Login",
+    "description": "Users can log in with email and password",
+    "passes": false,
+    "acceptance": [
+      "Login form validates email format",
+      "Invalid credentials show error message",
+      "Successful login redirects to dashboard",
+      "Verify in browser using dev-browser skill"
+    ],
+    "priority": "high",
+    "dependencies": [],
+    "technicalNotes": "Use bcrypt for password hashing",
+    "testStrategy": "Unit tests for validation, integration test for auth flow"
+  }
+]
+```
+
+### Required Fields
+
+| Field | Description |
+|-------|-------------|
+| `category` | Feature grouping (e.g., "Authentication", "API") |
+| `title` | Concise feature name |
+| `description` | Detailed behavior description |
+| `passes` | Completion status (starts `false`) |
+| `acceptance` | Array of verifiable criteria |
+
+### Optional Fields
+
+| Field | Description |
+|-------|-------------|
+| `id` | Unique identifier for dependencies |
+| `priority` | `critical`, `high`, `medium`, `low` |
+| `dependencies` | Array of feature IDs that must complete first |
+| `technicalNotes` | Implementation hints |
+| `testStrategy` | Testing guidance |
+| `suggestedFiles` | Files likely needing changes |
+| `outOfScope` | Explicit exclusions |
+
+---
+
+## Best Practices
+
+### Writing Good Acceptance Criteria
+
+<Aside type="caution" title="Be Specific">
+Vague criteria like "works correctly" are bad. Specific criteria like "button shows confirmation dialog before deleting" are good.
+</Aside>
+
+**For UI features:**
+```json
+"acceptance": [
+  "Form validates required fields on blur",
+  "Submit button disabled while loading",
+  "Success toast appears after save",
+  "Verify in browser using dev-browser skill"
+]
+```
+
+**For API features:**
+```json
+"acceptance": [
+  "Returns 401 for invalid tokens",
+  "Rate limits to 100 requests/minute",
+  "Verify with unit tests"
+]
+```
+
+### Keep Features Small
+
+Each PRD item should be completable in one Ralph iteration. If a feature is too large, break it into smaller pieces:
+
+```json
+// Too big
+{ "title": "User Authentication System" }
+
+// Better - split into:
+{ "title": "Login Form UI", "id": "auth-login-ui" }
+{ "title": "Login API Endpoint", "id": "auth-login-api", "dependencies": ["auth-login-ui"] }
+{ "title": "Password Reset Flow", "id": "auth-reset", "dependencies": ["auth-login-api"] }
+```
+
+---
+
+## Running with Ralph
+
+After generating a PRD:
+
+```bash
+# Validate the PRD
+ralph check
+
+# Start autonomous execution
+ralph run
+```
+
+Ralph reads `.plans/prd.json` and works through each feature, marking `passes: true` as criteria are met.

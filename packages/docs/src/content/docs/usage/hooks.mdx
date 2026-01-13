@@ -1,0 +1,207 @@
+---
+title: Hooks
+description: Run custom scripts at key points in the Ralph lifecycle.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+# Hooks
+
+Hooks execute shell commands at key points during the agent loop. Use them to integrate with external tools, send notifications, run tests, or trigger custom workflows.
+
+## Configuration
+
+Add hooks to `.ralph/config.toml`:
+
+```toml
+[hooks]
+ralph_start = "echo 'Starting Ralph'"
+ralph_loop_start = "echo 'Iteration $RALPH_LOOP_ITERATION starting'"
+ralph_loop_end = "npm test --bail || true"
+ralph_complete = "notify-send 'Ralph finished!'"
+ralph_max_iterations = "echo 'Max iterations reached'"
+```
+
+## Available Hooks
+
+| Hook | When It Runs |
+|------|--------------|
+| `ralph_start` | Once at the beginning, before the first iteration |
+| `ralph_loop_start` | At the start of each iteration |
+| `ralph_loop_end` | At the end of each iteration |
+| `ralph_complete` | When the task completes successfully |
+| `ralph_max_iterations` | When max iterations reached without completion |
+
+### Hook Timeline
+
+```
+ralph run
+    │
+    ├─► ralph_start
+    │
+    ├─► ralph_loop_start  ─┐
+    │   [AI iteration]     │ repeats
+    ├─► ralph_loop_end    ─┘
+    │
+    └─► ralph_complete (success)
+        OR ralph_max_iterations (limit reached)
+```
+
+---
+
+## Environment Variables
+
+Each hook receives context via environment variables.
+
+### ralph_start
+
+| Variable | Description |
+|----------|-------------|
+| `RALPH_CWD` | Working directory |
+| `RALPH_TASKS_NOT_PASSING` | Number of failing tasks from PRD |
+| `RALPH_MAX_ITERATIONS` | Maximum iterations configured |
+
+### ralph_loop_start / ralph_loop_end
+
+| Variable | Description |
+|----------|-------------|
+| `RALPH_CWD` | Working directory |
+| `RALPH_LOOP_ITERATION` | Current iteration number (1-indexed) |
+
+### ralph_complete / ralph_max_iterations
+
+| Variable | Description |
+|----------|-------------|
+| `RALPH_CWD` | Working directory |
+| `RALPH_TOTAL_ITERATIONS` | Total iterations executed |
+
+<Aside type="tip" title="Environment Inheritance">
+Hooks inherit all environment variables from the parent process, so `$HOME`, `$PATH`, and any exported variables are available.
+</Aside>
+
+---
+
+## Examples
+
+### Run Tests After Each Iteration
+
+Catch regressions early by running tests after each iteration:
+
+```toml
+[hooks]
+ralph_loop_end = "bun test --bail 2>/dev/null || true"
+```
+
+The `|| true` prevents hook failure from stopping Ralph.
+
+### Slack Notification
+
+Send a Slack message when Ralph completes:
+
+```toml
+[hooks]
+ralph_complete = """
+curl -X POST -H 'Content-type: application/json' \
+  --data '{"text":"Ralph completed in '$RALPH_TOTAL_ITERATIONS' iterations"}' \
+  $SLACK_WEBHOOK_URL
+"""
+```
+
+### Log Iterations to File
+
+Track iteration timing for analysis:
+
+```toml
+[hooks]
+ralph_loop_start = "echo \"$(date): Starting iteration $RALPH_LOOP_ITERATION\" >> ralph.log"
+ralph_loop_end = "echo \"$(date): Finished iteration $RALPH_LOOP_ITERATION\" >> ralph.log"
+```
+
+### Desktop Notification (macOS)
+
+Get notified when Ralph finishes:
+
+```toml
+[hooks]
+ralph_complete = "osascript -e 'display notification \"Completed in $RALPH_TOTAL_ITERATIONS iterations\" with title \"Ralph\"'"
+ralph_max_iterations = "osascript -e 'display notification \"Max iterations reached\" with title \"Ralph\" sound name \"Basso\"'"
+```
+
+### Play Sound on Completion (macOS)
+
+Audio feedback for completion status:
+
+```toml
+[hooks]
+ralph_complete = "afplay /System/Library/Sounds/Glass.aiff"
+ralph_max_iterations = "afplay /System/Library/Sounds/Basso.aiff"
+```
+
+### Lint and Format
+
+Auto-fix code style before each iteration:
+
+```toml
+[hooks]
+ralph_start = "npm run lint:fix"
+ralph_loop_end = "npm run format"
+```
+
+### Git Commit Progress
+
+Auto-commit after each successful iteration:
+
+```toml
+[hooks]
+ralph_loop_end = """
+git add -A && \
+git commit -m "ralph: iteration $RALPH_LOOP_ITERATION" --allow-empty || true
+"""
+```
+
+---
+
+## Behavior
+
+### Execution
+
+- Commands run via `sh -c` in the configured working directory
+- Hooks run **synchronously** and block the loop until complete
+- All parent process environment variables are inherited
+
+### Error Handling
+
+- Hook failures (non-zero exit code) are logged but **don't stop Ralph**
+- Use `|| true` to suppress expected failures
+- Enable `verbose = true` in config to see hook execution logs
+
+<Aside type="caution" title="Long-Running Hooks">
+Hooks block the loop. Avoid long-running commands in `ralph_loop_start` or `ralph_loop_end` as they run every iteration.
+</Aside>
+
+### Debugging
+
+Enable verbose mode to see hook execution:
+
+```toml
+verbose = true
+```
+
+Or via CLI:
+
+```bash
+ralph run --verbose
+```
+
+---
+
+## Use Cases
+
+| Use Case | Hook | Example |
+|----------|------|---------|
+| Pre-flight checks | `ralph_start` | Validate environment, install deps |
+| Code quality | `ralph_loop_end` | Run linter, formatter, tests |
+| Progress tracking | `ralph_loop_start/end` | Log to file, update dashboard |
+| Notifications | `ralph_complete` | Slack, email, desktop alert |
+| Alerts | `ralph_max_iterations` | Notify that manual review needed |
+| Version control | `ralph_loop_end` | Auto-commit checkpoints |

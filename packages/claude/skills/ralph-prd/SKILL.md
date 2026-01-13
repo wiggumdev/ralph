@@ -1,6 +1,6 @@
 ---
 name: ralph-prd
-description: "Generate a Product Requirements Document (PRD) for a new feature. Use when planning a feature, starting a new project, or when asked to create a PRD. Triggers on: create a prd, write prd for, plan this feature, requirements for, spec out."
+description: "Generate a Product Requirements Document (PRD) for a new feature. Use when planning a feature, starting a new project, or when asked to create a PRD. Triggers on: create a ralph prd, write ralph prd for, plan this feature with ralph, ralph requirements for, ralph spec out."
 ---
 
 # PRD Generator
@@ -177,9 +177,11 @@ The PRD reader may be a junior developer or AI agent. Therefore:
 - **Location:** `./plans`
 - **Filename:** `prd.md`
 
-Before saving the PRD:
+Before writing prd.json, verify:
 
 - [ ] Asked clarifying questions
 - [ ] Incorporated user's answers
-- [ ] PRD items are small, specific and verifiable
+- [ ] PRD item is completable in one iteration (small enough)
+- [ ] UI stories have "Verify in browser using dev-browser skill" as criterion
+- [ ] Acceptance criteria are verifiable (not vague)
 - [ ] Saved to `./plans/prd.json`
