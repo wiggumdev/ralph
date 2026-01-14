@@ -22,28 +22,46 @@ Each iteration starts fresh. The AI has no memory of previous iterations. So how
 
 State lives **in the codebase**, not in conversation. The AI reconstructs context by reading files.
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│                    State Externalization                      │
-├──────────────────────────────────────────────────────────────┤
-│                                                               │
-│   Conversation Memory (lost on reset):                        │
-│   ┌─────────────────────────────────────────────────────┐    │
-│   │ ❌ "We decided to use this pattern..."               │    │
-│   │ ❌ "The user said they prefer..."                    │    │
-│   │ ❌ "Earlier we tried X and it failed..."             │    │
-│   └─────────────────────────────────────────────────────┘    │
-│                                                               │
-│   File-Based State (persists always):                         │
-│   ┌─────────────────────────────────────────────────────┐    │
-│   │ ✓ src/auth.test.js         → Pattern visible in code │    │
-│   │ ✓ .plans/progress.txt      → Explicit status log     │    │
-│   │ ✓ git log                  → History of changes      │    │
-│   │ ✓ .plans/prd.json         → Feature requirements     │    │
-│   └─────────────────────────────────────────────────────┘    │
-│                                                               │
-└──────────────────────────────────────────────────────────────┘
-```
+<table>
+  <thead>
+    <tr>
+      <th colspan="2">State Externalization</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="2"><strong>Conversation Memory (lost on reset):</strong></td>
+    </tr>
+    <tr>
+      <td colspan="2">❌ "We decided to use this pattern..."</td>
+    </tr>
+    <tr>
+      <td colspan="2">❌ "The user said they prefer..."</td>
+    </tr>
+    <tr>
+      <td colspan="2">❌ "Earlier we tried X and it failed..."</td>
+    </tr>
+    <tr>
+      <td colspan="2"><strong>File-Based State (persists always):</strong></td>
+    </tr>
+    <tr>
+      <td>✓ <code>src/auth.test.js</code></td>
+      <td>→ Pattern visible in code</td>
+    </tr>
+    <tr>
+      <td>✓ <code>.plans/progress.txt</code></td>
+      <td>→ Explicit status log</td>
+    </tr>
+    <tr>
+      <td>✓ <code>git log</code></td>
+      <td>→ History of changes</td>
+    </tr>
+    <tr>
+      <td>✓ <code>.plans/prd.json</code></td>
+      <td>→ Feature requirements</td>
+    </tr>
+  </tbody>
+</table>
 
 ## State Channels
 

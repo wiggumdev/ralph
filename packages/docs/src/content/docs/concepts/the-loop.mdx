@@ -29,23 +29,27 @@ The key insight: **the prompt doesn't change, but the codebase does.**
 
 ## How It Works
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                                                             │
-│   ┌──────────┐    ┌──────────┐    ┌──────────┐            │
-│   │  Start   │───▶│ Run AI   │───▶│  Check   │            │
-│   │  Fresh   │    │   Tool   │    │   Exit   │            │
-│   │ Context  │    │          │    │  Conds   │            │
-│   └──────────┘    └──────────┘    └────┬─────┘            │
-│        ▲                               │                   │
-│        │         ┌──────────┐    ┌─────┴─────┐            │
-│        │         │   Not    │    │           │            │
-│        └─────────│   Done   │◀───│   Done?   │───▶ Exit   │
-│                  └──────────┘    └───────────┘            │
-│                                                             │
-│   State persists via: git commits, files, test results     │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+```d2 theme=301
+start: Start Fresh Context
+run: Run AI Tool
+check: Check Exit Conds
+done: Done?
+not_done: Not Done
+exit: Exit
+
+start -> run
+run -> check
+check -> done
+done -> exit: "yes"
+done -> not_done: "no"
+not_done -> start
+
+note: {
+  near: bottom-center
+  shape: text
+  style.font-size: 14
+  content: "State persists via: git commits, files, test results"
+}
 ```
 
 Each iteration:

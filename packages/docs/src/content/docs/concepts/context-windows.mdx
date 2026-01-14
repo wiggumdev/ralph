@@ -27,13 +27,13 @@ Modern models have large windows—100K+ tokens for Claude. That sounds like a l
 Here's what happens as context fills:
 
 ```
-Context Usage    │ Model Performance
-─────────────────┼──────────────────────
-      0-20%      │ ████████████████████  Peak performance
-     20-40%      │ ██████████████████    Still great
-     40-60%      │ ███████████████       Noticeably worse
-     60-80%      │ ██████████            Missing instructions
-     80-100%     │ █████                 Confused, repetitive
+Context Usage │ Model Performance
+──────────────┼───────────────────────────────────────────
+    0-20%     │ ████████████████████ Peak performance
+   20-40%     │ ██████████████████   Still great
+   40-60%     │ ███████████████      Noticeably worse
+   60-80%     │ ██████████           Missing instructions
+   80-100%    │ █████                Confused, repetitive
 ```
 
 This isn't speculation—it's observed behavior documented by Anthropic and others.

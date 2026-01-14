@@ -13,21 +13,23 @@ Exit conditions tell ralph when the job is done. Without them, ralph would loop 
 
 ralph checks for exit conditions after each iteration:
 
-```
-┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-│  AI exits   │ ──▶ │ Check exit   │ ──▶ │   Done?     │
-│  iteration  │     │  conditions  │     │             │
-└─────────────┘     └──────────────┘     └──────┬──────┘
-                                               │
-                          ┌────────────────────┼────────────────────┐
-                          │                    │                    │
-                          ▼                    ▼                    ▼
-                   ┌──────────┐         ┌──────────┐         ┌──────────┐
-                   │ Complete │         │    No    │         │  Max     │
-                   │  marker  │         │  ─────   │         │ reached  │
-                   │  ─────   │         │  Loop    │         │  ─────   │
-                   │  Exit    │         │  again   │         │  Exit    │
-                   └──────────┘         └──────────┘         └──────────┘
+```d2 theme=301
+ai_exit: AI exits iteration
+check: Check exit conditions
+done: Done?
+complete: Complete marker → Exit
+no: No → Loop again
+max: Max reached → Exit
+
+ai_exit -> check
+check -> done
+done -> complete
+done -> no
+done -> max
+
+done.style: {
+  multiple: true
+}
 ```
 
 ## Exit Reasons

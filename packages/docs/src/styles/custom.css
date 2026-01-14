@@ -591,7 +591,7 @@ nav.sidebar a[aria-current="page"]:hover {
   position: relative;
 }
 
-.sl-markdown-content ul > li::before {
+.sl-markdown-content ul:not([role="tablist"]) > li::before {
   content: "→";
   position: absolute;
   left: -1.25rem;
@@ -606,6 +606,59 @@ nav.sidebar a[aria-current="page"]:hover {
 .sl-markdown-content ol > li::marker {
   color: var(--sl-color-accent);
   font-weight: 600;
+}
+
+/* ----------------------------------------
+   Tabs (Starlight)
+   ---------------------------------------- */
+
+/* Tab list container */
+[role="tablist"] {
+  display: flex;
+  gap: 0;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid var(--sl-color-hairline) !important;
+}
+
+/* Tab items - traditional raised tab look */
+[role="tablist"] .tab {
+  margin: 0;
+}
+
+[role="tablist"] [role="tab"] {
+  display: block;
+  padding: 0.625rem 1.25rem;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  color: var(--sl-color-gray-3);
+  background: transparent;
+  border: 2px solid transparent;
+  border-bottom: none;
+  border-radius: 0.5rem 0.5rem 0 0;
+  transition: all var(--ralph-transition);
+  text-decoration: none;
+  box-shadow: var(--sl-color-hairline) 0px 2px 0px 0px !important;
+}
+
+[role="tablist"] [role="tab"]:hover {
+  color: var(--sl-color-accent);
+  background: var(--sl-color-accent-low);
+}
+
+/* Selected tab - high contrast, traditional raised look */
+[role="tablist"] [role="tab"][aria-selected="true"] {
+  color: var(--sl-color-black);
+  background: var(--sl-color-bg);
+  border-color: var(--sl-color-hairline);
+  border-bottom: 2px solid var(--sl-color-bg) !important;
+  box-shadow: none !important;
+  font-weight: 600;
+  margin-bottom: -2px;
+}
+
+:root[data-theme="dark"] [role="tablist"] [role="tab"][aria-selected="true"] {
+  color: var(--sl-color-white);
+  background: var(--sl-color-bg);
 }
 
 /* ----------------------------------------
