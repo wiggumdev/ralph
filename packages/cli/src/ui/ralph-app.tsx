@@ -801,6 +801,7 @@ function RalphApp(props: RalphAppProps) {
 
       {/* Footer */}
       <FooterPanel
+        adapterName={props.adapter.name}
         exitReason={exitReason}
         icon={RALPH_ICON}
         iteration={iteration}

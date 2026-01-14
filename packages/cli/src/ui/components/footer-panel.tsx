@@ -14,6 +14,7 @@ interface FooterPanelProps {
   progressBar: string;
   exitReason: Accessor<LoopResult["exitReason"]>;
   lastSessionId: Accessor<string | undefined>;
+  adapterName: string;
   showUsage: boolean;
   totalInputTokens: Accessor<number>;
   totalOutputTokens: Accessor<number>;
@@ -43,6 +44,15 @@ function getTodoColor(todoStatus: string): string {
   }
 }
 
+/** Check if adapter supports --resume and session exists */
+export function shouldShowOpenHint(
+  sessionId: string | undefined,
+  adapterName: string
+): boolean {
+  const supportsResume = adapterName === "claude" || adapterName === "opencode";
+  return !!sessionId && supportsResume;
+}
+
 export function FooterPanel(props: FooterPanelProps) {
   const hasUsageData = () =>
     props.showUsage &&
@@ -61,6 +71,11 @@ export function FooterPanel(props: FooterPanelProps) {
           Iteration {props.iteration()}/{props.maxIterations}{" "}
           <span style={{ fg: "#666666" }}>{props.progressBar}</span>
           <span style={{ fg: "#666666" }}> | [e] expand [q] quit</span>
+          <Show
+            when={shouldShowOpenHint(props.lastSessionId(), props.adapterName)}
+          >
+            <span style={{ fg: "#666666" }}> [o] open</span>
+          </Show>
         </text>
       </box>
       {/* Session line */}

@@ -98,3 +98,41 @@ describe("hasUsageData logic", () => {
     expect(hasUsageData(true, 0, 0, 0.01)).toBe(true);
   });
 });
+
+describe("shouldShowOpenHint", () => {
+  // Import would fail due to SolidJS JSX in footer-panel.tsx
+  // Mirror logic for testing (same as in footer-panel.tsx)
+  function shouldShowOpenHint(
+    sessionId: string | undefined,
+    adapterName: string
+  ): boolean {
+    const supportsResume =
+      adapterName === "claude" || adapterName === "opencode";
+    return !!sessionId && supportsResume;
+  }
+
+  test("returns true for claude adapter with session ID", () => {
+    expect(shouldShowOpenHint("session-123", "claude")).toBe(true);
+  });
+
+  test("returns true for opencode adapter with session ID", () => {
+    expect(shouldShowOpenHint("session-456", "opencode")).toBe(true);
+  });
+
+  test("returns false for gemini adapter (no resume support)", () => {
+    expect(shouldShowOpenHint("session-789", "gemini")).toBe(false);
+  });
+
+  test("returns false when session ID is undefined", () => {
+    expect(shouldShowOpenHint(undefined, "claude")).toBe(false);
+    expect(shouldShowOpenHint(undefined, "opencode")).toBe(false);
+  });
+
+  test("returns false when session ID is empty string", () => {
+    expect(shouldShowOpenHint("", "claude")).toBe(false);
+  });
+
+  test("returns false for unknown adapter", () => {
+    expect(shouldShowOpenHint("session-123", "unknown")).toBe(false);
+  });
+});
