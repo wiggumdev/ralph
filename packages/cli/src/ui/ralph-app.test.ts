@@ -265,3 +265,65 @@ describe("prdHelpText logic", () => {
     expect(prdHelpText(true, "")).toBe("Search: _ | [Enter/Esc] done");
   });
 });
+
+// canOpenExternalTool logic - determines if 'o' keybinding should be enabled
+// Tests mirror the exported functions in ralph-app.tsx
+describe("canOpenExternalTool logic", () => {
+  // Mirror of ralph-app.tsx:canOpenExternalTool
+  function canOpenExternalTool(
+    sessionId: string | undefined,
+    adapterName: string
+  ): boolean {
+    const supportsResume =
+      adapterName === "claude" || adapterName === "opencode";
+    return !!sessionId && supportsResume;
+  }
+
+  test("returns true for claude with session ID", () => {
+    expect(canOpenExternalTool("session-123", "claude")).toBe(true);
+  });
+
+  test("returns true for opencode with session ID", () => {
+    expect(canOpenExternalTool("session-456", "opencode")).toBe(true);
+  });
+
+  test("returns false for gemini (no resume support)", () => {
+    expect(canOpenExternalTool("session-789", "gemini")).toBe(false);
+  });
+
+  test("returns false when session ID is undefined", () => {
+    expect(canOpenExternalTool(undefined, "claude")).toBe(false);
+  });
+
+  test("returns false when session ID is empty string", () => {
+    expect(canOpenExternalTool("", "claude")).toBe(false);
+  });
+
+  test("returns false for unknown adapter", () => {
+    expect(canOpenExternalTool("session-123", "unknown")).toBe(false);
+  });
+});
+
+// buildResumeArgs - builds command args for resuming external tool
+describe("buildResumeArgs logic", () => {
+  // Mirror of ralph-app.tsx:buildResumeArgs
+  function buildResumeArgs(adapterName: string, sessionId: string): string[] {
+    return [adapterName, "--resume", sessionId];
+  }
+
+  test("builds correct args for claude", () => {
+    expect(buildResumeArgs("claude", "abc-123")).toEqual([
+      "claude",
+      "--resume",
+      "abc-123",
+    ]);
+  });
+
+  test("builds correct args for opencode", () => {
+    expect(buildResumeArgs("opencode", "xyz-789")).toEqual([
+      "opencode",
+      "--resume",
+      "xyz-789",
+    ]);
+  });
+});

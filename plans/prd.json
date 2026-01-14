@@ -1,0 +1,49 @@
+[
+  {
+    "id": "open-external-tool-keybinding",
+    "category": "TUI",
+    "title": "Add 'o' keybinding to open external session tool",
+    "description": "Add keybinding 'o' that exits Ralph and opens the configured adapter tool (claude or opencode) with the current session ID. The adapter type is already in config (props.adapter). The session ID is tracked in lastSessionId() signal. When pressed, Ralph exits completely and spawns the external tool with --resume flag.",
+    "passes": false,
+    "priority": "high",
+    "acceptance": [
+      "Pressing 'o' when session ID exists spawns external tool with correct session",
+      "Tool choice respects configured adapter (claude or opencode)",
+      "Command format: `<tool> --resume <sessionId>`",
+      "Ralph exits cleanly after spawning external tool",
+      "Pressing 'o' when no session ID exists does nothing (keybinding disabled)",
+      "Verify with unit tests"
+    ],
+    "technicalNotes": "Add handler in useKeyboard block (ralph-app.tsx:349-376). Use Bun.spawn to launch external tool. Exit via existing handleQuit pattern but with different exitReason. Adapter name available from props.adapter type or can derive from CLIAdapter interface.",
+    "suggestedFiles": [
+      "packages/cli/src/ui/ralph-app.tsx",
+      "packages/cli/src/adapters/types.ts"
+    ],
+    "outOfScope": [
+      "Pausing/resuming Ralph instead of exiting",
+      "Supporting gemini adapter (no resume support)",
+      "Custom keybinding configuration"
+    ]
+  },
+  {
+    "id": "open-command-tooltip",
+    "category": "TUI",
+    "title": "Show tooltip for 'o' command when available",
+    "description": "Display '[o] open' hint in footer keybinding area when session ID exists. Follows existing pattern of '[e] expand [q] quit' hints in footer-panel.tsx:63. Only show when lastSessionId is defined (command is available).",
+    "passes": false,
+    "priority": "medium",
+    "dependencies": ["open-external-tool-keybinding"],
+    "acceptance": [
+      "Footer shows '[o] open' hint when session ID exists",
+      "Hint hidden when no session ID yet",
+      "Matches existing hint styling ([e] expand [q] quit)",
+      "Verify with unit tests"
+    ],
+    "technicalNotes": "FooterPanel receives lastSessionId as prop. Add conditional span after existing hints. Use same #666666 color as other hints.",
+    "suggestedFiles": ["packages/cli/src/ui/components/footer-panel.tsx"],
+    "outOfScope": [
+      "Tooltip/hover behavior",
+      "Dynamic hint based on adapter name"
+    ]
+  }
+]

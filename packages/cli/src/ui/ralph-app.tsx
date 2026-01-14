@@ -100,6 +100,23 @@ function clearTerminalTitle(): void {
   }
 }
 
+/** Check if adapter supports --resume flag (gemini does not) */
+export function canOpenExternalTool(
+  sessionId: string | undefined,
+  adapterName: string
+): boolean {
+  const supportsResume = adapterName === "claude" || adapterName === "opencode";
+  return !!sessionId && supportsResume;
+}
+
+/** Build command args to resume a session in external tool */
+export function buildResumeArgs(
+  adapterName: string,
+  sessionId: string
+): string[] {
+  return [adapterName, "--resume", sessionId];
+}
+
 interface IterationContext {
   proc: ReturnType<typeof Bun.spawn> | null;
   aborted: boolean;
@@ -346,6 +363,34 @@ function RalphApp(props: RalphAppProps) {
     renderer.destroy();
   };
 
+  const handleOpenExternal = () => {
+    const sessionId = lastSessionId();
+    if (!canOpenExternalTool(sessionId, props.adapter.name)) {
+      return;
+    }
+    // Stop current process
+    ctx.aborted = true;
+    if (ctx.proc) {
+      ctx.proc.kill();
+    }
+    clearTerminalTitle();
+    // Spawn external tool with --resume flag
+    const args = buildResumeArgs(props.adapter.name, sessionId!);
+    Bun.spawn(args, { cwd: props.cwd, stdin: "inherit", stdout: "inherit" });
+    // Exit Ralph
+    props.onComplete({
+      iterations: iteration(),
+      exitReason: "user_abort",
+      lastExitCode: 0,
+      lastSessionId: sessionId,
+      totalInputTokens: totalInputTokens(),
+      totalOutputTokens: totalOutputTokens(),
+      totalCost: totalCost(),
+      toolCallCount: toolCallCount(),
+    });
+    renderer.destroy();
+  };
+
   useKeyboard((key) => {
     if (searchMode()) {
       handleSearchModeKey(key);
@@ -369,6 +414,9 @@ function RalphApp(props: RalphAppProps) {
     }
     if (key.name === "r") {
       setRichMode((prev) => !prev);
+    }
+    if (key.name === "o") {
+      handleOpenExternal();
     }
     if (key.name === "q" || key.name === "escape") {
       handleQuit();
