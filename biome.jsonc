@@ -5,7 +5,13 @@
     "globals": ["Bun", "sst", "$config", "$app"]
   },
   "files": {
-    "includes": ["packages/cli/**", "*.json", "*.jsonc", "*.md"]
+    "includes": [
+      "packages/cli/**",
+      "*.json",
+      "*.jsonc",
+      "*.md",
+      "!**/sst-env.d.ts"
+    ]
   },
   "overrides": [
     {

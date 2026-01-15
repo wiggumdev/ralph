@@ -10,11 +10,32 @@ export interface TextBlock extends BaseContentBlock {
   text: string;
 }
 
+export type ToolKind =
+  | "read"
+  | "edit"
+  | "delete"
+  | "move"
+  | "search"
+  | "execute"
+  | "think"
+  | "fetch"
+  | "other";
+
+export type ToolCallStatus = "pending" | "in_progress" | "completed" | "failed";
+
+export interface ToolCallLocation {
+  path: string;
+  line?: number;
+}
+
 export interface ToolUseBlock extends BaseContentBlock {
   type: "tool_use";
   id: string;
   name: string;
   input: Record<string, unknown>;
+  kind?: ToolKind;
+  status?: ToolCallStatus;
+  locations?: ToolCallLocation[];
 }
 
 export interface ToolResultBlock extends BaseContentBlock {
@@ -24,7 +45,69 @@ export interface ToolResultBlock extends BaseContentBlock {
   is_error?: boolean;
 }
 
-export type ContentBlock = TextBlock | ToolUseBlock | ToolResultBlock;
+export interface ImageBlock extends BaseContentBlock {
+  type: "image";
+  data: string;
+  mimeType: string;
+  uri?: string;
+}
+
+export interface AudioBlock extends BaseContentBlock {
+  type: "audio";
+  data: string;
+  mimeType: string;
+}
+
+export interface ResourceLinkBlock extends BaseContentBlock {
+  type: "resource_link";
+  name: string;
+  uri: string;
+  description?: string;
+  mimeType?: string;
+  size?: number;
+  title?: string;
+}
+
+export interface TextResourceContent {
+  type: "text";
+  uri: string;
+  text: string;
+  mimeType?: string;
+}
+
+export interface BlobResourceContent {
+  type: "blob";
+  uri: string;
+  blob: string;
+  mimeType?: string;
+}
+
+export interface EmbeddedResourceBlock extends BaseContentBlock {
+  type: "resource";
+  resource: TextResourceContent | BlobResourceContent;
+}
+
+export type TerminalStatus = "running" | "completed" | "failed";
+
+export interface TerminalBlock extends BaseContentBlock {
+  type: "terminal";
+  terminalId: string;
+  output: string;
+  truncated: boolean;
+  status: TerminalStatus;
+  exitCode?: number | null;
+  signal?: string | null;
+}
+
+export type ContentBlock =
+  | TextBlock
+  | ToolUseBlock
+  | ToolResultBlock
+  | ImageBlock
+  | AudioBlock
+  | ResourceLinkBlock
+  | EmbeddedResourceBlock
+  | TerminalBlock;
 
 export interface Message {
   type: "message";
@@ -71,12 +154,90 @@ export interface TextDelta {
   timestamp: number;
 }
 
+export type PlanEntryPriority = "high" | "medium" | "low";
+export type PlanEntryStatus = "pending" | "in_progress" | "completed";
+
+export interface PlanEntry {
+  content: string;
+  priority: PlanEntryPriority;
+  status: PlanEntryStatus;
+}
+
+export interface PlanMessage {
+  type: "plan";
+  entries: PlanEntry[];
+  timestamp: number;
+}
+
 export type RichMessage =
   | Message
   | SystemMessage
   | ResultMessage
   | PartialToolInput
-  | TextDelta;
+  | TextDelta
+  | PlanMessage;
+
+export type SessionStatus = "running" | "complete" | "error" | "paused";
+
+// Session state types
+export interface AgentInfo {
+  name: string;
+  version: string;
+}
+
+export interface SessionUsage {
+  inputTokens: number;
+  outputTokens: number;
+  cost: number;
+  toolCallCount: number;
+}
+
+export interface McpServerInfo {
+  type: "http" | "sse" | "stdio";
+  name?: string;
+}
+
+export interface AvailableCommand {
+  name: string;
+  description: string;
+}
+
+export interface TodoItem {
+  content: string;
+  status: "pending" | "in_progress" | "completed";
+}
+
+export interface SessionState {
+  // Identity
+  id: string;
+  iteration: number;
+  cwd: string;
+
+  // Agent info (from InitializeResponse)
+  agentInfo?: AgentInfo;
+  agentCapabilities?: Record<string, unknown>;
+
+  // Session config
+  mcpServers: McpServerInfo[];
+  currentMode?: string;
+  availableCommands: AvailableCommand[];
+
+  // Messages for this session
+  messages: RichMessage[];
+
+  // Usage tracking per session
+  usage: SessionUsage;
+
+  // Session-specific todos/plan
+  todos: TodoItem[];
+  plan?: PlanEntry[];
+
+  // Lifecycle
+  startTime: number;
+  endTime?: number;
+  collapsed: boolean;
+  status: SessionStatus;
+}
 
 // Type guards
 export function isMessage(msg: RichMessage): msg is Message {
@@ -111,4 +272,32 @@ export function isPartialToolInput(msg: RichMessage): msg is PartialToolInput {
 
 export function isTextDelta(msg: RichMessage): msg is TextDelta {
   return msg.type === "text_delta";
+}
+
+export function isPlanMessage(msg: RichMessage): msg is PlanMessage {
+  return msg.type === "plan";
+}
+
+export function isImageBlock(block: ContentBlock): block is ImageBlock {
+  return block.type === "image";
+}
+
+export function isAudioBlock(block: ContentBlock): block is AudioBlock {
+  return block.type === "audio";
+}
+
+export function isResourceLinkBlock(
+  block: ContentBlock
+): block is ResourceLinkBlock {
+  return block.type === "resource_link";
+}
+
+export function isEmbeddedResourceBlock(
+  block: ContentBlock
+): block is EmbeddedResourceBlock {
+  return block.type === "resource";
+}
+
+export function isTerminalBlock(block: ContentBlock): block is TerminalBlock {
+  return block.type === "terminal";
 }

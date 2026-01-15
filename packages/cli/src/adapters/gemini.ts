@@ -1,23 +1,12 @@
-import type { OutputFormat } from "#parsers";
-import { BaseAdapter } from "./base-adapter";
-import type { AdapterOptions } from "./types";
+import { AcpAdapter } from "./acp";
 
-export class GeminiAdapter extends BaseAdapter {
+/**
+ * Gemini ACP adapter.
+ * Uses `gemini --experimental-acp` command.
+ */
+
+export class GeminiAcpAdapter extends AcpAdapter {
   readonly name = "gemini";
-  readonly supportedFormats: OutputFormat[] = ["stream-json", "text"];
-
-  buildArgs(prompt: string, options: AdapterOptions): string[] {
-    const args = ["gemini", "--approval-mode", "yolo"];
-
-    if (options.outputFormat === "stream-json") {
-      args.push("--output-format", "stream-json");
-    }
-
-    if (options.verbose) {
-      args.push("--debug");
-    }
-
-    args.push("-p", prompt);
-    return args;
-  }
+  readonly command = "gemini";
+  readonly args = ["--experimental-acp"];
 }

@@ -8,19 +8,19 @@ import { describe, expect, test } from "bun:test";
 import type { TabView } from "#ui/components/tab-bar";
 
 describe("TabView type", () => {
-  test("output is valid TabView", () => {
-    const tab: TabView = "output";
-    expect(tab).toBe("output");
+  test("loop is valid TabView", () => {
+    const tab: TabView = "loop";
+    expect(tab).toBe("loop");
   });
 
-  test("progress is valid TabView", () => {
-    const tab: TabView = "progress";
-    expect(tab).toBe("progress");
+  test("learning is valid TabView", () => {
+    const tab: TabView = "learning";
+    expect(tab).toBe("learning");
   });
 
-  test("prd is valid TabView", () => {
-    const tab: TabView = "prd";
-    expect(tab).toBe("prd");
+  test("backlog is valid TabView", () => {
+    const tab: TabView = "backlog";
+    expect(tab).toBe("backlog");
   });
 });
 
@@ -30,15 +30,15 @@ describe("tab indicator logic", () => {
   }
 
   test("active tab shows arrow", () => {
-    expect(getTabIndicator("output", "output")).toBe("▶ ");
-    expect(getTabIndicator("progress", "progress")).toBe("▶ ");
-    expect(getTabIndicator("prd", "prd")).toBe("▶ ");
+    expect(getTabIndicator("loop", "loop")).toBe("▶ ");
+    expect(getTabIndicator("learning", "learning")).toBe("▶ ");
+    expect(getTabIndicator("backlog", "backlog")).toBe("▶ ");
   });
 
   test("inactive tab shows spaces", () => {
-    expect(getTabIndicator("output", "progress")).toBe("  ");
-    expect(getTabIndicator("progress", "prd")).toBe("  ");
-    expect(getTabIndicator("prd", "output")).toBe("  ");
+    expect(getTabIndicator("loop", "learning")).toBe("  ");
+    expect(getTabIndicator("learning", "backlog")).toBe("  ");
+    expect(getTabIndicator("backlog", "loop")).toBe("  ");
   });
 });
 
@@ -48,10 +48,10 @@ describe("tab color logic", () => {
   }
 
   test("active tab is green", () => {
-    expect(getTabColor("output", "output")).toBe("#00ff00");
+    expect(getTabColor("loop", "loop")).toBe("#00ff00");
   });
 
   test("inactive tab is gray", () => {
-    expect(getTabColor("output", "progress")).toBe("#666666");
+    expect(getTabColor("loop", "learning")).toBe("#666666");
   });
 });

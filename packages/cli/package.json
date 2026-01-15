@@ -38,7 +38,10 @@
   "scripts": {
     "build": "bun run script/build.ts",
     "build:single": "bun run script/build.ts --single",
-    "dev": "bun run --watch src/index.ts",
+    "dev": "bun --watch src/index.ts",
+    "dev:hot": "bun --hot src/index.ts run -n 3 -p 'Say hello and create a todo list with 3 items then run ls -la then grep for session then wait for 15 seconds'",
+    "start": "bun src/index.ts",
+    "harness": "bun run src/dev.ts",
     "install-bin": "bun run script/install.ts",
     "unlink": "bun run script/unlink.ts",
     "typecheck": "tsc --noEmit",
@@ -50,13 +53,17 @@
   },
   "imports": {
     "#commands/*": "./src/commands/*.ts",
+    "#providers/*": "./src/providers/*.ts",
     "#adapters/*": "./src/adapters/*.ts",
     "#config/*": "./src/config/*.ts",
     "#schema/*": "./src/schema/*.ts",
     "#hooks": "./src/hooks/index.ts",
     "#hooks/*": "./src/hooks/*.ts",
     "#ui/*": "./src/ui/*.tsx",
+    "#ui/test-harness/harness-app": "./src/ui/test-harness/harness-app.tsx",
+    "#ui/test-harness/*": "./src/ui/test-harness/*.ts",
     "#ui/components/*": "./src/ui/components/*.tsx",
+    "#ui/components/loop-tab": "./src/ui/components/loop-tab/index.tsx",
     "#ui/components/blocks/*": "./src/ui/components/blocks/*.tsx",
     "#utils/*": "./src/utils/*.ts",
     "#parsers": "./src/parsers/index.ts",
@@ -65,6 +72,7 @@
     "#log": "./src/log.ts"
   },
   "dependencies": {
+    "@agentclientprotocol/sdk": "^0.13.0",
     "@babel/core": "^7.28.5",
     "@babel/preset-typescript": "^7.28.5",
     "@opentui/core": "^0.1.72",

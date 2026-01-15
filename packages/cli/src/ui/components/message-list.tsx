@@ -4,9 +4,11 @@ import {
   isMessage,
   isPartialToolInput,
   isResultMessage,
+  isSystemMessage,
   isTextDelta,
 } from "#parsers/message-types";
 import { PartialToolBlock } from "./blocks/partial-tool-block";
+import { SystemMessageBlock } from "./blocks/system-message-block";
 import { TextDeltaBlock } from "./blocks/text-delta-block";
 import { MessageItem } from "./message-item";
 import { ResultMessage } from "./result-message";
@@ -50,6 +52,13 @@ export function MessageList(props: MessageListProps) {
               <Match when={isTextDelta(msg)}>
                 <TextDeltaBlock
                   message={msg as import("#parsers/message-types").TextDelta}
+                />
+              </Match>
+              <Match when={isSystemMessage(msg)}>
+                <SystemMessageBlock
+                  message={
+                    msg as import("#parsers/message-types").SystemMessage
+                  }
                 />
               </Match>
             </Switch>

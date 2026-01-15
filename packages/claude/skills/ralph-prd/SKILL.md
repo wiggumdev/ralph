@@ -64,6 +64,28 @@ Initial request: $ARGUMENTS
 3. **Present all questions to the user in a clear, organized list**
 4. **Wait for answers before proceeding to architecture design**
 
+Format Questions Like This:
+```
+1. What is the primary goal of this feature?
+   A. Improve user onboarding experience
+   B. Increase user retention
+   C. Reduce support burden
+   D. Other: [please specify]
+
+2. Who is the target user?
+   A. New users only
+   B. Existing users only
+   C. All users
+   D. Admin users only
+
+3. What is the scope?
+   A. Minimal viable version
+   B. Full-featured implementation
+   C. Just the backend/API
+   D. Just the UI
+```
+This lets users respond with "1A, 2C, 3B" for quick iteration.
+
 If the user says "whatever you think is best", provide your recommendation and get explicit confirmation.
 
 ---

@@ -14,10 +14,32 @@ interface DiffLine {
   color: string;
 }
 
-function getToolIcon(name: string): string {
+function getToolIconByKind(kind: string | undefined): string {
+  switch (kind) {
+    case "read":
+      return "→";
+    case "edit":
+      return "↔";
+    case "delete":
+      return "✗";
+    case "move":
+      return "⇄";
+    case "search":
+      return "✱";
+    case "execute":
+      return "$";
+    case "think":
+      return "◇";
+    case "fetch":
+      return "%";
+    default:
+      return "●";
+  }
+}
+
+function getToolIconByName(name: string): string {
   switch (name.toLowerCase()) {
     case "glob":
-      return "✱";
     case "grep":
       return "✱";
     case "read":
@@ -42,7 +64,37 @@ function getToolIcon(name: string): string {
   }
 }
 
-function getToolColor(name: string): string {
+function getToolIcon(name: string, kind: string | undefined): string {
+  if (kind) {
+    return getToolIconByKind(kind);
+  }
+  return getToolIconByName(name);
+}
+
+function getToolColorByKind(kind: string | undefined): string {
+  switch (kind) {
+    case "read":
+      return "#5c9cf5"; // blue
+    case "edit":
+      return "#f5a742"; // orange
+    case "delete":
+      return "#ff6666"; // red
+    case "move":
+      return "#f5a742"; // orange
+    case "search":
+      return "#9d7cd8"; // purple
+    case "execute":
+      return "#fab283"; // peach
+    case "think":
+      return "#56b6c2"; // cyan
+    case "fetch":
+      return "#5c9cf5"; // blue
+    default:
+      return "#808080";
+  }
+}
+
+function getToolColorByName(name: string): string {
   switch (name.toLowerCase()) {
     case "read":
       return "#5c9cf5"; // blue
@@ -60,6 +112,13 @@ function getToolColor(name: string): string {
     default:
       return "#808080";
   }
+}
+
+function getToolColor(name: string, kind: string | undefined): string {
+  if (kind) {
+    return getToolColorByKind(kind);
+  }
+  return getToolColorByName(name);
 }
 
 function formatParams(name: string, input: Record<string, unknown>): string {
@@ -159,8 +218,54 @@ export function ToolUseBlock(props: ToolUseBlockProps) {
 
   const input = () => props.block.input as Record<string, unknown>;
   const params = () => formatParams(props.block.name, input());
-  const icon = () => getToolIcon(props.block.name);
-  const iconColor = () => getToolColor(props.block.name);
+  const icon = () => getToolIcon(props.block.name, props.block.kind);
+  const iconColor = () => getToolColor(props.block.name, props.block.kind);
+
+  const statusIndicator = () => {
+    switch (props.block.status) {
+      case "pending":
+        return "○";
+      case "in_progress":
+        return "◐";
+      case "completed":
+        return "✓";
+      case "failed":
+        return "✗";
+      default:
+        return "";
+    }
+  };
+
+  const statusColor = () => {
+    switch (props.block.status) {
+      case "pending":
+        return "#666666";
+      case "in_progress":
+        return "#f5a742";
+      case "completed":
+        return "#7fd88f";
+      case "failed":
+        return "#ff6666";
+      default:
+        return "#666666";
+    }
+  };
+
+  const locationSummary = () => {
+    const locs = props.block.locations;
+    if (!locs || locs.length === 0) {
+      return "";
+    }
+    const first = locs[0];
+    if (!first) {
+      return "";
+    }
+    const lineInfo = first.line ? `:${first.line}` : "";
+    if (locs.length === 1) {
+      return `${first.path}${lineInfo}`;
+    }
+    return `${first.path}${lineInfo} (+${locs.length - 1} more)`;
+  };
 
   const isEdit = () => toolName() === "edit";
   const diffData = () => {
@@ -190,10 +295,16 @@ export function ToolUseBlock(props: ToolUseBlockProps) {
   return (
     <box flexDirection="column">
       <text>
+        <Show when={props.block.status}>
+          <span style={{ fg: statusColor() }}>{statusIndicator()} </span>
+        </Show>
         <span style={{ fg: iconColor() }}>{icon()} </span>
         <span style={{ fg: "#808080" }}>{toolName()}</span>
         <Show when={params()}>
           <span style={{ fg: "#606060" }}> {params()}</span>
+        </Show>
+        <Show when={!params() && locationSummary()}>
+          <span style={{ fg: "#606060" }}> {locationSummary()}</span>
         </Show>
       </text>
 

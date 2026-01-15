@@ -1,5 +1,17 @@
 import { For, Match, Switch } from "solid-js";
-import type { Message } from "#parsers/message-types";
+import type {
+  AudioBlock as AudioBlockType,
+  EmbeddedResourceBlock as EmbeddedResourceBlockType,
+  ImageBlock as ImageBlockType,
+  Message,
+  ResourceLinkBlock as ResourceLinkBlockType,
+  TerminalBlock as TerminalBlockType,
+} from "#parsers/message-types";
+import { AudioBlock } from "./blocks/audio-block";
+import { EmbeddedResourceBlock } from "./blocks/embedded-resource-block";
+import { ImageBlock } from "./blocks/image-block";
+import { ResourceLinkBlock } from "./blocks/resource-link-block";
+import { TerminalBlock } from "./blocks/terminal-block";
 import { TextBlock } from "./blocks/text-block";
 import { ToolResultBlock } from "./blocks/tool-result-block";
 import { ToolUseBlock } from "./blocks/tool-use-block";
@@ -32,6 +44,23 @@ export function MessageItem(props: MessageItemProps) {
                   block as import("#parsers/message-types").ToolResultBlock
                 }
               />
+            </Match>
+            <Match when={block.type === "image"}>
+              <ImageBlock block={block as ImageBlockType} />
+            </Match>
+            <Match when={block.type === "audio"}>
+              <AudioBlock block={block as AudioBlockType} />
+            </Match>
+            <Match when={block.type === "resource_link"}>
+              <ResourceLinkBlock block={block as ResourceLinkBlockType} />
+            </Match>
+            <Match when={block.type === "resource"}>
+              <EmbeddedResourceBlock
+                block={block as EmbeddedResourceBlockType}
+              />
+            </Match>
+            <Match when={block.type === "terminal"}>
+              <TerminalBlock block={block as TerminalBlockType} />
             </Match>
           </Switch>
         )}
