@@ -1,4 +1,5 @@
-import { For, Show } from "solid-js";
+import { For } from "solid-js";
+import { Modal } from "./modal";
 
 interface KeyBinding {
   key: string;
@@ -26,45 +27,33 @@ interface HelpModalProps {
 
 export function HelpModal(props: HelpModalProps) {
   return (
-    <Show when={props.visible}>
-      <box
-        flexDirection="column"
-        style={{
-          position: "absolute",
-          top: 2,
-          left: 4,
-          right: 4,
-          bottom: 2,
-          padding: 2,
-        }}
-      >
-        <box>
-          <text>
-            <span style={{ fg: "#00aaff" }}>Ralph Keybindings</span>
-            <span style={{ fg: "#666666" }}> (press any key to close)</span>
-          </text>
-        </box>
-        <box style={{ marginTop: 1 }}>
-          <text>
-            <span style={{ fg: "#444444" }}>{"─".repeat(40)}</span>
-          </text>
-        </box>
-        <box flexDirection="column" style={{ marginTop: 1 }}>
-          <For each={KEYBINDINGS}>
-            {(binding) => (
-              <text>
-                <span style={{ fg: "#00ff00" }}>{binding.key.padEnd(10)}</span>
-                <span style={{ fg: "#aaaaaa" }}>{binding.desc}</span>
-              </text>
-            )}
-          </For>
-        </box>
-        <box style={{ marginTop: 1 }}>
-          <text>
-            <span style={{ fg: "#444444" }}>{"─".repeat(40)}</span>
-          </text>
-        </box>
+    <Modal visible={props.visible}>
+      <box>
+        <text>
+          <span style={{ fg: "#00aaff" }}>Ralph Keybindings</span>
+          <span style={{ fg: "#666666" }}> (press any key to close)</span>
+        </text>
       </box>
-    </Show>
+      <box style={{ marginTop: 1 }}>
+        <text>
+          <span style={{ fg: "#444444" }}>{"─".repeat(40)}</span>
+        </text>
+      </box>
+      <box flexDirection="column" style={{ marginTop: 1 }}>
+        <For each={KEYBINDINGS}>
+          {(binding) => (
+            <text>
+              <span style={{ fg: "#00ff00" }}>{binding.key.padEnd(10)}</span>
+              <span style={{ fg: "#aaaaaa" }}>{binding.desc}</span>
+            </text>
+          )}
+        </For>
+      </box>
+      <box style={{ marginTop: 1 }}>
+        <text>
+          <span style={{ fg: "#444444" }}>{"─".repeat(40)}</span>
+        </text>
+      </box>
+    </Modal>
   );
 }
