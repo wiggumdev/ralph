@@ -21,14 +21,24 @@ export interface AppState {
   permissionRequest: PermissionRequest | null;
 }
 
+/** Command to open a session in the native CLI */
+export interface OpenCommand {
+  command: string;
+  args: string[];
+}
+
 /** State provider abstraction for test harness */
 export interface StateProvider {
   getInitialState(): AppState;
   subscribe(onUpdate: (state: Partial<AppState>) => void): () => void;
   start(): void;
   stop(): void;
-  pause?(): void;
+  pause?(): void | Promise<void>;
   resume?(): void;
+  /** Get command to open current session in native CLI, null if not supported */
+  getOpenCommand?(): OpenCommand | null;
+  /** Check if open feature is supported by this adapter */
+  canOpen?(): boolean;
 }
 
 /** Default empty state */

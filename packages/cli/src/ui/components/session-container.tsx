@@ -26,6 +26,7 @@ export interface SessionContainerProps {
   session: SessionState;
   expanded: boolean;
   selected?: boolean;
+  canOpen?: boolean;
   onToggle: () => void;
 }
 
@@ -77,7 +78,7 @@ export function SessionContainer(props: SessionContainerProps) {
         <Show when={props.selected}>
           <span style={{ fg: "#666666" }}>
             {" "}
-            [l] expand [h] collapse [o] open{" "}
+            [l] expand [h] collapse{props.canOpen && " [o] open"}{" "}
             {props.session.status === "running" && "[p] pause"}
             {props.session.status === "paused" && "[p] resume"}
           </span>

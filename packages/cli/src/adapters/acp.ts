@@ -59,10 +59,21 @@ export interface AcpMessageHandler {
  * Base class for ACP-based adapters.
  * Handles JSON-RPC communication with ACP-compatible agents.
  */
+export interface ResumeCommand {
+  command: string;
+  args: string[];
+}
+
 export abstract class AcpAdapter {
   abstract readonly name: string;
   abstract readonly command: string;
   abstract readonly args: string[];
+
+  /**
+   * Get the command to resume a session in the native CLI.
+   * Returns null if the adapter doesn't support session resume.
+   */
+  abstract getResumeCommand(sessionId: string): ResumeCommand | null;
 
   private process?: Subprocess;
   private connection?: ClientSideConnection;
@@ -198,7 +209,9 @@ export abstract class AcpAdapter {
     } catch (error) {
       handler.onError(this.toError(error));
     } finally {
-      await this.cleanup();
+      if (!this.paused) {
+        await this.cleanup();
+      }
     }
   }
 
@@ -213,33 +226,61 @@ export abstract class AcpAdapter {
   }
 
   /**
-   * Pause the current session using SIGSTOP.
-   * Only works on Unix-like systems.
+   * Pause the current session using ACP cancel notification.
    */
-  pause(): void {
-    if (!this.process || this.paused || this.stopped) {
+  async pause(): Promise<void> {
+    if (!(this.connection && this.sessionId) || this.paused || this.stopped) {
       return;
     }
     log.debug("pause", { sessionId: this.sessionId });
     this.paused = true;
-    // SIGSTOP pauses the process
-    if (process.platform !== "win32") {
-      this.process.kill("SIGSTOP");
-    }
+    // Use ACP cancel notification instead of SIGSTOP
+    await this.connection.cancel({ sessionId: this.sessionId });
   }
 
   /**
-   * Resume a paused session using SIGCONT.
+   * Resume a paused session.
+   * Note: After cancel, agent returns StopReason::Cancelled.
+   * Resume will start fresh iteration via AcpStateProvider.
    */
   resume(): void {
-    if (!(this.process && this.paused) || this.stopped) {
+    if (!this.paused || this.stopped) {
       return;
     }
     log.debug("resume", { sessionId: this.sessionId });
     this.paused = false;
-    // SIGCONT resumes the process
-    if (process.platform !== "win32") {
-      this.process.kill("SIGCONT");
+  }
+
+  /**
+   * Continue a paused session with a new prompt.
+   */
+  async continueSession(handler: AcpMessageHandler): Promise<void> {
+    if (!(this.connection && this.sessionId && this.paused)) {
+      return;
+    }
+    this.handler = handler;
+    this.paused = false;
+
+    try {
+      const promptResponse = await this.connection.prompt({
+        sessionId: this.sessionId,
+        prompt: [{ type: "text", text: "Continue" }],
+      });
+
+      const stopReason = promptResponse.stopReason ?? "end_turn";
+      const needsMoreWork = stopReason !== "end_turn";
+      handler.onComplete({
+        sessionId: this.sessionId,
+        success: !needsMoreWork,
+        stopReason,
+        needsMoreWork,
+      });
+    } catch (error) {
+      handler.onError(this.toError(error));
+    } finally {
+      if (!this.paused) {
+        await this.cleanup();
+      }
     }
   }
 
@@ -267,6 +308,13 @@ export abstract class AcpAdapter {
    */
   isStopped(): boolean {
     return this.stopped;
+  }
+
+  /**
+   * Get the current session ID.
+   */
+  getSessionId(): string | undefined {
+    return this.sessionId;
   }
 
   private async cleanup(): Promise<void> {

@@ -7,6 +7,7 @@ export interface SessionListProps {
   sessions: SessionState[];
   expanded: boolean;
   selectedIndex: Accessor<number>;
+  canOpen?: boolean;
   onToggleSession: (index: number) => void;
 }
 
@@ -20,6 +21,7 @@ export function SessionList(props: SessionListProps) {
       <For each={props.sessions}>
         {(session, index) => (
           <SessionContainer
+            canOpen={props.canOpen}
             expanded={props.expanded}
             onToggle={() => props.onToggleSession(index())}
             selected={index() === props.selectedIndex()}

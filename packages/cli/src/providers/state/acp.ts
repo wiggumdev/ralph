@@ -20,7 +20,7 @@ import type {
   PermissionRequest,
   PermissionResponse,
 } from "#parsers/permission-types";
-import type { AppState, StateProvider } from "#providers/state";
+import type { AppState, OpenCommand, StateProvider } from "#providers/state";
 import { computeTotals } from "#providers/state";
 
 const log = Log.create({ service: "state" });
@@ -111,10 +111,10 @@ export class AcpStateProvider implements StateProvider {
     });
   }
 
-  pause(): void {
+  async pause(): Promise<void> {
     if (this.currentSession?.status === "running") {
       log.debug("pause", { sessionId: this.currentSession.id });
-      this.adapter.pause?.();
+      await this.adapter.pause?.();
       this.currentSession = { ...this.currentSession, status: "paused" };
       this.sessions = [...this.sessions.slice(0, -1), this.currentSession];
       this.callback?.({ status: "paused", sessions: this.sessions });
@@ -124,11 +124,30 @@ export class AcpStateProvider implements StateProvider {
   resume(): void {
     if (this.currentSession?.status === "paused") {
       log.debug("resume", { sessionId: this.currentSession.id });
-      this.adapter.resume?.();
       this.currentSession = { ...this.currentSession, status: "running" };
       this.sessions = [...this.sessions.slice(0, -1), this.currentSession];
       this.callback?.({ status: "running", sessions: this.sessions });
+
+      // Continue the paused session
+      const handler: AcpMessageHandler = {
+        onMessage: (message) => this.handleMessage(message),
+        onComplete: (result) => this.handleComplete(result),
+        onError: (error) => this.handleError(error),
+      };
+      this.adapter.continueSession?.(handler);
     }
+  }
+
+  canOpen(): boolean {
+    return this.adapter.getResumeCommand("test") !== null;
+  }
+
+  getOpenCommand(): OpenCommand | null {
+    const sessionId = this.adapter.getSessionId();
+    if (!sessionId) {
+      return null;
+    }
+    return this.adapter.getResumeCommand(sessionId);
   }
 
   resolvePermission(response: PermissionResponse): void {
@@ -344,10 +363,21 @@ export class AcpStateProvider implements StateProvider {
     this.accumulatedMessageIndex = -1;
   }
 
-  private handleComplete(_result: AcpCompletionResult): void {
-    log.debug("iteration_complete", { iteration: this.iteration });
-    // Flush any remaining text
+  private handleComplete(result: AcpCompletionResult): void {
+    log.debug("iteration_complete", {
+      iteration: this.iteration,
+      stopReason: result.stopReason,
+    });
     this.flushTextBuffer();
+
+    // If paused, keep session state and don't continue
+    if (this.adapter.isPaused?.()) {
+      log.debug("iteration_paused", { iteration: this.iteration });
+      if (this.currentSession) {
+        this.emitStateUpdate();
+      }
+      return;
+    }
 
     // Mark current session as complete and freeze it
     if (this.currentSession) {

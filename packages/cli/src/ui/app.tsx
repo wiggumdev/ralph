@@ -139,6 +139,23 @@ function App(props: AppProps) {
     renderer.destroy();
   };
 
+  const handleOpen = async () => {
+    const openCmd = props.provider.getOpenCommand?.();
+    if (!openCmd) {
+      return;
+    }
+    props.provider.stop();
+    renderer.destroy();
+    const { spawn } = await import("bun");
+    const proc = spawn([openCmd.command, ...openCmd.args], {
+      stdio: ["inherit", "inherit", "inherit"],
+    });
+    await proc.exited;
+    process.exit(0);
+  };
+
+  const canOpen = () => props.provider.canOpen?.() ?? false;
+
   const setters = {
     sessions: setSessions,
     status: setStatus,
@@ -191,6 +208,11 @@ function App(props: AppProps) {
     k: selectPrev,
     h: collapseSelected,
     l: expandSelected,
+    o: () => {
+      if (canOpen()) {
+        handleOpen();
+      }
+    },
     p: togglePause,
     s: () => props.provider.stop(),
     x: () => props.provider.stop(),
@@ -232,6 +254,7 @@ function App(props: AppProps) {
             <Switch>
               <Match when={currentTab() === "loop"}>
                 <LoopContent
+                  canOpen={canOpen()}
                   maxIterations={maxIterations}
                   onToggleSession={toggleSessionCollapse}
                   selectedIndex={selectedIndex}
@@ -320,8 +343,7 @@ function applyStatusUpdate(
   if (update.status === undefined) {
     return;
   }
-  const newStatus = update.status === "paused" ? "running" : update.status;
-  setStatus(newStatus);
+  setStatus(update.status);
   if ((update.status === "complete" || update.status === "error") && autoExit) {
     setTimeout(handleExit, 500);
   }
@@ -330,6 +352,7 @@ function applyStatusUpdate(
 interface LoopContentProps {
   maxIterations: number;
   selectedIndex: () => number;
+  canOpen: boolean;
   onToggleSession: (index: number) => void;
 }
 
@@ -350,6 +373,7 @@ function LoopContent(props: LoopContentProps) {
       progressBar={progressBar()}
     >
       <SessionList
+        canOpen={props.canOpen}
         expanded={expanded()}
         onToggleSession={props.onToggleSession}
         selectedIndex={props.selectedIndex}
