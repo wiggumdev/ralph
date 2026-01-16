@@ -1,3 +1,0 @@
-This is a demo file for testing the Edit tool.
-Line 2: Modified content via Edit tool
-Line 3: More content

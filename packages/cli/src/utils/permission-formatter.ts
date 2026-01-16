@@ -7,12 +7,16 @@ import type {
 /**
  * Format a tool call to Claude settings format.
  * - Bash → extract command param: "Bash(bunx vitest)"
- * - WebFetch → extract domain: "WebFetch(domain:deepwiki.com)"
+ * - WebFetch → extract full URL: "WebFetch(https://example.com)"
+ * - WebSearch → extract query: "WebSearch(query text)"
  * - Others → just tool name
  */
 export function formatPermissionName(toolCall: ToolCallUpdate): string {
   const title = toolCall.title ?? "Unknown";
-  const toolName = title.split("(")[0] ?? title;
+  // Extract tool name: handle "Tool(args)" and "Tool arg" formats
+  const toolName = title.includes("(")
+    ? (title.split("(")[0] ?? title)
+    : (title.split(" ")[0] ?? title);
   const rawInput = toolCall.rawInput as Record<string, unknown> | undefined;
 
   switch (toolName) {
@@ -23,17 +27,20 @@ export function formatPermissionName(toolCall: ToolCallUpdate): string {
       }
       return "Bash";
     }
+    case "Fetch":
     case "WebFetch": {
       const url = rawInput?.url;
       if (typeof url === "string") {
-        try {
-          const domain = new URL(url).hostname;
-          return `WebFetch(domain:${domain})`;
-        } catch {
-          return "WebFetch";
-        }
+        return `WebFetch(${url})`;
       }
       return "WebFetch";
+    }
+    case "WebSearch": {
+      const query = rawInput?.query;
+      if (typeof query === "string") {
+        return `WebSearch(${query})`;
+      }
+      return "WebSearch";
     }
     default:
       return toolName;

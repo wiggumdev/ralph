@@ -46,19 +46,31 @@ describe("formatPermissionName", () => {
     const result = formatPermissionName(
       makeToolCall("WebFetch(url)", { url: "https://example.com/path" })
     );
-    expect(result).toBe("WebFetch(domain:example.com)");
+    expect(result).toBe("WebFetch(https://example.com/path)");
   });
 
-  test("formats WebFetch with invalid URL", () => {
+  test("formats Fetch title variant as WebFetch", () => {
     const result = formatPermissionName(
-      makeToolCall("WebFetch(url)", { url: "not-a-url" })
+      makeToolCall("Fetch https://example.com", { url: "https://example.com" })
     );
-    expect(result).toBe("WebFetch");
+    expect(result).toBe("WebFetch(https://example.com)");
   });
 
   test("formats WebFetch without url param", () => {
     const result = formatPermissionName(makeToolCall("WebFetch"));
     expect(result).toBe("WebFetch");
+  });
+
+  test("formats WebSearch with query", () => {
+    const result = formatPermissionName(
+      makeToolCall("WebSearch", { query: "Anthropic Claude AI" })
+    );
+    expect(result).toBe("WebSearch(Anthropic Claude AI)");
+  });
+
+  test("formats WebSearch without query param", () => {
+    const result = formatPermissionName(makeToolCall("WebSearch"));
+    expect(result).toBe("WebSearch");
   });
 
   test("formats other tools with just name", () => {
@@ -124,7 +136,7 @@ describe("summarizePermissions", () => {
       { formattedName: "Bash(ls)", status: "allowed" },
       { formattedName: "Read", status: "allowed" },
       { formattedName: "Bash(ls)", status: "allowed" },
-      { formattedName: "WebFetch(domain:x.com)", status: "denied" },
+      { formattedName: "WebFetch(https://x.com)", status: "denied" },
     ]);
     expect(result).toHaveLength(3);
     expect(result).toContainEqual({
@@ -138,7 +150,7 @@ describe("summarizePermissions", () => {
       count: 1,
     });
     expect(result).toContainEqual({
-      formattedName: "WebFetch(domain:x.com)",
+      formattedName: "WebFetch(https://x.com)",
       status: "denied",
       count: 1,
     });
