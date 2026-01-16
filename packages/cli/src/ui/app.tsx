@@ -169,7 +169,7 @@ function App(props: AppProps) {
   };
 
   const applyStateUpdate = (update: Partial<AppState>) => {
-    applySimpleUpdates(update, setters, sessions);
+    applySimpleUpdates(update, setters, sessions, setSelectedIndex);
     applyStatusUpdate(update, setStatus, props.autoExit ?? true, handleExit);
   };
 
@@ -296,19 +296,31 @@ function applySimpleUpdates(
     prdItems: (v: PrdFeature[]) => void;
     permissionRequest: (v: PermissionRequest | null) => void;
   },
-  getSessions: () => SessionState[]
+  getSessions: () => SessionState[],
+  setSelectedIndex: (v: number) => void
 ) {
   if (update.sessions !== undefined) {
-    // Preserve local UI state (collapsed) when merging sessions
     const currentSessions = getSessions();
-    const collapsedMap = new Map(
-      currentSessions.map((s) => [s.id, s.collapsed])
-    );
-    const merged = update.sessions.map((s) => ({
-      ...s,
-      collapsed: collapsedMap.get(s.id) ?? s.collapsed,
-    }));
-    setters.sessions(merged);
+    const isNewIteration =
+      currentSessions.length > 0 &&
+      update.sessions.length > currentSessions.length;
+
+    if (isNewIteration) {
+      // Collapse all sessions and select the new one
+      const collapsed = update.sessions.map((s) => ({ ...s, collapsed: true }));
+      setters.sessions(collapsed);
+      setSelectedIndex(update.sessions.length - 1);
+    } else {
+      // Preserve local UI state (collapsed) when merging sessions
+      const collapsedMap = new Map(
+        currentSessions.map((s) => [s.id, s.collapsed])
+      );
+      const merged = update.sessions.map((s) => ({
+        ...s,
+        collapsed: collapsedMap.get(s.id) ?? s.collapsed,
+      }));
+      setters.sessions(merged);
+    }
   }
   if (update.iteration !== undefined) {
     setters.iteration(update.iteration);
