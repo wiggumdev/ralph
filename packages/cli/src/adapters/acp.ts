@@ -1,6 +1,5 @@
 import {
   ClientSideConnection,
-  type ContentChunk,
   type InitializeResponse,
   type NewSessionResponse,
   ndJsonStream,
@@ -9,30 +8,16 @@ import {
   type RequestPermissionRequest,
   type RequestPermissionResponse,
   type SessionNotification,
-  type SessionUpdate,
-  type ToolCall,
-  type ToolCallContent,
-  type ToolCallUpdate,
 } from "@agentclientprotocol/sdk";
 import { type Subprocess, spawn } from "bun";
 import { Log } from "#log";
-import type {
-  AudioBlock,
-  EmbeddedResourceBlock,
-  ImageBlock,
-  ContentBlock as InternalContentBlock,
-  Message,
-  PlanMessage,
-  ResourceLinkBlock,
-  RichMessage,
-  SystemMessage,
-  TerminalBlock,
-} from "#parsers/message-types";
+import type { RichMessage, SystemMessage } from "#parsers/message-types";
 import type {
   PermissionRequest,
   PermissionResponse,
 } from "#parsers/permission-types";
 import { formatPermissionName } from "#utils/permission-formatter";
+import { mapUpdateToRichMessage } from "./acp/message-mapper";
 
 const log = Log.create({ service: "acp" });
 
@@ -361,7 +346,7 @@ export abstract class AcpAdapter {
     params: SessionNotification
   ): Promise<void> {
     log.debug("ACP IN", { update: params.update });
-    const message = this.mapUpdateToRichMessage(params.update);
+    const message = mapUpdateToRichMessage(params.update);
     if (message) {
       this.handler?.onMessage(message);
     }
@@ -457,275 +442,6 @@ export abstract class AcpAdapter {
       mode: "no_options",
     });
     return { outcome: { outcome: "cancelled" } };
-  }
-
-  /**
-   * Create a Message with content blocks.
-   */
-  private createContentMessage(
-    content: InternalContentBlock[],
-    timestamp: number
-  ): Message {
-    return {
-      type: "message",
-      role: "assistant",
-      content,
-      timestamp,
-    };
-  }
-
-  /**
-   * Map ACP ContentChunk to RichMessage.
-   */
-  private mapContentChunk(
-    chunk: ContentChunk,
-    timestamp: number
-  ): RichMessage | null {
-    const content = chunk.content;
-
-    if (content.type === "text") {
-      return { type: "text_delta", text: content.text, timestamp };
-    }
-    if (content.type === "image") {
-      const block: ImageBlock = {
-        type: "image",
-        data: content.data,
-        mimeType: content.mimeType,
-        uri: content.uri ?? undefined,
-      };
-      return this.createContentMessage([block], timestamp);
-    }
-    if (content.type === "audio") {
-      const block: AudioBlock = {
-        type: "audio",
-        data: content.data,
-        mimeType: content.mimeType,
-      };
-      return this.createContentMessage([block], timestamp);
-    }
-    if (content.type === "resource_link") {
-      const block: ResourceLinkBlock = {
-        type: "resource_link",
-        name: content.name,
-        uri: content.uri,
-        description: content.description ?? undefined,
-        mimeType: content.mimeType ?? undefined,
-        size: content.size ? Number(content.size) : undefined,
-        title: content.title ?? undefined,
-      };
-      return this.createContentMessage([block], timestamp);
-    }
-    if (content.type === "resource") {
-      const res = content.resource;
-      const block: EmbeddedResourceBlock = {
-        type: "resource",
-        resource:
-          "text" in res
-            ? {
-                type: "text",
-                uri: res.uri,
-                text: res.text,
-                mimeType: res.mimeType ?? undefined,
-              }
-            : {
-                type: "blob",
-                uri: res.uri,
-                blob: res.blob,
-                mimeType: res.mimeType ?? undefined,
-              },
-      };
-      return this.createContentMessage([block], timestamp);
-    }
-    return null;
-  }
-
-  /**
-   * Map ACP SessionUpdate to RichMessage.
-   */
-  private mapUpdateToRichMessage(update: SessionUpdate): RichMessage | null {
-    const timestamp = Date.now();
-
-    switch (update.sessionUpdate) {
-      case "agent_message_chunk":
-      case "agent_thought_chunk":
-        return this.mapContentChunk(update as ContentChunk, timestamp);
-
-      case "user_message_chunk": {
-        // Map to Message with user role
-        const chunk = update as ContentChunk & { sessionUpdate: string };
-        const content = chunk.content;
-        if (content.type === "text") {
-          const message: Message = {
-            type: "message",
-            role: "user",
-            content: [{ type: "text", text: content.text }],
-            timestamp,
-          };
-          return message;
-        }
-        return null;
-      }
-
-      case "tool_call": {
-        // Map to Message with tool_use block
-        const toolCall = update as ToolCall & { sessionUpdate: string };
-        const contentBlocks: InternalContentBlock[] = [
-          {
-            type: "tool_use",
-            id: toolCall.toolCallId,
-            name: toolCall.title,
-            input: (toolCall.rawInput as Record<string, unknown>) || {},
-            kind: toolCall.kind as
-              | "read"
-              | "edit"
-              | "delete"
-              | "move"
-              | "search"
-              | "execute"
-              | "think"
-              | "fetch"
-              | "other"
-              | undefined,
-            status:
-              (toolCall.status as
-                | "pending"
-                | "in_progress"
-                | "completed"
-                | "failed"
-                | undefined) ?? "pending",
-            locations: toolCall.locations?.map((loc) => ({
-              path: loc.path,
-              line: loc.line ?? undefined,
-            })),
-          },
-        ];
-
-        const message: Message = {
-          type: "message",
-          role: "assistant",
-          content: contentBlocks,
-          timestamp,
-        };
-        return message;
-      }
-
-      case "tool_call_update": {
-        // Map to Message with content blocks (tool_result and/or terminal)
-        const toolUpdate = update as ToolCallUpdate & { sessionUpdate: string };
-        if (toolUpdate.content && toolUpdate.content.length > 0) {
-          const contentBlocks = this.extractToolContentBlocks(
-            toolUpdate.content,
-            toolUpdate.toolCallId,
-            toolUpdate.status === "failed"
-          );
-
-          if (contentBlocks.length > 0) {
-            const message: Message = {
-              type: "message",
-              role: "assistant",
-              content: contentBlocks,
-              timestamp,
-            };
-            return message;
-          }
-        }
-        return null;
-      }
-
-      case "current_mode_update": {
-        // Map to SystemMessage
-        const systemMessage: SystemMessage = {
-          type: "system",
-          subtype: "mode_change",
-          timestamp,
-        };
-        return systemMessage;
-      }
-
-      case "plan": {
-        const planUpdate = update as {
-          sessionUpdate: string;
-          entries: Array<{
-            content: string;
-            priority: "high" | "medium" | "low";
-            status: "pending" | "in_progress" | "completed";
-          }>;
-        };
-        const planMessage: PlanMessage = {
-          type: "plan",
-          entries: planUpdate.entries.map((e) => ({
-            content: e.content,
-            priority: e.priority,
-            status: e.status,
-          })),
-          timestamp,
-        };
-        return planMessage;
-      }
-
-      case "available_commands_update":
-      case "config_option_update":
-      case "session_info_update":
-        // These don't map directly to current RichMessage types
-        return null;
-
-      default:
-        return null;
-    }
-  }
-
-  /**
-   * Extract content blocks from ToolCallContent array.
-   * Handles text content as tool_result and terminal content as TerminalBlock.
-   */
-  private extractToolContentBlocks(
-    content: ToolCallContent[],
-    toolCallId: string,
-    isError: boolean
-  ): InternalContentBlock[] {
-    const blocks: InternalContentBlock[] = [];
-    const textParts: string[] = [];
-
-    for (const item of content) {
-      if (item.type === "content") {
-        const contentBlock = item.content;
-        if (contentBlock.type === "text") {
-          textParts.push(contentBlock.text);
-        }
-      } else if (item.type === "terminal") {
-        // Flush accumulated text as tool_result first
-        if (textParts.length > 0) {
-          blocks.push({
-            type: "tool_result",
-            tool_use_id: toolCallId,
-            content: textParts.join("\n"),
-            is_error: isError,
-          });
-          textParts.length = 0;
-        }
-        // Add terminal block
-        const terminalBlock: TerminalBlock = {
-          type: "terminal",
-          terminalId: item.terminalId,
-          output: "",
-          truncated: false,
-          status: "running",
-        };
-        blocks.push(terminalBlock);
-      }
-    }
-
-    // Flush any remaining text
-    if (textParts.length > 0) {
-      blocks.push({
-        type: "tool_result",
-        tool_use_id: toolCallId,
-        content: textParts.join("\n"),
-        is_error: isError,
-      });
-    }
-
-    return blocks;
   }
 
   /**

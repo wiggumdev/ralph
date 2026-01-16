@@ -1,4 +1,10 @@
 // Claude SDK-aligned message schema for stream-json output
+import type {
+  ToolCallLocation,
+  ToolCallStatus,
+  ToolKind,
+} from "@agentclientprotocol/sdk";
+
 export type MessageRole = "user" | "assistant" | "system";
 
 export interface BaseContentBlock {
@@ -8,25 +14,6 @@ export interface BaseContentBlock {
 export interface TextBlock extends BaseContentBlock {
   type: "text";
   text: string;
-}
-
-export type ToolKind =
-  | "read"
-  | "edit"
-  | "delete"
-  | "move"
-  | "search"
-  | "execute"
-  | "think"
-  | "fetch"
-  | "switch_mode"
-  | "other";
-
-export type ToolCallStatus = "pending" | "in_progress" | "completed" | "failed";
-
-export interface ToolCallLocation {
-  path: string;
-  line?: number;
 }
 
 // Content types for ToolBlock
@@ -119,6 +106,13 @@ export interface TerminalBlock extends BaseContentBlock {
   signal?: string | null;
 }
 
+export interface DiffBlock extends BaseContentBlock {
+  type: "diff";
+  path: string;
+  oldText?: string;
+  newText: string;
+}
+
 export type ContentBlock =
   | TextBlock
   | ToolUseBlock
@@ -127,7 +121,8 @@ export type ContentBlock =
   | AudioBlock
   | ResourceLinkBlock
   | EmbeddedResourceBlock
-  | TerminalBlock;
+  | TerminalBlock
+  | DiffBlock;
 
 export interface Message {
   type: "message";
@@ -329,4 +324,8 @@ export function isEmbeddedResourceBlock(
 
 export function isTerminalBlock(block: ContentBlock): block is TerminalBlock {
   return block.type === "terminal";
+}
+
+export function isDiffBlock(block: ContentBlock): block is DiffBlock {
+  return block.type === "diff";
 }

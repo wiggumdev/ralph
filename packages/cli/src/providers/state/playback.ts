@@ -1,3 +1,4 @@
+import type { ToolKind } from "@agentclientprotocol/sdk";
 import type {
   ContentBlock,
   Message,
@@ -6,7 +7,6 @@ import type {
   TerminalBlock,
   ToolBlock,
   ToolCallContent,
-  ToolKind,
   ToolReference,
   ToolResultBlock,
   ToolUseBlock,

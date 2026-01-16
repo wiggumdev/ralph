@@ -1,9 +1,9 @@
+import type { ToolKind } from "@agentclientprotocol/sdk";
 import { diffLines as computeDiff } from "diff";
 import { For, Show } from "solid-js";
 import type {
   ToolBlock as ToolBlockType,
   ToolCallContent,
-  ToolKind,
 } from "#parsers/message-types";
 
 export interface ToolBlockProps {

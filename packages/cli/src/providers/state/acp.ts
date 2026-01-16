@@ -1,3 +1,4 @@
+import type { ToolKind } from "@agentclientprotocol/sdk";
 import type {
   AcpAdapter,
   AcpAdapterOptions,
@@ -11,7 +12,6 @@ import type {
   SessionState,
   ToolBlock,
   ToolCallContent,
-  ToolKind,
   ToolReference,
 } from "#parsers/message-types";
 import {
@@ -600,7 +600,15 @@ export class AcpStateProvider implements StateProvider {
     }
   }
 
-  private handleError(_error: Error): void {
+  private handleError(error: Error): void {
+    log.error("iteration_error", {
+      iteration: this.iteration,
+      error: error.message,
+    });
+
+    // Flush any pending text
+    this.flushTextBuffer();
+
     // Mark current session as error and freeze it
     if (this.currentSession) {
       const errorSession: SessionState = {
@@ -612,6 +620,12 @@ export class AcpStateProvider implements StateProvider {
       this.sessions = [...this.sessions.slice(0, -1), errorSession];
       this.currentSession = null;
     }
+
+    // Ensure adapter is cleaned up
+    this.adapter.cancel().catch(() => {
+      // Ignore cleanup errors
+    });
+
     this.callback?.({
       status: "error",
       sessions: this.sessions,
