@@ -153,7 +153,7 @@ export class AcpStateProvider implements StateProvider {
   }
 
   canOpen(): boolean {
-    return this.adapter.getResumeCommand("test") !== null;
+    return this.adapter.supportsLoadSession();
   }
 
   getOpenCommand(): OpenCommand | null {

@@ -1,4 +1,5 @@
 import {
+  type AgentCapabilities,
   ClientSideConnection,
   type InitializeResponse,
   type NewSessionResponse,
@@ -65,6 +66,7 @@ export abstract class AcpAdapter {
   private process?: Subprocess;
   private connection?: ClientSideConnection;
   private sessionId?: string;
+  private agentCapabilities?: AgentCapabilities;
   private handler?: AcpMessageHandler;
   private paused = false;
   private stopped = false;
@@ -154,6 +156,9 @@ export abstract class AcpAdapter {
           `ACP initialize failed: ${this.formatError(initError)}`
         );
       }
+
+      // Store agent capabilities for capability checks
+      this.agentCapabilities = initResponse.agentCapabilities;
 
       // Emit system message with agent info
       const agentName = initResponse.agentInfo?.name;
@@ -321,6 +326,16 @@ export abstract class AcpAdapter {
    */
   getSessionId(): string | undefined {
     return this.sessionId;
+  }
+
+  /**
+   * Check if agent supports session loading/resumption.
+   */
+  supportsLoadSession(): boolean {
+    const caps = this.agentCapabilities;
+    return (
+      caps?.loadSession === true || caps?.sessionCapabilities?.resume != null
+    );
   }
 
   /**
