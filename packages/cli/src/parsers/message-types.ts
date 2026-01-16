@@ -1,11 +1,28 @@
 // Claude SDK-aligned message schema for stream-json output
 import type {
+  Diff,
+  Role,
+  AvailableCommand as SdkAvailableCommand,
+  PlanEntry as SdkPlanEntry,
   ToolCallLocation,
   ToolCallStatus,
   ToolKind,
 } from "@agentclientprotocol/sdk";
 
-export type MessageRole = "user" | "assistant" | "system";
+// Re-export SDK types for consumers
+export type {
+  AvailableCommand,
+  PlanEntry,
+  PlanEntryPriority,
+  PlanEntryStatus,
+} from "@agentclientprotocol/sdk";
+
+// Local aliases for internal use
+type AvailableCommand = SdkAvailableCommand;
+type PlanEntry = SdkPlanEntry;
+
+// SDK's Role type suffices - "system" was defined but never used
+export type MessageRole = Role;
 
 export interface BaseContentBlock {
   type: string;
@@ -106,11 +123,9 @@ export interface TerminalBlock extends BaseContentBlock {
   signal?: string | null;
 }
 
-export interface DiffBlock extends BaseContentBlock {
+// Extends SDK's Diff type with discriminator for union matching
+export interface DiffBlock extends Diff {
   type: "diff";
-  path: string;
-  oldText?: string;
-  newText: string;
 }
 
 export type ContentBlock =
@@ -161,15 +176,6 @@ export interface TextDelta {
   timestamp: number;
 }
 
-export type PlanEntryPriority = "high" | "medium" | "low";
-export type PlanEntryStatus = "pending" | "in_progress" | "completed";
-
-export interface PlanEntry {
-  content: string;
-  priority: PlanEntryPriority;
-  status: PlanEntryStatus;
-}
-
 export interface PlanMessage {
   type: "plan";
   entries: PlanEntry[];
@@ -205,14 +211,10 @@ export interface SessionUsage {
   toolCallCount: number;
 }
 
-export interface McpServerInfo {
+// Simplified MCP server display info for UI state (SDK's McpServer is full config union)
+export interface McpServerDisplayInfo {
   type: "http" | "sse" | "stdio";
   name?: string;
-}
-
-export interface AvailableCommand {
-  name: string;
-  description: string;
 }
 
 export interface TodoItem {
@@ -231,7 +233,7 @@ export interface SessionState {
   agentCapabilities?: Record<string, unknown>;
 
   // Session config
-  mcpServers: McpServerInfo[];
+  mcpServers: McpServerDisplayInfo[];
   currentMode?: string;
   availableCommands: AvailableCommand[];
 
