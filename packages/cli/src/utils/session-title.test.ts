@@ -74,6 +74,7 @@ function createSession(
     startTime: Date.now(),
     collapsed: false,
     status,
+    activity: "idle",
   };
 }
 

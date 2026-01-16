@@ -112,6 +112,7 @@ function createSessionState(
     startTime: Date.now(),
     collapsed: true,
     status: "running",
+    activity: "idle",
     ...overrides,
   };
 }

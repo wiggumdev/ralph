@@ -341,7 +341,7 @@ describe("mapUpdateToRichMessage", () => {
     });
   });
 
-  test("maps agent_thought_chunk", () => {
+  test("maps agent_thought_chunk to thinking_delta", () => {
     const update = {
       sessionUpdate: "agent_thought_chunk",
       content: { type: "text", text: "Thinking..." },
@@ -350,7 +350,7 @@ describe("mapUpdateToRichMessage", () => {
     const result = mapUpdateToRichMessage(update as never);
 
     expect(result).toMatchObject({
-      type: "text_delta",
+      type: "thinking_delta",
       text: "Thinking...",
     });
   });

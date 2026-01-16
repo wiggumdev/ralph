@@ -22,6 +22,7 @@ import type {
   ResourceLinkBlock,
   RichMessage,
   SystemMessage,
+  ThinkingDelta,
 } from "#parsers/message-types";
 
 const log = Log.create({ service: "acp-mapper" });
@@ -197,6 +198,20 @@ export function extractToolContentBlocks(
 }
 
 /**
+ * Map ACP thought chunk to ThinkingDelta.
+ */
+export function mapThoughtChunk(
+  chunk: ContentChunk,
+  timestamp: number
+): ThinkingDelta | null {
+  const content = chunk.content;
+  if (content.type === "text") {
+    return { type: "thinking_delta", text: content.text, timestamp };
+  }
+  return null;
+}
+
+/**
  * Map ACP ContentChunk to RichMessage.
  */
 export function mapContentChunk(
@@ -272,8 +287,10 @@ export function mapUpdateToRichMessage(
 
   switch (update.sessionUpdate) {
     case "agent_message_chunk":
-    case "agent_thought_chunk":
       return mapContentChunk(update as ContentChunk, timestamp);
+
+    case "agent_thought_chunk":
+      return mapThoughtChunk(update as ContentChunk, timestamp);
 
     case "user_message_chunk": {
       const chunk = update as ContentChunk & { sessionUpdate: string };

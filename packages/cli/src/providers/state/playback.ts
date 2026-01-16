@@ -107,6 +107,7 @@ export class PlaybackEngine implements StateProvider {
       startTime: Date.now(),
       collapsed: true,
       status: "running",
+      activity: "idle",
     };
     this.sessions = [...this.sessions, this.currentSession];
     this.updateCallback?.({ sessions: this.sessions });

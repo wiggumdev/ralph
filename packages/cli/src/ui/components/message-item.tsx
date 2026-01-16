@@ -6,6 +6,7 @@ import type {
   Message,
   ResourceLinkBlock as ResourceLinkBlockType,
   TerminalBlock as TerminalBlockType,
+  ThinkingBlock as ThinkingBlockType,
 } from "#parsers/message-types";
 import { AudioBlock } from "./blocks/audio-block";
 import { EmbeddedResourceBlock } from "./blocks/embedded-resource-block";
@@ -13,6 +14,7 @@ import { ImageBlock } from "./blocks/image-block";
 import { ResourceLinkBlock } from "./blocks/resource-link-block";
 import { TerminalBlock } from "./blocks/terminal-block";
 import { TextBlock } from "./blocks/text-block";
+import { ThinkingBlock } from "./blocks/thinking-block";
 
 export interface MessageItemProps {
   message: Message;
@@ -28,6 +30,12 @@ export function MessageItem(props: MessageItemProps) {
             <Match when={block.type === "text"}>
               <TextBlock
                 block={block as import("#parsers/message-types").TextBlock}
+              />
+            </Match>
+            <Match when={block.type === "thinking"}>
+              <ThinkingBlock
+                block={block as ThinkingBlockType}
+                expanded={props.expanded}
               />
             </Match>
             <Match when={block.type === "image"}>

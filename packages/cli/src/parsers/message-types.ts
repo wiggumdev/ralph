@@ -130,6 +130,7 @@ export interface DiffBlock extends Diff {
 
 export type ContentBlock =
   | TextBlock
+  | ThinkingBlock
   | ToolUseBlock
   | ToolResultBlock
   | ImageBlock
@@ -176,6 +177,17 @@ export interface TextDelta {
   timestamp: number;
 }
 
+export interface ThinkingDelta {
+  type: "thinking_delta";
+  text: string;
+  timestamp: number;
+}
+
+export interface ThinkingBlock extends BaseContentBlock {
+  type: "thinking";
+  text: string;
+}
+
 export interface PlanMessage {
   type: "plan";
   entries: PlanEntry[];
@@ -193,10 +205,18 @@ export type RichMessage =
   | SystemMessage
   | ResultMessage
   | TextDelta
+  | ThinkingDelta
   | PlanMessage
   | ToolReference;
 
 export type SessionStatus = "running" | "complete" | "error" | "paused";
+
+export type SessionActivity =
+  | "idle"
+  | "thinking"
+  | "responding"
+  | "tool_executing"
+  | "waiting";
 
 // Session state types
 export interface AgentInfo {
@@ -255,6 +275,7 @@ export interface SessionState {
   endTime?: number;
   collapsed: boolean;
   status: SessionStatus;
+  activity: SessionActivity;
 }
 
 // Type guards
@@ -294,6 +315,14 @@ export function isToolBlock(block: ToolBlock | unknown): block is ToolBlock {
 
 export function isTextDelta(msg: RichMessage): msg is TextDelta {
   return msg.type === "text_delta";
+}
+
+export function isThinkingDelta(msg: RichMessage): msg is ThinkingDelta {
+  return msg.type === "thinking_delta";
+}
+
+export function isThinkingBlock(block: ContentBlock): block is ThinkingBlock {
+  return block.type === "thinking";
 }
 
 export function isPlanMessage(msg: RichMessage): msg is PlanMessage {

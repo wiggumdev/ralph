@@ -5,6 +5,7 @@ import type {
   SessionState,
   SystemMessage,
   TextDelta,
+  ThinkingDelta,
   ToolReference,
 } from "#parsers/message-types";
 import {
@@ -12,12 +13,14 @@ import {
   isResultMessage,
   isSystemMessage,
   isTextDelta,
+  isThinkingDelta,
   isToolReference,
 } from "#parsers/message-types";
 import { getSessionTitle } from "#utils/session-title";
 import { AgentPlan } from "./agent-plan";
 import { SystemMessageBlock } from "./blocks/system-message-block";
 import { TextDeltaBlock } from "./blocks/text-delta-block";
+import { ThinkingBlock } from "./blocks/thinking-block";
 import { ToolBlock } from "./blocks/tool-block";
 import { MessageItem } from "./message-item";
 import { ResultMessage } from "./result-message";
@@ -29,6 +32,13 @@ export interface SessionContainerProps {
   canOpen?: boolean;
   onToggle: () => void;
 }
+
+const ACTIVITY_ICONS: Record<string, { icon: string; color: string }> = {
+  thinking: { icon: "\u25c7", color: "#9d7cd8" },
+  responding: { icon: "\u25c9", color: "#00aaff" },
+  tool_executing: { icon: "\u26a1", color: "#f5a742" },
+  waiting: { icon: "\u25cc", color: "#808080" },
+};
 
 export function SessionContainer(props: SessionContainerProps) {
   const title = () => getSessionTitle(props.session);
@@ -64,12 +74,25 @@ export function SessionContainer(props: SessionContainerProps) {
     }
   };
 
+  const activityIndicator = () => {
+    const activity = props.session.activity;
+    if (activity === "idle" || !activity) {
+      return null;
+    }
+    return ACTIVITY_ICONS[activity] ?? null;
+  };
+
   const rowColor = () => (props.selected ? "#ffffff" : "#00aaff");
 
   return (
     <box flexDirection="column" style={{ marginBottom: 1 }}>
       <text>
         <span style={{ fg: statusColor() }}>{statusIcon()}</span>
+        <Show when={activityIndicator()}>
+          {(indicator: () => { icon: string; color: string }) => (
+            <span style={{ fg: indicator().color }}> {indicator().icon}</span>
+          )}
+        </Show>
         <span style={{ fg: rowColor() }}> Loop {props.session.iteration}</span>
         <Show when={title()}>
           <span style={{ fg: "#ffffff" }}>: {title()}</span>
@@ -108,6 +131,12 @@ export function SessionContainer(props: SessionContainerProps) {
                   </Match>
                   <Match when={isTextDelta(msg)}>
                     <TextDeltaBlock message={msg as TextDelta} />
+                  </Match>
+                  <Match when={isThinkingDelta(msg)}>
+                    <ThinkingBlock
+                      block={msg as ThinkingDelta}
+                      expanded={props.expanded}
+                    />
                   </Match>
                   <Match when={isSystemMessage(msg)}>
                     <SystemMessageBlock message={msg as SystemMessage} />

@@ -9,7 +9,9 @@ import { Log } from "#log";
 import type {
   Message,
   RichMessage,
+  SessionActivity,
   SessionState,
+  ThinkingDelta,
   ToolBlock,
   ToolCallContent,
   ToolReference,
@@ -19,6 +21,7 @@ import {
   isPlanMessage,
   isResultMessage,
   isTerminalBlock,
+  isThinkingDelta,
   isToolResultBlock,
   isToolUseBlock,
 } from "#parsers/message-types";
@@ -67,6 +70,11 @@ export class AcpStateProvider implements StateProvider {
   private textBuffer = "";
   private lastTextTimestamp = 0;
   private accumulatedMessageIndex = -1;
+
+  // Thinking accumulation state
+  private thinkingBuffer = "";
+  private lastThinkingTimestamp = 0;
+  private accumulatedThinkingIndex = -1;
 
   // Permission handling - queue to handle concurrent requests
   private readonly pendingPermissions = new Map<string, DeferredPermission>();
@@ -241,8 +249,9 @@ export class AcpStateProvider implements StateProvider {
 
   private runIteration(): void {
     log.debug("iteration_start", { iteration: this.iteration });
-    // Reset text accumulation for new iteration
+    // Reset text and thinking accumulation for new iteration
     this.flushTextBuffer();
+    this.flushThinkingBuffer();
 
     // Create new session for this iteration
     this.currentSession = {
@@ -258,6 +267,7 @@ export class AcpStateProvider implements StateProvider {
       startTime: Date.now(),
       collapsed: true,
       status: "running",
+      activity: "idle",
     };
     this.sessions = [...this.sessions, this.currentSession];
 
@@ -290,91 +300,138 @@ export class AcpStateProvider implements StateProvider {
     });
   }
 
+  private updateActivity(activity: SessionActivity): void {
+    if (this.currentSession && this.currentSession.activity !== activity) {
+      this.currentSession = { ...this.currentSession, activity };
+      this.sessions = [...this.sessions.slice(0, -1), this.currentSession];
+    }
+  }
+
   private handleMessage(message: RichMessage): void {
-    if (message.type === "text_delta") {
-      // Accumulate text chunks
-      this.textBuffer += message.text;
-      this.lastTextTimestamp = message.timestamp;
-      this.emitAccumulatedText();
+    if (isThinkingDelta(message)) {
+      this.handleThinkingDelta(message);
+    } else if (message.type === "text_delta") {
+      this.handleTextDelta(message);
     } else if (isPlanMessage(message)) {
-      // Update session plan (not added to messages array)
-      if (this.currentSession) {
-        this.currentSession = {
-          ...this.currentSession,
-          plan: message.entries,
-        };
-        this.sessions = [...this.sessions.slice(0, -1), this.currentSession];
-      }
-      this.emitStateUpdate();
+      this.handlePlanMessage(message);
     } else if (isMessage(message)) {
-      // Check for tool_use or tool_result blocks
-      const toolUseBlocks = message.content.filter(isToolUseBlock);
-      const toolResultBlocks = message.content.filter(isToolResultBlock);
-      const terminalBlocks = message.content.filter(isTerminalBlock);
+      this.handleContentMessage(message);
+    } else {
+      this.handleOtherMessage(message);
+    }
+  }
 
-      // Filter out tool blocks from message content for the messages array
-      const isToolRelated = (
-        b: import("#parsers/message-types").ContentBlock
-      ) => isToolUseBlock(b) || isToolResultBlock(b) || isTerminalBlock(b);
-      const nonToolContent = message.content.filter((b) => !isToolRelated(b));
+  private handleThinkingDelta(message: ThinkingDelta): void {
+    // Flush text buffer before thinking (separate accumulation)
+    this.flushTextBuffer();
+    // Accumulate thinking chunks
+    this.thinkingBuffer += message.text;
+    this.lastThinkingTimestamp = message.timestamp;
+    this.updateActivity("thinking");
+    this.emitAccumulatedThinking();
+  }
 
-      // Only add message if it has non-tool content
-      if (nonToolContent.length > 0 && this.currentSession) {
-        this.flushTextBuffer();
-        const filteredMessage: Message = {
-          ...message,
-          content: nonToolContent,
-        };
+  private handleTextDelta(message: RichMessage & { type: "text_delta" }): void {
+    // Flush thinking buffer before text
+    this.flushThinkingBuffer();
+    // Accumulate text chunks
+    this.textBuffer += message.text;
+    this.lastTextTimestamp = message.timestamp;
+    this.updateActivity("responding");
+    this.emitAccumulatedText();
+  }
+
+  private handlePlanMessage(
+    message: import("#parsers/message-types").PlanMessage
+  ): void {
+    // Update session plan (not added to messages array)
+    if (this.currentSession) {
+      this.currentSession = {
+        ...this.currentSession,
+        plan: message.entries,
+      };
+      this.sessions = [...this.sessions.slice(0, -1), this.currentSession];
+    }
+    this.emitStateUpdate();
+  }
+
+  private handleContentMessage(message: Message): void {
+    // Check for tool_use or tool_result blocks
+    const toolUseBlocks = message.content.filter(isToolUseBlock);
+    const toolResultBlocks = message.content.filter(isToolResultBlock);
+    const terminalBlocks = message.content.filter(isTerminalBlock);
+
+    // Update activity for tool execution
+    if (toolUseBlocks.length > 0) {
+      this.updateActivity("tool_executing");
+    }
+
+    // Filter out tool blocks from message content for the messages array
+    const isToolRelated = (b: import("#parsers/message-types").ContentBlock) =>
+      isToolUseBlock(b) || isToolResultBlock(b) || isTerminalBlock(b);
+    const nonToolContent = message.content.filter((b) => !isToolRelated(b));
+
+    // Only add message if it has non-tool content
+    if (nonToolContent.length > 0 && this.currentSession) {
+      this.flushTextBuffer();
+      this.flushThinkingBuffer();
+      const filteredMessage: Message = {
+        ...message,
+        content: nonToolContent,
+      };
+      this.currentSession = {
+        ...this.currentSession,
+        messages: [...this.currentSession.messages, filteredMessage],
+      };
+      this.sessions = [...this.sessions.slice(0, -1), this.currentSession];
+    }
+
+    if (toolUseBlocks.length > 0 || toolResultBlocks.length > 0) {
+      // Flush text before processing tool blocks
+      this.flushTextBuffer();
+      this.flushThinkingBuffer();
+      // Process tool blocks into toolCalls map
+      this.processToolBlocks(toolUseBlocks, toolResultBlocks, terminalBlocks);
+
+      // Insert tool references for each tool_use block
+      if (this.currentSession && toolUseBlocks.length > 0) {
+        const toolRefs: ToolReference[] = toolUseBlocks.map((block) => ({
+          type: "tool_reference" as const,
+          toolCallId: block.id,
+          timestamp: Date.now(),
+        }));
         this.currentSession = {
           ...this.currentSession,
-          messages: [...this.currentSession.messages, filteredMessage],
+          messages: [...this.currentSession.messages, ...toolRefs],
         };
         this.sessions = [...this.sessions.slice(0, -1), this.currentSession];
       }
+    }
 
-      if (toolUseBlocks.length > 0 || toolResultBlocks.length > 0) {
-        // Flush text before processing tool blocks
-        this.flushTextBuffer();
-        // Process tool blocks into toolCalls map
-        this.processToolBlocks(toolUseBlocks, toolResultBlocks, terminalBlocks);
+    // Update usage tracking
+    this.updateSessionUsage(message);
+    this.emitStateUpdate();
+  }
 
-        // Insert tool references for each tool_use block
-        if (this.currentSession && toolUseBlocks.length > 0) {
-          const toolRefs: ToolReference[] = toolUseBlocks.map((block) => ({
-            type: "tool_reference" as const,
-            toolCallId: block.id,
-            timestamp: Date.now(),
-          }));
-          this.currentSession = {
-            ...this.currentSession,
-            messages: [...this.currentSession.messages, ...toolRefs],
-          };
-          this.sessions = [...this.sessions.slice(0, -1), this.currentSession];
-        }
-      }
+  private handleOtherMessage(message: RichMessage): void {
+    // Flush text buffer before non-text message
+    this.flushTextBuffer();
+    this.flushThinkingBuffer();
+
+    // Add to current session
+    if (this.currentSession) {
+      this.currentSession = {
+        ...this.currentSession,
+        messages: [...this.currentSession.messages, message],
+      };
 
       // Update usage tracking
       this.updateSessionUsage(message);
-      this.emitStateUpdate();
-    } else {
-      // Flush text buffer before non-text message
-      this.flushTextBuffer();
 
-      // Add to current session
-      if (this.currentSession) {
-        this.currentSession = {
-          ...this.currentSession,
-          messages: [...this.currentSession.messages, message],
-        };
-
-        // Update usage tracking
-        this.updateSessionUsage(message);
-
-        this.sessions = [...this.sessions.slice(0, -1), this.currentSession];
-      }
-
-      this.emitStateUpdate();
+      this.sessions = [...this.sessions.slice(0, -1), this.currentSession];
     }
+
+    this.emitStateUpdate();
   }
 
   private processToolBlocks(
@@ -538,6 +595,41 @@ export class AcpStateProvider implements StateProvider {
     this.emitStateUpdate();
   }
 
+  private emitAccumulatedThinking(): void {
+    if (!this.currentSession) {
+      return;
+    }
+
+    // Create accumulated thinking message
+    const thinkingMessage: ThinkingDelta = {
+      type: "thinking_delta",
+      text: this.thinkingBuffer,
+      timestamp: this.lastThinkingTimestamp,
+    };
+
+    // Update current session messages
+    const sessionMessages = this.currentSession.messages;
+    if (this.accumulatedThinkingIndex >= 0) {
+      this.currentSession = {
+        ...this.currentSession,
+        messages: [
+          ...sessionMessages.slice(0, this.accumulatedThinkingIndex),
+          thinkingMessage,
+          ...sessionMessages.slice(this.accumulatedThinkingIndex + 1),
+        ],
+      };
+    } else {
+      this.accumulatedThinkingIndex = sessionMessages.length;
+      this.currentSession = {
+        ...this.currentSession,
+        messages: [...sessionMessages, thinkingMessage],
+      };
+    }
+    this.sessions = [...this.sessions.slice(0, -1), this.currentSession];
+
+    this.emitStateUpdate();
+  }
+
   private emitStateUpdate(): void {
     const totals = computeTotals(this.sessions);
     log.debug("state_update", {
@@ -558,12 +650,19 @@ export class AcpStateProvider implements StateProvider {
     this.accumulatedMessageIndex = -1;
   }
 
+  private flushThinkingBuffer(): void {
+    this.thinkingBuffer = "";
+    this.accumulatedThinkingIndex = -1;
+  }
+
   private handleComplete(result: AcpCompletionResult): void {
     log.debug("iteration_complete", {
       iteration: this.iteration,
       stopReason: result.stopReason,
     });
     this.flushTextBuffer();
+    this.flushThinkingBuffer();
+    this.updateActivity("idle");
 
     // If paused, keep session state and don't continue
     if (this.adapter.isPaused?.()) {
@@ -606,8 +705,10 @@ export class AcpStateProvider implements StateProvider {
       error: error.message,
     });
 
-    // Flush any pending text
+    // Flush any pending text and thinking
     this.flushTextBuffer();
+    this.flushThinkingBuffer();
+    this.updateActivity("idle");
 
     // Mark current session as error and freeze it
     if (this.currentSession) {
