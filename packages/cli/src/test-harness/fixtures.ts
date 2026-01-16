@@ -106,6 +106,7 @@ function createSessionState(
     mcpServers: [],
     availableCommands: [],
     messages: [],
+    toolCalls: new Map(),
     usage: { inputTokens: 0, outputTokens: 0, cost: 0, toolCallCount: 0 },
     todos: [],
     startTime: Date.now(),

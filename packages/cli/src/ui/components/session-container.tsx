@@ -1,24 +1,24 @@
 import { For, Match, Show, Switch } from "solid-js";
 import type {
   Message,
-  PartialToolInput,
   ResultMessage as ResultMessageType,
   SessionState,
   SystemMessage,
   TextDelta,
+  ToolReference,
 } from "#parsers/message-types";
 import {
   isMessage,
-  isPartialToolInput,
   isResultMessage,
   isSystemMessage,
   isTextDelta,
+  isToolReference,
 } from "#parsers/message-types";
 import { getSessionTitle } from "#utils/session-title";
 import { AgentPlan } from "./agent-plan";
-import { PartialToolBlock } from "./blocks/partial-tool-block";
 import { SystemMessageBlock } from "./blocks/system-message-block";
 import { TextDeltaBlock } from "./blocks/text-delta-block";
+import { ToolBlock } from "./blocks/tool-block";
 import { MessageItem } from "./message-item";
 import { ResultMessage } from "./result-message";
 
@@ -92,6 +92,7 @@ export function SessionContainer(props: SessionContainerProps) {
           </text>
         </box>
         <box flexDirection="column" style={{ marginLeft: 2 }}>
+          {/* Render messages with interleaved tool calls */}
           <For each={props.session.messages}>
             {(msg) => (
               <box>
@@ -105,14 +106,20 @@ export function SessionContainer(props: SessionContainerProps) {
                   <Match when={isResultMessage(msg)}>
                     <ResultMessage message={msg as ResultMessageType} />
                   </Match>
-                  <Match when={isPartialToolInput(msg)}>
-                    <PartialToolBlock message={msg as PartialToolInput} />
-                  </Match>
                   <Match when={isTextDelta(msg)}>
                     <TextDeltaBlock message={msg as TextDelta} />
                   </Match>
                   <Match when={isSystemMessage(msg)}>
                     <SystemMessageBlock message={msg as SystemMessage} />
+                  </Match>
+                  <Match when={isToolReference(msg)}>
+                    {(() => {
+                      const ref = msg as ToolReference;
+                      const tool = props.session.toolCalls.get(ref.toolCallId);
+                      return tool ? (
+                        <ToolBlock block={tool} expanded={props.expanded} />
+                      ) : null;
+                    })()}
                   </Match>
                 </Switch>
               </box>

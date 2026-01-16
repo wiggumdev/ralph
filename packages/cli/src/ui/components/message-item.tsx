@@ -13,8 +13,6 @@ import { ImageBlock } from "./blocks/image-block";
 import { ResourceLinkBlock } from "./blocks/resource-link-block";
 import { TerminalBlock } from "./blocks/terminal-block";
 import { TextBlock } from "./blocks/text-block";
-import { ToolResultBlock } from "./blocks/tool-result-block";
-import { ToolUseBlock } from "./blocks/tool-use-block";
 
 export interface MessageItemProps {
   message: Message;
@@ -30,19 +28,6 @@ export function MessageItem(props: MessageItemProps) {
             <Match when={block.type === "text"}>
               <TextBlock
                 block={block as import("#parsers/message-types").TextBlock}
-              />
-            </Match>
-            <Match when={block.type === "tool_use"}>
-              <ToolUseBlock
-                block={block as import("#parsers/message-types").ToolUseBlock}
-                expanded={props.expanded}
-              />
-            </Match>
-            <Match when={block.type === "tool_result"}>
-              <ToolResultBlock
-                block={
-                  block as import("#parsers/message-types").ToolResultBlock
-                }
               />
             </Match>
             <Match when={block.type === "image"}>

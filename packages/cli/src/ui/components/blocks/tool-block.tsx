@@ -1,9 +1,13 @@
 import { diffLines as computeDiff } from "diff";
 import { For, Show } from "solid-js";
-import type { ToolUseBlock as ToolUseBlockType } from "#parsers/message-types";
+import type {
+  ToolBlock as ToolBlockType,
+  ToolCallContent,
+  ToolKind,
+} from "#parsers/message-types";
 
-export interface ToolUseBlockProps {
-  block: ToolUseBlockType;
+export interface ToolBlockProps {
+  block: ToolBlockType;
   expanded: boolean;
 }
 
@@ -14,26 +18,28 @@ interface DiffLine {
   color: string;
 }
 
-function getToolIconByKind(kind: string | undefined): string {
+function getToolIconByKind(kind: ToolKind | undefined): string {
   switch (kind) {
     case "read":
-      return "→";
+      return "\u2192";
     case "edit":
-      return "↔";
+      return "\u2194";
     case "delete":
-      return "✗";
+      return "\u2717";
     case "move":
-      return "⇄";
+      return "\u21c4";
     case "search":
-      return "✱";
+      return "\u2731";
     case "execute":
       return "$";
     case "think":
-      return "◇";
+      return "\u25c7";
     case "fetch":
       return "%";
+    case "switch_mode":
+      return "\u21bb";
     default:
-      return "●";
+      return "\u25cf";
   }
 }
 
@@ -41,54 +47,56 @@ function getToolIconByName(name: string): string {
   switch (name.toLowerCase()) {
     case "glob":
     case "grep":
-      return "✱";
+      return "\u2731";
     case "read":
-      return "→";
+      return "\u2192";
     case "write":
-      return "←";
+      return "\u2190";
     case "edit":
-      return "↔";
+      return "\u2194";
     case "bash":
       return "$";
     case "task":
-      return "◇";
+      return "\u25c7";
     case "todowrite":
     case "todo_write":
-      return "☐";
+      return "\u2610";
     case "webfetch":
       return "%";
     case "askuserquestion":
       return "?";
     default:
-      return "●";
+      return "\u25cf";
   }
 }
 
-function getToolIcon(name: string, kind: string | undefined): string {
+function getToolIcon(name: string, kind: ToolKind | undefined): string {
   if (kind) {
     return getToolIconByKind(kind);
   }
   return getToolIconByName(name);
 }
 
-function getToolColorByKind(kind: string | undefined): string {
+function getToolColorByKind(kind: ToolKind | undefined): string {
   switch (kind) {
     case "read":
-      return "#5c9cf5"; // blue
+      return "#5c9cf5";
     case "edit":
-      return "#f5a742"; // orange
+      return "#f5a742";
     case "delete":
-      return "#ff6666"; // red
+      return "#ff6666";
     case "move":
-      return "#f5a742"; // orange
+      return "#f5a742";
     case "search":
-      return "#9d7cd8"; // purple
+      return "#9d7cd8";
     case "execute":
-      return "#fab283"; // peach
+      return "#fab283";
     case "think":
-      return "#56b6c2"; // cyan
+      return "#56b6c2";
     case "fetch":
-      return "#5c9cf5"; // blue
+      return "#5c9cf5";
+    case "switch_mode":
+      return "#56b6c2";
     default:
       return "#808080";
   }
@@ -97,24 +105,24 @@ function getToolColorByKind(kind: string | undefined): string {
 function getToolColorByName(name: string): string {
   switch (name.toLowerCase()) {
     case "read":
-      return "#5c9cf5"; // blue
+      return "#5c9cf5";
     case "write":
-      return "#7fd88f"; // green
+      return "#7fd88f";
     case "edit":
-      return "#f5a742"; // orange
+      return "#f5a742";
     case "bash":
-      return "#fab283"; // peach
+      return "#fab283";
     case "glob":
     case "grep":
-      return "#9d7cd8"; // purple
+      return "#9d7cd8";
     case "task":
-      return "#56b6c2"; // cyan
+      return "#56b6c2";
     default:
       return "#808080";
   }
 }
 
-function getToolColor(name: string, kind: string | undefined): string {
+function getToolColor(name: string, kind: ToolKind | undefined): string {
   if (kind) {
     return getToolColorByKind(kind);
   }
@@ -122,7 +130,6 @@ function getToolColor(name: string, kind: string | undefined): string {
 }
 
 function formatParams(name: string, input: Record<string, unknown>): string {
-  // Handle both snake_case (Claude) and camelCase (OpenCode) formats
   const filePath =
     (input.file_path as string) || (input.filePath as string) || "";
 
@@ -154,11 +161,7 @@ function formatParams(name: string, input: Record<string, unknown>): string {
 function computeDiffData(
   oldStr: string,
   newStr: string
-): {
-  lines: DiffLine[];
-  added: number;
-  removed: number;
-} {
+): { lines: DiffLine[]; added: number; removed: number } {
   const changes = computeDiff(oldStr, newStr);
   const lines: DiffLine[] = [];
   let oldLineNum = 1;
@@ -168,7 +171,6 @@ function computeDiffData(
 
   for (const change of changes) {
     const changeLines = change.value.split("\n");
-    // Remove last empty element from split if ends with newline
     if (changeLines.at(-1) === "") {
       changeLines.pop();
     }
@@ -208,29 +210,56 @@ function computeDiffData(
   return { lines, added, removed };
 }
 
-export function ToolUseBlock(props: ToolUseBlockProps) {
-  const toolName = () => props.block.name.toLowerCase();
+// Claude format: "    1\u2192content"
+const CLAUDE_READ_PATTERN = /^\s*\d+\u2192/;
+
+function countReadLines(text: string): number {
+  return text.split("\n").filter((line) => CLAUDE_READ_PATTERN.test(line))
+    .length;
+}
+
+function getResultSummary(content: ToolCallContent[] | undefined): string {
+  if (!content || content.length === 0) {
+    return "";
+  }
+
+  for (const item of content) {
+    if (item.type === "content" && item.content.type === "text") {
+      const text = item.content.text;
+      if (CLAUDE_READ_PATTERN.test(text)) {
+        const count = countReadLines(text);
+        return `Read ${count} line${count !== 1 ? "s" : ""}`;
+      }
+      const firstLine = text.split("\n")[0] || "";
+      return firstLine.length > 80 ? `${firstLine.slice(0, 80)}...` : firstLine;
+    }
+  }
+  return "";
+}
+
+export function ToolBlock(props: ToolBlockProps) {
+  const toolName = () => props.block.title.toLowerCase();
 
   // Don't render TodoWrite - handled by session panel sidebar
   if (toolName() === "todowrite" || toolName() === "todo_write") {
     return null;
   }
 
-  const input = () => props.block.input as Record<string, unknown>;
-  const params = () => formatParams(props.block.name, input());
-  const icon = () => getToolIcon(props.block.name, props.block.kind);
-  const iconColor = () => getToolColor(props.block.name, props.block.kind);
+  const input = () => props.block.rawInput ?? {};
+  const params = () => formatParams(props.block.title, input());
+  const icon = () => getToolIcon(props.block.title, props.block.kind);
+  const iconColor = () => getToolColor(props.block.title, props.block.kind);
 
   const statusIndicator = () => {
     switch (props.block.status) {
       case "pending":
-        return "○";
+        return "\u25cb";
       case "in_progress":
-        return "◐";
+        return "\u25d0";
       case "completed":
-        return "✓";
+        return "\u2713";
       case "failed":
-        return "✗";
+        return "\u2717";
       default:
         return "";
     }
@@ -272,7 +301,6 @@ export function ToolUseBlock(props: ToolUseBlockProps) {
     if (!isEdit()) {
       return { lines: [], added: 0, removed: 0 };
     }
-    // Handle both snake_case (Claude) and camelCase (OpenCode) formats
     const oldStr =
       (input().old_string as string) || (input().oldString as string) || "";
     const newStr =
@@ -292,12 +320,12 @@ export function ToolUseBlock(props: ToolUseBlockProps) {
     return parts.join(", ");
   };
 
+  const resultSummary = () => getResultSummary(props.block.content);
+
   return (
     <box flexDirection="column">
       <text>
-        <Show when={props.block.status}>
-          <span style={{ fg: statusColor() }}>{statusIndicator()} </span>
-        </Show>
+        <span style={{ fg: statusColor() }}>{statusIndicator()} </span>
         <span style={{ fg: iconColor() }}>{icon()} </span>
         <span style={{ fg: "#808080" }}>{toolName()}</span>
         <Show when={params()}>
@@ -310,7 +338,7 @@ export function ToolUseBlock(props: ToolUseBlockProps) {
 
       <Show when={isEdit() && diffData().lines.length > 0}>
         <text>
-          <span style={{ fg: "#888888" }}>⎿ {diffSummary()}</span>
+          <span style={{ fg: "#888888" }}>\u23bf {diffSummary()}</span>
         </text>
         <box flexDirection="column" style={{ marginLeft: 4 }}>
           <For each={diffData().lines}>
@@ -324,6 +352,19 @@ export function ToolUseBlock(props: ToolUseBlockProps) {
             )}
           </For>
         </box>
+      </Show>
+
+      <Show
+        when={
+          !isEdit() &&
+          props.block.status === "completed" &&
+          resultSummary() &&
+          resultSummary().trim().length > 1
+        }
+      >
+        <text>
+          <span style={{ fg: "#666666" }}> \u23bf {resultSummary()}</span>
+        </text>
       </Show>
     </box>
   );

@@ -19,6 +19,7 @@ export type ToolKind =
   | "execute"
   | "think"
   | "fetch"
+  | "switch_mode"
   | "other";
 
 export type ToolCallStatus = "pending" | "in_progress" | "completed" | "failed";
@@ -26,6 +27,25 @@ export type ToolCallStatus = "pending" | "in_progress" | "completed" | "failed";
 export interface ToolCallLocation {
   path: string;
   line?: number;
+}
+
+// Content types for ToolBlock
+export type ToolCallContent =
+  | { type: "content"; content: ContentBlock }
+  | { type: "diff"; path: string; oldText?: string; newText: string }
+  | { type: "terminal"; terminalId: string };
+
+// Unified ToolBlock aligned with ACP schema
+export interface ToolBlock {
+  type: "tool";
+  toolCallId: string;
+  title: string;
+  kind?: ToolKind;
+  status: ToolCallStatus;
+  locations?: ToolCallLocation[];
+  rawInput?: Record<string, unknown>;
+  rawOutput?: unknown;
+  content?: ToolCallContent[];
 }
 
 export interface ToolUseBlock extends BaseContentBlock {
@@ -140,14 +160,6 @@ export interface ResultMessage {
   timestamp: number;
 }
 
-export interface PartialToolInput {
-  type: "partial_tool_input";
-  index: number;
-  toolName?: string;
-  partialInput: Record<string, unknown>;
-  timestamp: number;
-}
-
 export interface TextDelta {
   type: "text_delta";
   text: string;
@@ -169,13 +181,19 @@ export interface PlanMessage {
   timestamp: number;
 }
 
+export interface ToolReference {
+  type: "tool_reference";
+  toolCallId: string;
+  timestamp: number;
+}
+
 export type RichMessage =
   | Message
   | SystemMessage
   | ResultMessage
-  | PartialToolInput
   | TextDelta
-  | PlanMessage;
+  | PlanMessage
+  | ToolReference;
 
 export type SessionStatus = "running" | "complete" | "error" | "paused";
 
@@ -225,6 +243,9 @@ export interface SessionState {
   // Messages for this session
   messages: RichMessage[];
 
+  // Tool calls tracked by toolCallId
+  toolCalls: Map<string, ToolBlock>;
+
   // Usage tracking per session
   usage: SessionUsage;
 
@@ -266,8 +287,12 @@ export function isToolResultBlock(
   return block.type === "tool_result";
 }
 
-export function isPartialToolInput(msg: RichMessage): msg is PartialToolInput {
-  return msg.type === "partial_tool_input";
+export function isToolBlock(block: ToolBlock | unknown): block is ToolBlock {
+  return (
+    typeof block === "object" &&
+    block !== null &&
+    (block as ToolBlock).type === "tool"
+  );
 }
 
 export function isTextDelta(msg: RichMessage): msg is TextDelta {
@@ -276,6 +301,10 @@ export function isTextDelta(msg: RichMessage): msg is TextDelta {
 
 export function isPlanMessage(msg: RichMessage): msg is PlanMessage {
   return msg.type === "plan";
+}
+
+export function isToolReference(msg: RichMessage): msg is ToolReference {
+  return msg.type === "tool_reference";
 }
 
 export function isImageBlock(block: ContentBlock): block is ImageBlock {

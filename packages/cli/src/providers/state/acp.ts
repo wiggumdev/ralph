@@ -9,11 +9,17 @@ import type {
   Message,
   RichMessage,
   SessionState,
+  ToolBlock,
+  ToolCallContent,
+  ToolKind,
+  ToolReference,
 } from "#parsers/message-types";
 import {
   isMessage,
   isPlanMessage,
   isResultMessage,
+  isTerminalBlock,
+  isToolResultBlock,
   isToolUseBlock,
 } from "#parsers/message-types";
 import type {
@@ -246,6 +252,7 @@ export class AcpStateProvider implements StateProvider {
       mcpServers: [],
       availableCommands: [],
       messages: [],
+      toolCalls: new Map(),
       usage: { inputTokens: 0, outputTokens: 0, cost: 0, toolCallCount: 0 },
       todos: [],
       startTime: Date.now(),
@@ -299,6 +306,56 @@ export class AcpStateProvider implements StateProvider {
         this.sessions = [...this.sessions.slice(0, -1), this.currentSession];
       }
       this.emitStateUpdate();
+    } else if (isMessage(message)) {
+      // Check for tool_use or tool_result blocks
+      const toolUseBlocks = message.content.filter(isToolUseBlock);
+      const toolResultBlocks = message.content.filter(isToolResultBlock);
+      const terminalBlocks = message.content.filter(isTerminalBlock);
+
+      // Filter out tool blocks from message content for the messages array
+      const isToolRelated = (
+        b: import("#parsers/message-types").ContentBlock
+      ) => isToolUseBlock(b) || isToolResultBlock(b) || isTerminalBlock(b);
+      const nonToolContent = message.content.filter((b) => !isToolRelated(b));
+
+      // Only add message if it has non-tool content
+      if (nonToolContent.length > 0 && this.currentSession) {
+        this.flushTextBuffer();
+        const filteredMessage: Message = {
+          ...message,
+          content: nonToolContent,
+        };
+        this.currentSession = {
+          ...this.currentSession,
+          messages: [...this.currentSession.messages, filteredMessage],
+        };
+        this.sessions = [...this.sessions.slice(0, -1), this.currentSession];
+      }
+
+      if (toolUseBlocks.length > 0 || toolResultBlocks.length > 0) {
+        // Flush text before processing tool blocks
+        this.flushTextBuffer();
+        // Process tool blocks into toolCalls map
+        this.processToolBlocks(toolUseBlocks, toolResultBlocks, terminalBlocks);
+
+        // Insert tool references for each tool_use block
+        if (this.currentSession && toolUseBlocks.length > 0) {
+          const toolRefs: ToolReference[] = toolUseBlocks.map((block) => ({
+            type: "tool_reference" as const,
+            toolCallId: block.id,
+            timestamp: Date.now(),
+          }));
+          this.currentSession = {
+            ...this.currentSession,
+            messages: [...this.currentSession.messages, ...toolRefs],
+          };
+          this.sessions = [...this.sessions.slice(0, -1), this.currentSession];
+        }
+      }
+
+      // Update usage tracking
+      this.updateSessionUsage(message);
+      this.emitStateUpdate();
     } else {
       // Flush text buffer before non-text message
       this.flushTextBuffer();
@@ -317,6 +374,99 @@ export class AcpStateProvider implements StateProvider {
       }
 
       this.emitStateUpdate();
+    }
+  }
+
+  private processToolBlocks(
+    toolUseBlocks: import("#parsers/message-types").ToolUseBlock[],
+    toolResultBlocks: import("#parsers/message-types").ToolResultBlock[],
+    terminalBlocks: import("#parsers/message-types").TerminalBlock[]
+  ): void {
+    if (!this.currentSession) {
+      return;
+    }
+
+    const toolCalls = new Map(this.currentSession.toolCalls);
+
+    for (const block of toolUseBlocks) {
+      this.addToolUseBlock(toolCalls, block);
+    }
+    for (const block of toolResultBlocks) {
+      this.updateToolWithResult(toolCalls, block);
+    }
+    for (const block of terminalBlocks) {
+      this.attachTerminalToTool(toolCalls, block);
+    }
+
+    this.currentSession = { ...this.currentSession, toolCalls };
+    this.sessions = [...this.sessions.slice(0, -1), this.currentSession];
+  }
+
+  private addToolUseBlock(
+    toolCalls: Map<string, ToolBlock>,
+    block: import("#parsers/message-types").ToolUseBlock
+  ): void {
+    const toolBlock: ToolBlock = {
+      type: "tool",
+      toolCallId: block.id,
+      title: block.name,
+      kind: block.kind as ToolKind,
+      status: block.status ?? "pending",
+      locations: block.locations,
+      rawInput: block.input,
+    };
+    toolCalls.set(block.id, toolBlock);
+  }
+
+  private updateToolWithResult(
+    toolCalls: Map<string, ToolBlock>,
+    block: import("#parsers/message-types").ToolResultBlock
+  ): void {
+    const existing = toolCalls.get(block.tool_use_id);
+    if (!existing) {
+      return;
+    }
+
+    const content: ToolCallContent[] = existing.content ?? [];
+    const text = this.extractResultText(block.content);
+    if (text) {
+      content.push({ type: "content", content: { type: "text", text } });
+    }
+
+    toolCalls.set(block.tool_use_id, {
+      ...existing,
+      status: block.is_error ? "failed" : "completed",
+      rawOutput: block.content,
+      content,
+    });
+  }
+
+  private extractResultText(
+    content: string | Array<{ type: string; text?: string }> | undefined
+  ): string {
+    if (!content) {
+      return "";
+    }
+    if (typeof content === "string") {
+      return content;
+    }
+    return content
+      .filter((c) => c.type === "text" && c.text)
+      .map((c) => c.text)
+      .join("");
+  }
+
+  private attachTerminalToTool(
+    toolCalls: Map<string, ToolBlock>,
+    block: import("#parsers/message-types").TerminalBlock
+  ): void {
+    for (const [id, tool] of toolCalls) {
+      if (tool.status === "in_progress" || tool.status === "pending") {
+        const content: ToolCallContent[] = tool.content ?? [];
+        content.push({ type: "terminal", terminalId: block.terminalId });
+        toolCalls.set(id, { ...tool, content });
+        break;
+      }
     }
   }
 
@@ -426,11 +576,12 @@ export class AcpStateProvider implements StateProvider {
 
     // Mark current session as complete and freeze it
     if (this.currentSession) {
-      const completedSession: SessionState = Object.freeze({
+      const completedSession: SessionState = {
         ...this.currentSession,
+        toolCalls: new Map(this.currentSession.toolCalls),
         status: "complete" as const,
         endTime: Date.now(),
-      });
+      };
       this.sessions = [...this.sessions.slice(0, -1), completedSession];
       this.currentSession = null;
       this.emitStateUpdate();
@@ -452,11 +603,12 @@ export class AcpStateProvider implements StateProvider {
   private handleError(_error: Error): void {
     // Mark current session as error and freeze it
     if (this.currentSession) {
-      const errorSession: SessionState = Object.freeze({
+      const errorSession: SessionState = {
         ...this.currentSession,
+        toolCalls: new Map(this.currentSession.toolCalls),
         status: "error" as const,
         endTime: Date.now(),
-      });
+      };
       this.sessions = [...this.sessions.slice(0, -1), errorSession];
       this.currentSession = null;
     }
