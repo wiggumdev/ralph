@@ -186,6 +186,25 @@ export abstract class AcpAdapter {
       }
       this.sessionId = sessionResponse.sessionId;
 
+      // Log available modes for discovery
+      if (sessionResponse.modes) {
+        log.debug("Available modes", {
+          modes: sessionResponse.modes,
+        });
+      }
+
+      // Set preferred mode if different from current
+      const preferredMode = this.getPreferredModeId();
+      if (
+        preferredMode &&
+        sessionResponse.modes?.currentModeId !== preferredMode
+      ) {
+        await this.connection.setSessionMode({
+          sessionId: this.sessionId,
+          modeId: preferredMode,
+        });
+      }
+
       // Send the prompt as ContentBlock array
       let promptResponse: PromptResponse;
       try {
@@ -315,6 +334,14 @@ export abstract class AcpAdapter {
    */
   getSessionId(): string | undefined {
     return this.sessionId;
+  }
+
+  /**
+   * Get the preferred mode ID for the session.
+   * Override in subclasses to set a specific mode.
+   */
+  protected getPreferredModeId(): string | null {
+    return null;
   }
 
   private async cleanup(): Promise<void> {

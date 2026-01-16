@@ -13,4 +13,8 @@ export class ClaudeAcpAdapter extends AcpAdapter {
   getResumeCommand(sessionId: string): ResumeCommand {
     return { command: "claude", args: ["--resume", sessionId] };
   }
+
+  protected override getPreferredModeId(): string | null {
+    return "acceptEdits";
+  }
 }
