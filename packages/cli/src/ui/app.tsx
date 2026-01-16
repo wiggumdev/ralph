@@ -9,7 +9,10 @@ import {
 } from "solid-js";
 import { Log } from "#log";
 import type { SessionState } from "#parsers/message-types";
-import type { PermissionRequest } from "#parsers/permission-types";
+import type {
+  PermissionRequest,
+  PermissionSummary,
+} from "#parsers/permission-types";
 import type { AppState, StateProvider } from "#providers/state";
 import type { AcpStateProvider } from "#providers/state/acp";
 import type { PrdFeature } from "#schema/prd";
@@ -27,6 +30,7 @@ import {
 } from "#ui/contexts/app-state-context";
 import { TabProvider, type TabView } from "#ui/contexts/tab-context";
 import { UIProvider, useUI } from "#ui/contexts/ui-context";
+import { PermissionsTab } from "./components/permissions-tab";
 
 const log = Log.create({ service: "ui" });
 
@@ -52,6 +56,9 @@ function App(props: AppProps) {
   const [prdItems, setPrdItems] = createSignal<PrdFeature[]>([]);
   const [permissionRequest, setPermissionRequest] =
     createSignal<PermissionRequest | null>(null);
+  const [permissionSummary, setPermissionSummary] = createSignal<
+    PermissionSummary[] | undefined
+  >(undefined);
 
   // Derived from sessions
   const activeSession = createMemo(() => sessions().at(-1));
@@ -108,7 +115,7 @@ function App(props: AppProps) {
 
   // Tab cycling
   const cycleTab = () => {
-    const tabs: TabView[] = ["loop", "learning", "backlog"];
+    const tabs: TabView[] = ["loop", "learning", "backlog", "permissions"];
     const idx = tabs.indexOf(currentTab());
     const nextTab = tabs[(idx + 1) % tabs.length];
     if (nextTab) {
@@ -166,11 +173,12 @@ function App(props: AppProps) {
     toolCallCount: setToolCallCount,
     prdItems: setPrdItems,
     permissionRequest: setPermissionRequest,
+    permissionSummary: setPermissionSummary,
   };
 
   const applyStateUpdate = (update: Partial<AppState>) => {
     applySimpleUpdates(update, setters, sessions, setSelectedIndex);
-    applyStatusUpdate(update, setStatus, props.autoExit ?? true, handleExit);
+    applyStatusUpdate(update, setStatus, props.autoExit ?? false, handleExit);
   };
 
   const handlePermissionSelect = (optionId: string) => {
@@ -200,6 +208,7 @@ function App(props: AppProps) {
     "1": () => setCurrentTab("loop"),
     "2": () => setCurrentTab("learning"),
     "3": () => setCurrentTab("backlog"),
+    "4": () => setCurrentTab("permissions"),
     tab: cycleTab,
     e: () => setExpanded((prev) => !prev),
     space: () => setExpanded((prev) => !prev),
@@ -266,6 +275,9 @@ function App(props: AppProps) {
               <Match when={currentTab() === "backlog"}>
                 <BacklogTab />
               </Match>
+              <Match when={currentTab() === "permissions"}>
+                <PermissionsTab summary={permissionSummary() ?? []} />
+              </Match>
             </Switch>
           </Chrome>
           <HelpModal
@@ -295,6 +307,7 @@ function applySimpleUpdates(
     toolCallCount: (v: number) => void;
     prdItems: (v: PrdFeature[]) => void;
     permissionRequest: (v: PermissionRequest | null) => void;
+    permissionSummary: (v: PermissionSummary[] | undefined) => void;
   },
   getSessions: () => SessionState[],
   setSelectedIndex: (v: number) => void
@@ -342,6 +355,9 @@ function applySimpleUpdates(
   }
   if (update.permissionRequest !== undefined) {
     setters.permissionRequest(update.permissionRequest);
+  }
+  if (update.permissionSummary !== undefined) {
+    setters.permissionSummary(update.permissionSummary);
   }
 }
 

@@ -16,3 +16,14 @@ export interface PermissionResponse {
   outcome: "selected" | "cancelled";
   optionId?: string;
 }
+
+export interface TrackedPermission {
+  formattedName: string; // "Bash(bunx foo)", "WebFetch(domain:x.com)"
+  status: "allowed" | "denied";
+}
+
+export interface PermissionSummary {
+  formattedName: string;
+  status: "allowed" | "denied";
+  count: number;
+}

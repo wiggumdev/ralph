@@ -19,9 +19,11 @@ import {
 import type {
   PermissionRequest,
   PermissionResponse,
+  PermissionSummary,
 } from "#parsers/permission-types";
 import type { AppState, OpenCommand, StateProvider } from "#providers/state";
 import { computeTotals } from "#providers/state";
+import { formatPermissionName } from "#utils/permission-formatter";
 
 const log = Log.create({ service: "state" });
 
@@ -63,6 +65,12 @@ export class AcpStateProvider implements StateProvider {
   // Permission handling - queue to handle concurrent requests
   private readonly pendingPermissions = new Map<string, DeferredPermission>();
   private currentPermissionId: string | null = null;
+
+  // Permission tracking for summary (keyed by "status:formattedName")
+  private readonly trackedPermissions = new Map<
+    string,
+    { formattedName: string; status: "allowed" | "denied"; count: number }
+  >();
 
   constructor(adapter: AcpAdapter, options: AcpStateProviderOptions) {
     this.adapter = adapter;
@@ -180,7 +188,16 @@ export class AcpStateProvider implements StateProvider {
   ): Promise<PermissionResponse> {
     return new Promise((resolve) => {
       const id = request.toolCall.toolCallId;
-      this.pendingPermissions.set(id, { request, resolve });
+      const formattedName = formatPermissionName(request.toolCall);
+
+      // Wrap resolve to track outcome
+      const trackingResolve = (response: PermissionResponse) => {
+        const status = response.outcome === "selected" ? "allowed" : "denied";
+        this.addTrackedPermission(formattedName, status);
+        resolve(response);
+      };
+
+      this.pendingPermissions.set(id, { request, resolve: trackingResolve });
 
       // Show this permission if none currently shown
       if (!this.currentPermissionId) {
@@ -188,6 +205,32 @@ export class AcpStateProvider implements StateProvider {
         this.callback?.({ permissionRequest: request });
       }
     });
+  }
+
+  /** Track a permission from auto-approval (yolo, cached, fallback) */
+  trackPermission(formattedName: string, status: "allowed" | "denied"): void {
+    this.addTrackedPermission(formattedName, status);
+  }
+
+  /** Add or increment a tracked permission and emit updated summary */
+  private addTrackedPermission(
+    formattedName: string,
+    status: "allowed" | "denied"
+  ): void {
+    const key = `${status}:${formattedName}`;
+    const existing = this.trackedPermissions.get(key);
+    if (existing) {
+      existing.count++;
+    } else {
+      this.trackedPermissions.set(key, { formattedName, status, count: 1 });
+    }
+    // Emit updated summary for live tracking
+    this.callback?.({ permissionSummary: this.getPermissionSummary() });
+  }
+
+  /** Get summarized permissions for display */
+  getPermissionSummary(): PermissionSummary[] {
+    return Array.from(this.trackedPermissions.values()).map((p) => ({ ...p }));
   }
 
   private runIteration(): void {
@@ -230,6 +273,8 @@ export class AcpStateProvider implements StateProvider {
       ...this.options,
       onPermissionRequest: (req: PermissionRequest) =>
         this.handlePermissionRequest(req),
+      onPermissionTracked: (name: string, status: "allowed" | "denied") =>
+        this.trackPermission(name, status),
     };
 
     // Run the adapter (async, errors handled via callbacks)
@@ -396,8 +441,11 @@ export class AcpStateProvider implements StateProvider {
       this.iteration++;
       setTimeout(() => this.runIteration(), 100);
     } else {
-      // All iterations done
-      this.callback?.({ status: "complete" });
+      // All iterations done - include permission summary
+      this.callback?.({
+        status: "complete",
+        permissionSummary: this.getPermissionSummary(),
+      });
     }
   }
 
@@ -412,6 +460,10 @@ export class AcpStateProvider implements StateProvider {
       this.sessions = [...this.sessions.slice(0, -1), errorSession];
       this.currentSession = null;
     }
-    this.callback?.({ status: "error", sessions: this.sessions });
+    this.callback?.({
+      status: "error",
+      sessions: this.sessions,
+      permissionSummary: this.getPermissionSummary(),
+    });
   }
 }

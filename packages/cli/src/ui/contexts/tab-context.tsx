@@ -1,6 +1,6 @@
 import { type Accessor, createContext, type JSX, useContext } from "solid-js";
 
-export type TabView = "loop" | "learning" | "backlog";
+export type TabView = "loop" | "learning" | "backlog" | "permissions";
 
 export interface TabContextValue {
   currentTab: Accessor<TabView>;

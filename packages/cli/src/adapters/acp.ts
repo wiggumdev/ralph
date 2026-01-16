@@ -32,6 +32,7 @@ import type {
   PermissionRequest,
   PermissionResponse,
 } from "#parsers/permission-types";
+import { formatPermissionName } from "#utils/permission-formatter";
 
 const log = Log.create({ service: "acp" });
 
@@ -40,6 +41,7 @@ export interface AcpAdapterOptions {
   verbose?: boolean;
   yolo?: boolean;
   onPermissionRequest?: (req: PermissionRequest) => Promise<PermissionResponse>;
+  onPermissionTracked?: (name: string, status: "allowed" | "denied") => void;
 }
 
 export interface AcpCompletionResult {
@@ -374,6 +376,7 @@ export abstract class AcpAdapter {
   ): Promise<RequestPermissionResponse> {
     log.debug("permission_request", { params });
     const options = this.currentOptions;
+    const formattedName = formatPermissionName(params.toolCall);
 
     // Find first allow option for yolo/cache
     const firstAllowOption = params.options.find(
@@ -382,6 +385,7 @@ export abstract class AcpAdapter {
 
     // Yolo mode: auto-approve
     if (options?.yolo && firstAllowOption) {
+      options.onPermissionTracked?.(formattedName, "allowed");
       const response = {
         outcome: { outcome: "selected", optionId: firstAllowOption.optionId },
       } as const;
@@ -393,6 +397,7 @@ export abstract class AcpAdapter {
     const cacheKey = params.toolCall.title ?? params.toolCall.toolCallId;
     const cachedOptionId = this.permissionCache.get(cacheKey);
     if (cachedOptionId) {
+      options?.onPermissionTracked?.(formattedName, "allowed");
       const response = {
         outcome: { outcome: "selected", optionId: cachedOptionId },
       } as const;
@@ -400,7 +405,7 @@ export abstract class AcpAdapter {
       return response;
     }
 
-    // Delegate to callback if provided
+    // Delegate to callback if provided (tracking handled by callback wrapper)
     if (options?.onPermissionRequest) {
       const request: PermissionRequest = {
         id: crypto.randomUUID(),
@@ -438,6 +443,7 @@ export abstract class AcpAdapter {
 
     // Fallback: auto-approve first allow option
     if (firstAllowOption) {
+      options?.onPermissionTracked?.(formattedName, "allowed");
       const response = {
         outcome: { outcome: "selected", optionId: firstAllowOption.optionId },
       } as const;
@@ -445,6 +451,7 @@ export abstract class AcpAdapter {
       return response;
     }
 
+    options?.onPermissionTracked?.(formattedName, "denied");
     log.debug("permission_response", {
       outcome: "cancelled",
       mode: "no_options",

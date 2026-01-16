@@ -1,6 +1,6 @@
 import type { Accessor } from "solid-js";
 
-export type TabView = "loop" | "learning" | "backlog";
+export type TabView = "loop" | "learning" | "backlog" | "permissions";
 
 interface TabBarProps {
   currentTab: Accessor<TabView>;
@@ -22,6 +22,10 @@ export function TabBar(props: TabBarProps) {
         <span style={{ fg: "#666666" }}> | </span>
         <span style={{ fg: isActive("backlog") ? "#00ff00" : "#666666" }}>
           [3] Backlog
+        </span>
+        <span style={{ fg: "#666666" }}> | </span>
+        <span style={{ fg: isActive("permissions") ? "#00ff00" : "#666666" }}>
+          [4] Permissions
         </span>
         <span style={{ fg: "#666666" }}> |</span>
       </text>

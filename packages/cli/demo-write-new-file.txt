@@ -1,0 +1,2 @@
+This is a brand new file created with the Write tool.
+Demonstrating file creation capabilities.
