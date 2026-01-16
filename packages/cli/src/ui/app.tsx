@@ -7,6 +7,7 @@ import {
   onMount,
   Switch,
 } from "solid-js";
+import { Log } from "#log";
 import type { SessionState } from "#parsers/message-types";
 import type { PermissionRequest } from "#parsers/permission-types";
 import type { AppState, StateProvider } from "#providers/state";
@@ -26,6 +27,8 @@ import {
 } from "#ui/contexts/app-state-context";
 import { TabProvider, type TabView } from "#ui/contexts/tab-context";
 import { UIProvider, useUI } from "#ui/contexts/ui-context";
+
+const log = Log.create({ service: "ui" });
 
 export interface AppProps {
   provider: StateProvider;
@@ -196,6 +199,7 @@ function App(props: AppProps) {
   };
 
   useKeyboard((key) => {
+    log.debug("keypress", { key: key.name });
     if (helpVisible()) {
       setHelpVisible(false);
       return;

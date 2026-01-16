@@ -31,7 +31,7 @@ export interface SessionContainerProps {
 
 export function SessionContainer(props: SessionContainerProps) {
   const title = () => getSessionTitle(props.session);
-  const sessionId = () => props.session.id.slice(0, 8);
+  const sessionId = () => props.session.id.slice(0, 16);
 
   const statusIcon = () => {
     switch (props.session.status) {

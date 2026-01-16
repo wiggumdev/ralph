@@ -15,6 +15,7 @@ import {
   type ToolCallUpdate,
 } from "@agentclientprotocol/sdk";
 import { type Subprocess, spawn } from "bun";
+import { Log } from "#log";
 import type {
   AudioBlock,
   EmbeddedResourceBlock,
@@ -31,6 +32,8 @@ import type {
   PermissionRequest,
   PermissionResponse,
 } from "#parsers/permission-types";
+
+const log = Log.create({ service: "acp" });
 
 export interface AcpAdapterOptions {
   cwd?: string;
@@ -217,6 +220,7 @@ export abstract class AcpAdapter {
     if (!this.process || this.paused || this.stopped) {
       return;
     }
+    log.debug("pause", { sessionId: this.sessionId });
     this.paused = true;
     // SIGSTOP pauses the process
     if (process.platform !== "win32") {
@@ -231,6 +235,7 @@ export abstract class AcpAdapter {
     if (!(this.process && this.paused) || this.stopped) {
       return;
     }
+    log.debug("resume", { sessionId: this.sessionId });
     this.paused = false;
     // SIGCONT resumes the process
     if (process.platform !== "win32") {
@@ -278,6 +283,7 @@ export abstract class AcpAdapter {
   private async handleSessionUpdate(
     params: SessionNotification
   ): Promise<void> {
+    log.debug("ACP IN", { update: params.update });
     const message = this.mapUpdateToRichMessage(params.update);
     if (message) {
       this.handler?.onMessage(message);
@@ -291,6 +297,7 @@ export abstract class AcpAdapter {
   private async handleRequestPermission(
     params: RequestPermissionRequest
   ): Promise<RequestPermissionResponse> {
+    log.debug("permission_request", { params });
     const options = this.currentOptions;
 
     // Find first allow option for yolo/cache
@@ -300,18 +307,22 @@ export abstract class AcpAdapter {
 
     // Yolo mode: auto-approve
     if (options?.yolo && firstAllowOption) {
-      return {
+      const response = {
         outcome: { outcome: "selected", optionId: firstAllowOption.optionId },
-      };
+      } as const;
+      log.debug("permission_response", { response, mode: "yolo" });
+      return response;
     }
 
     // Check cache for allow_always
     const cacheKey = params.toolCall.title ?? params.toolCall.toolCallId;
     const cachedOptionId = this.permissionCache.get(cacheKey);
     if (cachedOptionId) {
-      return {
+      const response = {
         outcome: { outcome: "selected", optionId: cachedOptionId },
-      };
+      } as const;
+      log.debug("permission_response", { response, mode: "cached" });
+      return response;
     }
 
     // Delegate to callback if provided
@@ -324,30 +335,45 @@ export abstract class AcpAdapter {
         timestamp: Date.now(),
       };
 
-      const response = await options.onPermissionRequest(request);
+      const callbackResponse = await options.onPermissionRequest(request);
 
-      if (response.outcome === "selected" && response.optionId) {
+      if (
+        callbackResponse.outcome === "selected" &&
+        callbackResponse.optionId
+      ) {
         // Cache allow_always selections
         const selectedOption = params.options.find(
-          (o) => o.optionId === response.optionId
+          (o) => o.optionId === callbackResponse.optionId
         );
         if (selectedOption?.kind === "allow_always") {
-          this.permissionCache.set(cacheKey, response.optionId);
+          this.permissionCache.set(cacheKey, callbackResponse.optionId);
         }
-        return {
-          outcome: { outcome: "selected", optionId: response.optionId },
-        };
+        const response = {
+          outcome: { outcome: "selected", optionId: callbackResponse.optionId },
+        } as const;
+        log.debug("permission_response", { response, mode: "callback" });
+        return response;
       }
+      log.debug("permission_response", {
+        outcome: "cancelled",
+        mode: "callback",
+      });
       return { outcome: { outcome: "cancelled" } };
     }
 
     // Fallback: auto-approve first allow option
     if (firstAllowOption) {
-      return {
+      const response = {
         outcome: { outcome: "selected", optionId: firstAllowOption.optionId },
-      };
+      } as const;
+      log.debug("permission_response", { response, mode: "fallback" });
+      return response;
     }
 
+    log.debug("permission_response", {
+      outcome: "cancelled",
+      mode: "no_options",
+    });
     return { outcome: { outcome: "cancelled" } };
   }
 

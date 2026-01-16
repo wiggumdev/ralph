@@ -46,6 +46,7 @@ export namespace Log {
     print: boolean;
     dev?: boolean;
     level?: Level;
+    logPath?: string;
   }
 
   let logpath = "";
@@ -61,7 +62,9 @@ export namespace Log {
     if (options.level) {
       level = options.level;
     }
-    await cleanup(Global.Path.log);
+    if (!options.logPath) {
+      await cleanup(Global.Path.log);
+    }
     if (options.print) {
       write = (msg: any) => {
         process.stderr.write(msg);
@@ -69,12 +72,14 @@ export namespace Log {
       };
       return;
     }
-    logpath = path.join(
-      Global.Path.log,
-      options.dev
-        ? "dev.log"
-        : `${new Date().toISOString().split(".")[0]!.replace(/:/g, "")}.log`
-    );
+    logpath = options.logPath
+      ? options.logPath
+      : path.join(
+          Global.Path.log,
+          options.dev
+            ? "dev.log"
+            : `${new Date().toISOString().split(".")[0]!.replace(/:/g, "")}.log`
+        );
     const logfile = Bun.file(logpath);
     await fs.truncate(logpath).catch((err) => {
       // File may not exist yet - this is expected on first run

@@ -3,6 +3,7 @@ import path from "node:path";
 import type { CommandModule } from "yargs";
 import { getAdapter } from "#adapters/index";
 import { getPromptPath, loadConfig } from "#config/loader";
+import { Log } from "#log";
 import type { StateProvider } from "#providers/state";
 import { AcpStateProvider } from "#providers/state/acp";
 import { main } from "#ui/app";
@@ -88,6 +89,15 @@ export const runCommand: CommandModule<object, RunArgs> = {
     const cwd = argv.cwd ?? process.cwd();
     const config = await loadConfig({ cwd });
     const verbose = argv.verbose ?? config.verbose;
+
+    // Initialize debug logging if verbose
+    if (verbose) {
+      await Log.init({
+        print: false,
+        logPath: path.join(cwd, `ralph-debug-${Date.now()}.log`),
+        level: "DEBUG",
+      });
+    }
 
     // Resolve prompt
     let promptContent: string;

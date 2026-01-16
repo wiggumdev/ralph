@@ -4,6 +4,7 @@ import type {
   AcpCompletionResult,
   AcpMessageHandler,
 } from "#adapters/acp";
+import { Log } from "#log";
 import type {
   Message,
   RichMessage,
@@ -21,6 +22,8 @@ import type {
 } from "#parsers/permission-types";
 import type { AppState, StateProvider } from "#providers/state";
 import { computeTotals } from "#providers/state";
+
+const log = Log.create({ service: "state" });
 
 export interface AcpStateProviderOptions extends AcpAdapterOptions {
   prompt: string;
@@ -57,8 +60,9 @@ export class AcpStateProvider implements StateProvider {
   private lastTextTimestamp = 0;
   private accumulatedMessageIndex = -1;
 
-  // Permission handling
-  private pendingPermission: DeferredPermission | null = null;
+  // Permission handling - queue to handle concurrent requests
+  private readonly pendingPermissions = new Map<string, DeferredPermission>();
+  private currentPermissionId: string | null = null;
 
   constructor(adapter: AcpAdapter, options: AcpStateProviderOptions) {
     this.adapter = adapter;
@@ -109,6 +113,7 @@ export class AcpStateProvider implements StateProvider {
 
   pause(): void {
     if (this.currentSession?.status === "running") {
+      log.debug("pause", { sessionId: this.currentSession.id });
       this.adapter.pause?.();
       this.currentSession = { ...this.currentSession, status: "paused" };
       this.sessions = [...this.sessions.slice(0, -1), this.currentSession];
@@ -118,6 +123,7 @@ export class AcpStateProvider implements StateProvider {
 
   resume(): void {
     if (this.currentSession?.status === "paused") {
+      log.debug("resume", { sessionId: this.currentSession.id });
       this.adapter.resume?.();
       this.currentSession = { ...this.currentSession, status: "running" };
       this.sessions = [...this.sessions.slice(0, -1), this.currentSession];
@@ -126,10 +132,27 @@ export class AcpStateProvider implements StateProvider {
   }
 
   resolvePermission(response: PermissionResponse): void {
-    if (this.pendingPermission) {
-      this.pendingPermission.resolve(response);
-      this.pendingPermission = null;
+    if (this.currentPermissionId) {
+      const pending = this.pendingPermissions.get(this.currentPermissionId);
+      if (pending) {
+        pending.resolve(response);
+        this.pendingPermissions.delete(this.currentPermissionId);
+      }
+      this.currentPermissionId = null;
+
+      // Show next pending permission if any
+      this.showNextPermission();
+    }
+  }
+
+  private showNextPermission(): void {
+    const nextEntry = this.pendingPermissions.entries().next();
+    if (nextEntry.done) {
       this.callback?.({ permissionRequest: null });
+    } else {
+      const [id, deferred] = nextEntry.value;
+      this.currentPermissionId = id;
+      this.callback?.({ permissionRequest: deferred.request });
     }
   }
 
@@ -137,12 +160,19 @@ export class AcpStateProvider implements StateProvider {
     request: PermissionRequest
   ): Promise<PermissionResponse> {
     return new Promise((resolve) => {
-      this.pendingPermission = { request, resolve };
-      this.callback?.({ permissionRequest: request });
+      const id = request.toolCall.toolCallId;
+      this.pendingPermissions.set(id, { request, resolve });
+
+      // Show this permission if none currently shown
+      if (!this.currentPermissionId) {
+        this.currentPermissionId = id;
+        this.callback?.({ permissionRequest: request });
+      }
     });
   }
 
   private runIteration(): void {
+    log.debug("iteration_start", { iteration: this.iteration });
     // Reset text accumulation for new iteration
     this.flushTextBuffer();
 
@@ -296,6 +326,10 @@ export class AcpStateProvider implements StateProvider {
 
   private emitStateUpdate(): void {
     const totals = computeTotals(this.sessions);
+    log.debug("state_update", {
+      sessionCount: this.sessions.length,
+      status: this.currentSession?.status,
+    });
     this.callback?.({
       sessions: this.sessions,
       totalInputTokens: totals.inputTokens,
@@ -311,6 +345,7 @@ export class AcpStateProvider implements StateProvider {
   }
 
   private handleComplete(_result: AcpCompletionResult): void {
+    log.debug("iteration_complete", { iteration: this.iteration });
     // Flush any remaining text
     this.flushTextBuffer();
 
