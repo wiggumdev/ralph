@@ -29,6 +29,7 @@ interface RunArgs {
   prompt?: string;
   cwd?: string;
   verbose?: boolean;
+  yolo?: boolean;
 }
 
 function resolvePrompt(promptArg: string | undefined, cwd: string): string {
@@ -76,6 +77,11 @@ export const runCommand: CommandModule<object, RunArgs> = {
         alias: "v",
         type: "boolean",
         describe: "Enable verbose output",
+      })
+      .option("yolo", {
+        alias: "y",
+        type: "boolean",
+        describe: "Auto-approve all permission requests",
       }),
 
   handler: async (argv) => {
@@ -116,11 +122,13 @@ export const runCommand: CommandModule<object, RunArgs> = {
 
     // Run ACP adapter with TUI
     const maxIterations = argv.maxIterations ?? config.maxIterations ?? 10;
+    const yolo = argv.yolo ?? config.yolo ?? false;
     const provider = new AcpStateProvider(adapter, {
       prompt: promptContent,
       cwd,
       verbose,
       maxIterations,
+      yolo,
     });
 
     runWithProvider({

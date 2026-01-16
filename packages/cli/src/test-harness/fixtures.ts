@@ -8,6 +8,7 @@ import type {
   TextDelta,
   TodoItem,
 } from "#parsers/message-types";
+import type { PermissionRequest } from "#parsers/permission-types";
 import type { AppState } from "#providers/state";
 
 // ============================================================================
@@ -168,6 +169,7 @@ export const SCENARIO_IDLE: AppState = {
   totalCost: 0,
   toolCallCount: 0,
   prdItems: [],
+  permissionRequest: null,
 };
 
 export const SCENARIO_RUNNING: AppState = {
@@ -179,6 +181,7 @@ export const SCENARIO_RUNNING: AppState = {
   totalCost: 0.068,
   toolCallCount: 3,
   prdItems: [],
+  permissionRequest: null,
 };
 
 export const SCENARIO_COMPLETE: AppState = {
@@ -234,6 +237,7 @@ export const SCENARIO_COMPLETE: AppState = {
   totalCost: 0.135,
   toolCallCount: 5,
   prdItems: [],
+  permissionRequest: null,
 };
 
 export const SCENARIO_ERROR: AppState = {
@@ -264,6 +268,7 @@ export const SCENARIO_ERROR: AppState = {
   totalCost: 0.012,
   toolCallCount: 1,
   prdItems: [],
+  permissionRequest: null,
 };
 
 export const SCENARIO_PAUSED: AppState = {
@@ -298,7 +303,52 @@ export const SCENARIO_PAUSED: AppState = {
   totalCost: 0.063,
   toolCallCount: 3,
   prdItems: [],
+  permissionRequest: null,
 };
+
+// ============================================================================
+// Sample Permission Requests
+// ============================================================================
+
+export const SAMPLE_PERMISSION_BASH: PermissionRequest = {
+  id: "perm-1",
+  sessionId: "session-1",
+  toolCall: {
+    toolCallId: "toolu_bash_1",
+    title: "Bash",
+    kind: "execute",
+    status: "pending",
+  },
+  options: [
+    { optionId: "allow-once", name: "Allow once", kind: "allow_once" },
+    { optionId: "allow-always", name: "Allow always", kind: "allow_always" },
+    { optionId: "reject-once", name: "Reject", kind: "reject_once" },
+    { optionId: "reject-always", name: "Never allow", kind: "reject_always" },
+  ],
+  timestamp: Date.now(),
+};
+
+export const SAMPLE_PERMISSION_EDIT: PermissionRequest = {
+  id: "perm-2",
+  sessionId: "session-1",
+  toolCall: {
+    toolCallId: "toolu_edit_1",
+    title: "Edit",
+    kind: "edit",
+    status: "pending",
+  },
+  options: [
+    { optionId: "allow-once", name: "Allow once", kind: "allow_once" },
+    { optionId: "allow-always", name: "Allow always", kind: "allow_always" },
+    { optionId: "reject-once", name: "Reject", kind: "reject_once" },
+  ],
+  timestamp: Date.now(),
+};
+
+export const SAMPLE_PERMISSION_REQUESTS: PermissionRequest[] = [
+  SAMPLE_PERMISSION_BASH,
+  SAMPLE_PERMISSION_EDIT,
+];
 
 // ============================================================================
 // Message Sequences for Playback

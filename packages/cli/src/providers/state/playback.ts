@@ -4,6 +4,10 @@ import {
   isResultMessage,
   isToolUseBlock,
 } from "#parsers/message-types";
+import type {
+  PermissionRequest,
+  PermissionResponse,
+} from "#parsers/permission-types";
 import type { AppState, StateProvider } from "#providers/state";
 
 export interface PlaybackConfig {
@@ -13,6 +17,10 @@ export interface PlaybackConfig {
   speed: number;
   /** Base delay between messages in ms */
   baseDelay: number;
+  /** Permission requests to simulate */
+  permissionRequests?: PermissionRequest[];
+  /** Map message index → permission request index (triggers before that message) */
+  schedulePermissionAt?: Record<number, number>;
 }
 
 /** Simulates streaming messages over time */
@@ -29,6 +37,10 @@ export class PlaybackEngine implements StateProvider {
   private currentSession: SessionState | null = null;
   private sessions: SessionState[] = [];
 
+  // Permission handling
+  private pendingPermissionResolve: (() => void) | null = null;
+  private readonly shownPermissions = new Set<number>();
+
   constructor(config: PlaybackConfig) {
     this.config = config;
     this.maxIterations = config.iterations.length;
@@ -44,6 +56,7 @@ export class PlaybackEngine implements StateProvider {
       totalCost: 0,
       toolCallCount: 0,
       prdItems: [],
+      permissionRequest: null,
     };
   }
 
@@ -85,7 +98,7 @@ export class PlaybackEngine implements StateProvider {
   }
 
   private tick(): void {
-    if (this.paused) {
+    if (this.paused || this.pendingPermissionResolve) {
       return;
     }
 
@@ -93,6 +106,25 @@ export class PlaybackEngine implements StateProvider {
     if (!messages || this.currentIndex >= messages.length) {
       this.handlePlaybackComplete();
       return;
+    }
+
+    // Check for scheduled permission request before this message
+    const schedule = this.config.schedulePermissionAt;
+    const permissionRequests = this.config.permissionRequests;
+    if (schedule && permissionRequests) {
+      const permIdx = schedule[this.currentIndex];
+      if (
+        permIdx !== undefined &&
+        permissionRequests[permIdx] &&
+        !this.shownPermissions.has(this.currentIndex)
+      ) {
+        this.shownPermissions.add(this.currentIndex);
+        const request = permissionRequests[permIdx];
+        this.updateCallback?.({ permissionRequest: request });
+        // Pause playback until resolved
+        this.pendingPermissionResolve = () => {};
+        return;
+      }
     }
 
     const message = messages[this.currentIndex];
@@ -220,6 +252,14 @@ export class PlaybackEngine implements StateProvider {
     if (this.intervalId) {
       this.stop();
       this.start();
+    }
+  }
+
+  resolvePermission(_response: PermissionResponse): void {
+    this.updateCallback?.({ permissionRequest: null });
+    if (this.pendingPermissionResolve) {
+      this.pendingPermissionResolve();
+      this.pendingPermissionResolve = null;
     }
   }
 }

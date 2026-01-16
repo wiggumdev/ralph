@@ -1,4 +1,5 @@
 import type { SessionState, SessionUsage } from "#parsers/message-types";
+import type { PermissionRequest } from "#parsers/permission-types";
 import type { PrdFeature } from "#schema/prd";
 
 /** Core state shape matching RalphApp signals */
@@ -15,6 +16,9 @@ export interface AppState {
 
   // Global items
   prdItems: PrdFeature[];
+
+  // Permission request (shown in modal)
+  permissionRequest: PermissionRequest | null;
 }
 
 /** State provider abstraction for test harness */
@@ -37,6 +41,7 @@ export const DEFAULT_STATE: AppState = {
   totalCost: 0,
   toolCallCount: 0,
   prdItems: [],
+  permissionRequest: null,
 };
 
 /** Get the active (most recent) session */

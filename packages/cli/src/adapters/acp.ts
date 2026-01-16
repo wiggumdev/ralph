@@ -27,10 +27,16 @@ import type {
   SystemMessage,
   TerminalBlock,
 } from "#parsers/message-types";
+import type {
+  PermissionRequest,
+  PermissionResponse,
+} from "#parsers/permission-types";
 
 export interface AcpAdapterOptions {
   cwd?: string;
   verbose?: boolean;
+  yolo?: boolean;
+  onPermissionRequest?: (req: PermissionRequest) => Promise<PermissionResponse>;
 }
 
 export interface AcpCompletionResult {
@@ -61,6 +67,8 @@ export abstract class AcpAdapter {
   private handler?: AcpMessageHandler;
   private paused = false;
   private stopped = false;
+  private currentOptions?: AcpAdapterOptions;
+  private readonly permissionCache = new Map<string, string>();
 
   /**
    * Check if the adapter command is available.
@@ -84,6 +92,7 @@ export abstract class AcpAdapter {
     handler: AcpMessageHandler
   ): Promise<void> {
     this.handler = handler;
+    this.currentOptions = options;
 
     try {
       // Spawn the ACP subprocess
@@ -277,25 +286,69 @@ export abstract class AcpAdapter {
 
   /**
    * Handle permission requests from the agent.
-   * For now, auto-approve by selecting the first option.
+   * Delegates to onPermissionRequest callback or auto-approves in yolo mode.
    */
   private async handleRequestPermission(
     params: RequestPermissionRequest
   ): Promise<RequestPermissionResponse> {
-    // Auto-approve by selecting the first option
-    const firstOption = params.options[0];
-    if (firstOption) {
+    const options = this.currentOptions;
+
+    // Find first allow option for yolo/cache
+    const firstAllowOption = params.options.find(
+      (o) => o.kind === "allow_once" || o.kind === "allow_always"
+    );
+
+    // Yolo mode: auto-approve
+    if (options?.yolo && firstAllowOption) {
       return {
-        outcome: {
-          outcome: "selected",
-          optionId: firstOption.optionId,
-        },
+        outcome: { outcome: "selected", optionId: firstAllowOption.optionId },
       };
     }
-    // No options available, cancel
-    return {
-      outcome: { outcome: "cancelled" },
-    };
+
+    // Check cache for allow_always
+    const cacheKey = params.toolCall.title ?? params.toolCall.toolCallId;
+    const cachedOptionId = this.permissionCache.get(cacheKey);
+    if (cachedOptionId) {
+      return {
+        outcome: { outcome: "selected", optionId: cachedOptionId },
+      };
+    }
+
+    // Delegate to callback if provided
+    if (options?.onPermissionRequest) {
+      const request: PermissionRequest = {
+        id: crypto.randomUUID(),
+        sessionId: params.sessionId,
+        toolCall: params.toolCall,
+        options: params.options,
+        timestamp: Date.now(),
+      };
+
+      const response = await options.onPermissionRequest(request);
+
+      if (response.outcome === "selected" && response.optionId) {
+        // Cache allow_always selections
+        const selectedOption = params.options.find(
+          (o) => o.optionId === response.optionId
+        );
+        if (selectedOption?.kind === "allow_always") {
+          this.permissionCache.set(cacheKey, response.optionId);
+        }
+        return {
+          outcome: { outcome: "selected", optionId: response.optionId },
+        };
+      }
+      return { outcome: { outcome: "cancelled" } };
+    }
+
+    // Fallback: auto-approve first allow option
+    if (firstAllowOption) {
+      return {
+        outcome: { outcome: "selected", optionId: firstAllowOption.optionId },
+      };
+    }
+
+    return { outcome: { outcome: "cancelled" } };
   }
 
   /**

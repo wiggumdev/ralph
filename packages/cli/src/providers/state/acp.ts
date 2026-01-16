@@ -15,12 +15,22 @@ import {
   isResultMessage,
   isToolUseBlock,
 } from "#parsers/message-types";
+import type {
+  PermissionRequest,
+  PermissionResponse,
+} from "#parsers/permission-types";
 import type { AppState, StateProvider } from "#providers/state";
 import { computeTotals } from "#providers/state";
 
 export interface AcpStateProviderOptions extends AcpAdapterOptions {
   prompt: string;
   maxIterations?: number;
+  yolo?: boolean;
+}
+
+interface DeferredPermission {
+  request: PermissionRequest;
+  resolve: (response: PermissionResponse) => void;
 }
 
 type StateUpdateCallback = (update: Partial<AppState>) => void;
@@ -47,6 +57,9 @@ export class AcpStateProvider implements StateProvider {
   private lastTextTimestamp = 0;
   private accumulatedMessageIndex = -1;
 
+  // Permission handling
+  private pendingPermission: DeferredPermission | null = null;
+
   constructor(adapter: AcpAdapter, options: AcpStateProviderOptions) {
     this.adapter = adapter;
     this.options = options;
@@ -63,6 +76,7 @@ export class AcpStateProvider implements StateProvider {
       totalCost: 0,
       toolCallCount: 0,
       prdItems: [],
+      permissionRequest: null,
     };
   }
 
@@ -111,6 +125,23 @@ export class AcpStateProvider implements StateProvider {
     }
   }
 
+  resolvePermission(response: PermissionResponse): void {
+    if (this.pendingPermission) {
+      this.pendingPermission.resolve(response);
+      this.pendingPermission = null;
+      this.callback?.({ permissionRequest: null });
+    }
+  }
+
+  private handlePermissionRequest(
+    request: PermissionRequest
+  ): Promise<PermissionResponse> {
+    return new Promise((resolve) => {
+      this.pendingPermission = { request, resolve };
+      this.callback?.({ permissionRequest: request });
+    });
+  }
+
   private runIteration(): void {
     // Reset text accumulation for new iteration
     this.flushTextBuffer();
@@ -145,8 +176,15 @@ export class AcpStateProvider implements StateProvider {
       onError: (error) => this.handleError(error),
     };
 
+    // Build adapter options with permission handler
+    const adapterOptions = {
+      ...this.options,
+      onPermissionRequest: (req: PermissionRequest) =>
+        this.handlePermissionRequest(req),
+    };
+
     // Run the adapter (async, errors handled via callbacks)
-    this.adapter.run(this.options.prompt, this.options, handler).catch(() => {
+    this.adapter.run(this.options.prompt, adapterOptions, handler).catch(() => {
       this.handleError(new Error("Adapter run failed"));
     });
   }

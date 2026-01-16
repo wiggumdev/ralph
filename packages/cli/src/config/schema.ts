@@ -20,6 +20,7 @@ export const ConfigSchema = z.object({
   verbose: z.boolean().default(false),
   tui: z.boolean().default(true),
   showUsage: z.boolean().default(false),
+  yolo: z.boolean().default(false),
   hooks: HooksSchema.default({}),
 });
 
@@ -32,5 +33,6 @@ export const DEFAULT_CONFIG: Config = {
   verbose: false,
   tui: true,
   showUsage: false,
+  yolo: false,
   hooks: {},
 };

@@ -8,11 +8,14 @@ import {
   Switch,
 } from "solid-js";
 import type { SessionState } from "#parsers/message-types";
+import type { PermissionRequest } from "#parsers/permission-types";
 import type { AppState, StateProvider } from "#providers/state";
+import type { AcpStateProvider } from "#providers/state/acp";
 import type { PrdFeature } from "#schema/prd";
 import { Chrome } from "#ui/components/chrome";
 import { HelpModal } from "#ui/components/help-modal";
 import { LoopTab } from "#ui/components/loop-tab";
+import { PermissionModal } from "#ui/components/permission-modal";
 import { PrdItemsTab } from "#ui/components/prd-items-tab";
 import { SessionList } from "#ui/components/session-list";
 import {
@@ -44,6 +47,8 @@ function App(props: AppProps) {
   const [totalCost, setTotalCost] = createSignal(0);
   const [toolCallCount, setToolCallCount] = createSignal(0);
   const [prdItems, setPrdItems] = createSignal<PrdFeature[]>([]);
+  const [permissionRequest, setPermissionRequest] =
+    createSignal<PermissionRequest | null>(null);
 
   // Derived from sessions
   const activeSession = createMemo(() => sessions().at(-1));
@@ -140,11 +145,22 @@ function App(props: AppProps) {
     totalCost: setTotalCost,
     toolCallCount: setToolCallCount,
     prdItems: setPrdItems,
+    permissionRequest: setPermissionRequest,
   };
 
   const applyStateUpdate = (update: Partial<AppState>) => {
     applySimpleUpdates(update, setters, sessions);
     applyStatusUpdate(update, setStatus, props.autoExit ?? true, handleExit);
+  };
+
+  const handlePermissionSelect = (optionId: string) => {
+    const provider = props.provider as AcpStateProvider;
+    provider.resolvePermission?.({ id: "", outcome: "selected", optionId });
+  };
+
+  const handlePermissionCancel = () => {
+    const provider = props.provider as AcpStateProvider;
+    provider.resolvePermission?.({ id: "", outcome: "cancelled" });
   };
 
   onMount(() => {
@@ -184,6 +200,23 @@ function App(props: AppProps) {
       setHelpVisible(false);
       return;
     }
+    // Handle permission modal keys
+    if (permissionRequest()) {
+      if (key.name === "escape") {
+        handlePermissionCancel();
+        return;
+      }
+      const num = Number.parseInt(key.name, 10);
+      if (num >= 1 && num <= 9) {
+        const req = permissionRequest();
+        const option = req?.options[num - 1];
+        if (option) {
+          handlePermissionSelect(option.optionId);
+        }
+        return;
+      }
+      return;
+    }
     keyHandlers[key.name]?.();
   });
 
@@ -212,6 +245,11 @@ function App(props: AppProps) {
             onClose={() => setHelpVisible(false)}
             visible={helpVisible()}
           />
+          <PermissionModal
+            onCancel={handlePermissionCancel}
+            onSelect={handlePermissionSelect}
+            request={permissionRequest()}
+          />
         </UIProvider>
       </TabProvider>
     </AppStateProvider>
@@ -229,6 +267,7 @@ function applySimpleUpdates(
     totalCost: (v: number) => void;
     toolCallCount: (v: number) => void;
     prdItems: (v: PrdFeature[]) => void;
+    permissionRequest: (v: PermissionRequest | null) => void;
   },
   getSessions: () => SessionState[]
 ) {
@@ -261,6 +300,9 @@ function applySimpleUpdates(
   }
   if (update.prdItems !== undefined) {
     setters.prdItems(update.prdItems);
+  }
+  if (update.permissionRequest !== undefined) {
+    setters.permissionRequest(update.permissionRequest);
   }
 }
 
