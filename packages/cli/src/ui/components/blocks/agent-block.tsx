@@ -83,7 +83,7 @@ export function AgentBlock(props: AgentBlockProps) {
           {getStatusIndicator(props.block.status)}{" "}
         </span>
         <span style={{ fg: CYAN }}>
-          {isExpanded() ? "\u25bc" : "\u25b6"} \u25c7 Agent
+          {isExpanded() ? "\u25bc" : "\u25b6"} ◇ Agent
         </span>
         <Show when={!isExpanded()}>
           <span style={{ fg: "#888888" }}> {preview()}</span>

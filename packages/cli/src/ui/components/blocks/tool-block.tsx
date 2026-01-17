@@ -338,7 +338,7 @@ export function ToolBlock(props: ToolBlockProps) {
 
       <Show when={isEdit() && diffData().lines.length > 0}>
         <text>
-          <span style={{ fg: "#888888" }}>\u23bf {diffSummary()}</span>
+          <span style={{ fg: "#888888" }}>⎿ {diffSummary()}</span>
         </text>
         <box flexDirection="column" style={{ marginLeft: 4 }}>
           <For each={diffData().lines}>
@@ -363,7 +363,7 @@ export function ToolBlock(props: ToolBlockProps) {
         }
       >
         <text>
-          <span style={{ fg: "#666666" }}> \u23bf {resultSummary()}</span>
+          <span style={{ fg: "#666666" }}> ⎿ {resultSummary()}</span>
         </text>
       </Show>
     </box>
