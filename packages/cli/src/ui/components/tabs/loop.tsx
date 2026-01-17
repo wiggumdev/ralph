@@ -7,9 +7,7 @@ interface LoopTabProps {
 export function LoopTab(props: LoopTabProps) {
   return (
     <box flexDirection="column" style={{ flexGrow: 1 }}>
-      <box flexDirection="column" style={{ flexGrow: 1, marginTop: 1 }}>
-        {props.children}
-      </box>
+      {props.children}
     </box>
   );
 }

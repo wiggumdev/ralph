@@ -14,7 +14,7 @@ export function Progress() {
       <span style={{ fg: "#00aaff" }}>
         {iteration()}/{maxIterations()}
       </span>
-      <span style={{ fg: "#666666" }}>{progressBar()}</span>
+      <span style={{ fg: "#666666" }}> {progressBar()} </span>
     </text>
   );
 }

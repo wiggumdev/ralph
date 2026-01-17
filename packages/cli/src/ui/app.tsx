@@ -18,10 +18,10 @@ import type { AcpStateProvider } from "#providers/state/acp";
 import type { PrdFeature } from "#schema/prd";
 import { Chrome } from "#ui/components/chrome";
 import { HelpModal } from "#ui/components/help-modal";
-import { LoopTab } from "#ui/components/loop-tab";
 import { PermissionModal } from "#ui/components/permission-modal";
-import { PrdItemsTab } from "#ui/components/prd-items-tab";
 import { SessionList } from "#ui/components/session-list";
+import { LoopTab } from "#ui/components/tabs/loop";
+import { PrdItemsTab } from "#ui/components/tabs/prd-items-tab";
 import {
   type AppStateContextValue,
   AppStateProvider,
@@ -30,7 +30,7 @@ import {
 } from "#ui/contexts/app-state-context";
 import { TabProvider, type TabView } from "#ui/contexts/tab-context";
 import { UIProvider, useUI } from "#ui/contexts/ui-context";
-import { PermissionsTab } from "./components/permissions-tab";
+import { PermissionsTab } from "./components/tabs/permissions-tab";
 
 const log = Log.create({ service: "ui" });
 
