@@ -64,6 +64,16 @@ export class PlaybackEngine implements StateProvider {
   // ID counter for items
   private itemIdCounter = 0;
 
+  // Text accumulation state
+  private textBuffer = "";
+  private lastTextTimestamp = 0;
+  private accumulatedTextItemId: string | null = null;
+
+  // Thinking accumulation state
+  private thinkingBuffer = "";
+  private lastThinkingTimestamp = 0;
+  private accumulatedThinkingItemId: string | null = null;
+
   constructor(config: PlaybackConfig) {
     this.config = config;
     this.maxIterations = config.iterations.length;
@@ -163,6 +173,10 @@ export class PlaybackEngine implements StateProvider {
   }
 
   private handlePlaybackComplete(): void {
+    // Flush any accumulated buffers before completing
+    this.flushTextBuffer();
+    this.flushThinkingBuffer();
+
     // Complete current session and collapse it
     if (this.currentSession) {
       const frozenSession: SessionState = {
@@ -271,6 +285,30 @@ export class PlaybackEngine implements StateProvider {
       return;
     }
 
+    if (message.type === "text_delta") {
+      // Flush thinking before text (separate accumulation)
+      this.flushThinkingBuffer();
+      // Accumulate text deltas into a single item
+      this.handleTextDelta(
+        message as import("#parsers/message-types").TextDelta
+      );
+      return;
+    }
+
+    if (message.type === "thinking_delta") {
+      // Flush text before thinking (separate accumulation)
+      this.flushTextBuffer();
+      // Accumulate thinking deltas into a single item
+      this.handleThinkingDelta(
+        message as import("#parsers/message-types").ThinkingDelta
+      );
+      return;
+    }
+
+    // Flush both buffers before processing other messages
+    this.flushTextBuffer();
+    this.flushThinkingBuffer();
+
     if (isMessage(message)) {
       // Check for tool_use or tool_result blocks
       const toolUseBlocks = message.content.filter(isToolUseBlock);
@@ -314,18 +352,6 @@ export class PlaybackEngine implements StateProvider {
           id: this.generateItemId(),
           data: message as import("#parsers/message-types").ResultMessage,
         };
-      } else if (message.type === "text_delta") {
-        item = {
-          type: "text_delta",
-          id: this.generateItemId(),
-          data: message as import("#parsers/message-types").TextDelta,
-        };
-      } else if (message.type === "thinking_delta") {
-        item = {
-          type: "thinking_delta",
-          id: this.generateItemId(),
-          data: message as import("#parsers/message-types").ThinkingDelta,
-        };
       } else if (message.type === "plan") {
         item = {
           type: "plan",
@@ -352,6 +378,104 @@ export class PlaybackEngine implements StateProvider {
     };
 
     this.updateCallback?.(update);
+  }
+
+  private handleTextDelta(
+    message: import("#parsers/message-types").TextDelta
+  ): void {
+    // Accumulate text
+    this.textBuffer += message.text;
+    this.lastTextTimestamp = message.timestamp;
+    this.emitAccumulatedText();
+  }
+
+  private emitAccumulatedText(): void {
+    if (!this.currentSession) {
+      return;
+    }
+
+    if (this.accumulatedTextItemId) {
+      // Update existing item
+      this.updateItem(this.accumulatedTextItemId, () => ({
+        type: "text_delta",
+        id: this.accumulatedTextItemId!,
+        data: {
+          type: "text_delta",
+          text: this.textBuffer,
+          timestamp: this.lastTextTimestamp,
+        },
+      }));
+    } else {
+      // Add new item
+      this.accumulatedTextItemId = this.generateItemId();
+      const item: SessionItem = {
+        type: "text_delta",
+        id: this.accumulatedTextItemId,
+        data: {
+          type: "text_delta",
+          text: this.textBuffer,
+          timestamp: this.lastTextTimestamp,
+        },
+      };
+      this.addItem(item);
+    }
+
+    this.sessions = [...this.sessions.slice(0, -1), this.currentSession!];
+    this.updateCallback?.({ sessions: this.sessions });
+  }
+
+  private flushTextBuffer(): void {
+    this.textBuffer = "";
+    this.accumulatedTextItemId = null;
+  }
+
+  private handleThinkingDelta(
+    message: import("#parsers/message-types").ThinkingDelta
+  ): void {
+    // Accumulate thinking
+    this.thinkingBuffer += message.text;
+    this.lastThinkingTimestamp = message.timestamp;
+    this.emitAccumulatedThinking();
+  }
+
+  private emitAccumulatedThinking(): void {
+    if (!this.currentSession) {
+      return;
+    }
+
+    if (this.accumulatedThinkingItemId) {
+      // Update existing item
+      this.updateItem(this.accumulatedThinkingItemId, () => ({
+        type: "thinking_delta",
+        id: this.accumulatedThinkingItemId!,
+        data: {
+          type: "thinking_delta",
+          text: this.thinkingBuffer,
+          timestamp: this.lastThinkingTimestamp,
+        },
+      }));
+    } else {
+      // Add new item
+      this.accumulatedThinkingItemId = this.generateItemId();
+      const item: SessionItem = {
+        type: "thinking_delta",
+        id: this.accumulatedThinkingItemId,
+        data: {
+          type: "thinking_delta",
+          text: this.thinkingBuffer,
+          timestamp: this.lastThinkingTimestamp,
+        },
+      };
+      this.addItem(item);
+    }
+
+    this.sessions = [...this.sessions.slice(0, -1), this.currentSession!];
+    this.updateCallback?.({ sessions: this.sessions });
+  }
+
+  private flushThinkingBuffer(): void {
+    this.thinkingBuffer = "";
+    this.accumulatedThinkingItemId = null;
   }
 
   private updateSessionUsage(message: RichMessage): void {
