@@ -23,6 +23,8 @@ import {
   SEQUENCE_TOOL_ERROR,
 } from "./test-harness/fixtures";
 
+const showPermissions = process.argv.includes("--permissions");
+
 const provider = new PlaybackEngine({
   iterations: [
     SEQUENCE_STREAMING, // Iteration 1: Word-by-word streaming
@@ -38,8 +40,10 @@ const provider = new PlaybackEngine({
   ],
   speed: 1.0,
   baseDelay: 300,
-  permissionRequests: SAMPLE_PERMISSION_REQUESTS,
-  schedulePermissionAt: { 2: 0 },
+  ...(showPermissions && {
+    permissionRequests: SAMPLE_PERMISSION_REQUESTS,
+    schedulePermissionAt: { 2: 0 },
+  }),
 });
 
 main({

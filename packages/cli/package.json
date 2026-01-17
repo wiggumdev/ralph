@@ -38,10 +38,8 @@
   "scripts": {
     "build": "bun run script/build.ts",
     "build:single": "bun run script/build.ts --single",
-    "dev": "bun --watch src/index.ts",
-    "dev:hot": "bun --hot src/index.ts run -n 3 -p 'Say hello and create a todo list with 3 items then run ls -la then grep for session then wait for 15 seconds'",
+    "dev": "watchexec -r -e ts,tsx -w src -- bun src/dev.ts",
     "start": "bun src/index.ts",
-    "harness": "watchexec -r -e ts,tsx -w src -- bun src/dev.ts",
     "install-bin": "bun run script/install.ts",
     "unlink": "bun run script/unlink.ts",
     "typecheck": "tsc --noEmit",
