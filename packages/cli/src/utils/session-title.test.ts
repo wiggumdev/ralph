@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type {
   Message,
-  RichMessage,
+  SessionItem,
   SessionState,
 } from "#parsers/message-types";
 
@@ -13,7 +13,7 @@ function getSessionTitle(session: SessionState): string {
     return "";
   }
 
-  const lastMessage = findLastTextMessage(session.messages);
+  const lastMessage = findLastTextMessage(session.items);
   if (!lastMessage) {
     return "";
   }
@@ -21,13 +21,13 @@ function getSessionTitle(session: SessionState): string {
   return truncateTitle(lastMessage, MAX_TITLE_LENGTH);
 }
 
-function findLastTextMessage(messages: RichMessage[]): string | null {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i];
-    if (!(msg && msg.type === "message")) {
+function findLastTextMessage(items: SessionItem[]): string | null {
+  for (let i = items.length - 1; i >= 0; i--) {
+    const item = items[i];
+    if (!item || item.type !== "message") {
       continue;
     }
-    const message = msg as Message;
+    const message = item.data as Message;
     if (message.role !== "assistant") {
       continue;
     }
@@ -59,7 +59,7 @@ function truncateTitle(text: string, max: number): string {
 
 function createSession(
   status: SessionState["status"],
-  messages: RichMessage[] = []
+  items: SessionItem[] = []
 ): SessionState {
   return {
     id: "test-session",
@@ -67,8 +67,7 @@ function createSession(
     cwd: "/test",
     mcpServers: [],
     availableCommands: [],
-    messages,
-    toolCalls: new Map(),
+    items,
     usage: { inputTokens: 0, outputTokens: 0, cost: 0, toolCallCount: 0 },
     todos: [],
     startTime: Date.now(),
@@ -87,40 +86,47 @@ function createTextMessage(text: string, role: "user" | "assistant"): Message {
   };
 }
 
+function messageToItem(message: Message, id: string): SessionItem {
+  return { type: "message", id, data: message };
+}
+
 describe("getSessionTitle", () => {
   test("returns empty string for running session", () => {
     const session = createSession("running", [
-      createTextMessage("Some summary text", "assistant"),
+      messageToItem(createTextMessage("Some summary text", "assistant"), "1"),
     ]);
     expect(getSessionTitle(session)).toBe("");
   });
 
   test("returns empty string for paused session", () => {
     const session = createSession("paused", [
-      createTextMessage("Some summary text", "assistant"),
+      messageToItem(createTextMessage("Some summary text", "assistant"), "1"),
     ]);
     expect(getSessionTitle(session)).toBe("");
   });
 
   test("returns last assistant message for complete session", () => {
     const session = createSession("complete", [
-      createTextMessage("First message", "assistant"),
-      createTextMessage("Final summary", "assistant"),
+      messageToItem(createTextMessage("First message", "assistant"), "1"),
+      messageToItem(createTextMessage("Final summary", "assistant"), "2"),
     ]);
     expect(getSessionTitle(session)).toBe("Final summary");
   });
 
   test("returns last assistant message for error session", () => {
     const session = createSession("error", [
-      createTextMessage("Error occurred during processing", "assistant"),
+      messageToItem(
+        createTextMessage("Error occurred during processing", "assistant"),
+        "1"
+      ),
     ]);
     expect(getSessionTitle(session)).toBe("Error occurred during processing");
   });
 
   test("ignores user messages", () => {
     const session = createSession("complete", [
-      createTextMessage("Assistant response", "assistant"),
-      createTextMessage("User follow-up", "user"),
+      messageToItem(createTextMessage("Assistant response", "assistant"), "1"),
+      messageToItem(createTextMessage("User follow-up", "user"), "2"),
     ]);
     expect(getSessionTitle(session)).toBe("Assistant response");
   });
@@ -134,7 +140,7 @@ describe("getSessionTitle", () => {
     const longText =
       "This is a very long summary that exceeds the maximum allowed length for titles";
     const session = createSession("complete", [
-      createTextMessage(longText, "assistant"),
+      messageToItem(createTextMessage(longText, "assistant"), "1"),
     ]);
     const title = getSessionTitle(session);
     expect(title.length).toBe(MAX_TITLE_LENGTH);
@@ -144,7 +150,7 @@ describe("getSessionTitle", () => {
   test("extracts first line from multiline text", () => {
     const multilineText = "First line summary\nSecond line details\nThird line";
     const session = createSession("complete", [
-      createTextMessage(multilineText, "assistant"),
+      messageToItem(createTextMessage(multilineText, "assistant"), "1"),
     ]);
     expect(getSessionTitle(session)).toBe("First line summary");
   });

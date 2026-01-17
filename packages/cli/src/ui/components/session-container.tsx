@@ -6,18 +6,19 @@ import type {
   SystemMessage,
   TextDelta,
   ThinkingDelta,
-  ToolReference,
 } from "#parsers/message-types";
 import {
-  isMessage,
-  isResultMessage,
-  isSystemMessage,
-  isTextDelta,
-  isThinkingDelta,
-  isToolReference,
+  isAgentItem,
+  isMessageItem,
+  isResultItem,
+  isSystemItem,
+  isTextDeltaItem,
+  isThinkingDeltaItem,
+  isToolItem,
 } from "#parsers/message-types";
 import { getSessionTitle } from "#utils/session-title";
 import { AgentPlan } from "./agent-plan";
+import { AgentBlock } from "./blocks/agent-block";
 import { SystemMessageBlock } from "./blocks/system-message-block";
 import { TextDeltaBlock } from "./blocks/text-delta-block";
 import { ThinkingBlock } from "./blocks/thinking-block";
@@ -115,40 +116,47 @@ export function SessionContainer(props: SessionContainerProps) {
           </text>
         </box>
         <box flexDirection="column" style={{ marginLeft: 2 }}>
-          {/* Render messages with interleaved tool calls */}
-          <For each={props.session.messages}>
-            {(msg) => (
+          {/* Render items directly - no more references */}
+          <For each={props.session.items}>
+            {(item) => (
               <box>
                 <Switch>
-                  <Match when={isMessage(msg)}>
+                  <Match when={isMessageItem(item)}>
                     <MessageItem
                       expanded={props.expanded}
-                      message={msg as Message}
+                      message={item.data as Message}
                     />
                   </Match>
-                  <Match when={isResultMessage(msg)}>
-                    <ResultMessage message={msg as ResultMessageType} />
+                  <Match when={isResultItem(item)}>
+                    <ResultMessage message={item.data as ResultMessageType} />
                   </Match>
-                  <Match when={isTextDelta(msg)}>
-                    <TextDeltaBlock message={msg as TextDelta} />
+                  <Match when={isTextDeltaItem(item)}>
+                    <TextDeltaBlock message={item.data as TextDelta} />
                   </Match>
-                  <Match when={isThinkingDelta(msg)}>
+                  <Match when={isThinkingDeltaItem(item)}>
                     <ThinkingBlock
-                      block={msg as ThinkingDelta}
+                      block={item.data as ThinkingDelta}
                       expanded={props.expanded}
                     />
                   </Match>
-                  <Match when={isSystemMessage(msg)}>
-                    <SystemMessageBlock message={msg as SystemMessage} />
+                  <Match when={isSystemItem(item)}>
+                    <SystemMessageBlock message={item.data as SystemMessage} />
                   </Match>
-                  <Match when={isToolReference(msg)}>
-                    {(() => {
-                      const ref = msg as ToolReference;
-                      const tool = props.session.toolCalls.get(ref.toolCallId);
-                      return tool ? (
-                        <ToolBlock block={tool} expanded={props.expanded} />
-                      ) : null;
-                    })()}
+                  <Match when={isToolItem(item)}>
+                    <ToolBlock
+                      block={
+                        item.data as import("#parsers/message-types").ToolBlock
+                      }
+                      expanded={props.expanded}
+                    />
+                  </Match>
+                  <Match when={isAgentItem(item)}>
+                    <AgentBlock
+                      block={
+                        item.data as import("#parsers/message-types").AgentBlock
+                      }
+                      expanded={props.expanded}
+                    />
                   </Match>
                 </Switch>
               </box>

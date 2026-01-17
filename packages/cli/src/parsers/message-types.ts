@@ -194,20 +194,36 @@ export interface PlanMessage {
   timestamp: number;
 }
 
-export interface ToolReference {
-  type: "tool_reference";
+export interface AgentBlock {
+  type: "agent";
   toolCallId: string;
-  timestamp: number;
+  title: string;
+  status: ToolCallStatus;
+  items: SessionItem[]; // Nested items within agent
+  startTime: number;
+  endTime?: number;
+  collapsed: boolean;
 }
 
+// Session item - discriminated union for ordered rendering
+export type SessionItem =
+  | { type: "message"; id: string; data: Message }
+  | { type: "tool"; id: string; data: ToolBlock }
+  | { type: "agent"; id: string; data: AgentBlock }
+  | { type: "text_delta"; id: string; data: TextDelta }
+  | { type: "thinking_delta"; id: string; data: ThinkingDelta }
+  | { type: "system"; id: string; data: SystemMessage }
+  | { type: "result"; id: string; data: ResultMessage }
+  | { type: "plan"; id: string; data: PlanMessage };
+
+// Rich message types for incoming message stream (adapter input)
 export type RichMessage =
   | Message
   | SystemMessage
   | ResultMessage
   | TextDelta
   | ThinkingDelta
-  | PlanMessage
-  | ToolReference;
+  | PlanMessage;
 
 export type SessionStatus = "running" | "complete" | "error" | "paused";
 
@@ -257,11 +273,8 @@ export interface SessionState {
   currentMode?: string;
   availableCommands: AvailableCommand[];
 
-  // Messages for this session
-  messages: RichMessage[];
-
-  // Tool calls tracked by toolCallId
-  toolCalls: Map<string, ToolBlock>;
+  // Single ordered collection of items
+  items: SessionItem[];
 
   // Usage tracking per session
   usage: SessionUsage;
@@ -278,7 +291,7 @@ export interface SessionState {
   activity: SessionActivity;
 }
 
-// Type guards
+// Type guards for RichMessage (incoming messages)
 export function isMessage(msg: RichMessage): msg is Message {
   return msg.type === "message";
 }
@@ -291,6 +304,19 @@ export function isResultMessage(msg: RichMessage): msg is ResultMessage {
   return msg.type === "result";
 }
 
+export function isTextDelta(msg: RichMessage): msg is TextDelta {
+  return msg.type === "text_delta";
+}
+
+export function isThinkingDelta(msg: RichMessage): msg is ThinkingDelta {
+  return msg.type === "thinking_delta";
+}
+
+export function isPlanMessage(msg: RichMessage): msg is PlanMessage {
+  return msg.type === "plan";
+}
+
+// Type guards for ContentBlock
 export function isTextBlock(block: ContentBlock): block is TextBlock {
   return block.type === "text";
 }
@@ -313,24 +339,8 @@ export function isToolBlock(block: ToolBlock | unknown): block is ToolBlock {
   );
 }
 
-export function isTextDelta(msg: RichMessage): msg is TextDelta {
-  return msg.type === "text_delta";
-}
-
-export function isThinkingDelta(msg: RichMessage): msg is ThinkingDelta {
-  return msg.type === "thinking_delta";
-}
-
 export function isThinkingBlock(block: ContentBlock): block is ThinkingBlock {
   return block.type === "thinking";
-}
-
-export function isPlanMessage(msg: RichMessage): msg is PlanMessage {
-  return msg.type === "plan";
-}
-
-export function isToolReference(msg: RichMessage): msg is ToolReference {
-  return msg.type === "tool_reference";
 }
 
 export function isImageBlock(block: ContentBlock): block is ImageBlock {
@@ -359,4 +369,85 @@ export function isTerminalBlock(block: ContentBlock): block is TerminalBlock {
 
 export function isDiffBlock(block: ContentBlock): block is DiffBlock {
   return block.type === "diff";
+}
+
+// Type guards for SessionItem
+export function isMessageItem(
+  item: SessionItem
+): item is { type: "message"; id: string; data: Message } {
+  return item.type === "message";
+}
+
+export function isToolItem(
+  item: SessionItem
+): item is { type: "tool"; id: string; data: ToolBlock } {
+  return item.type === "tool";
+}
+
+export function isAgentItem(
+  item: SessionItem
+): item is { type: "agent"; id: string; data: AgentBlock } {
+  return item.type === "agent";
+}
+
+export function isTextDeltaItem(
+  item: SessionItem
+): item is { type: "text_delta"; id: string; data: TextDelta } {
+  return item.type === "text_delta";
+}
+
+export function isThinkingDeltaItem(
+  item: SessionItem
+): item is { type: "thinking_delta"; id: string; data: ThinkingDelta } {
+  return item.type === "thinking_delta";
+}
+
+export function isSystemItem(
+  item: SessionItem
+): item is { type: "system"; id: string; data: SystemMessage } {
+  return item.type === "system";
+}
+
+export function isResultItem(
+  item: SessionItem
+): item is { type: "result"; id: string; data: ResultMessage } {
+  return item.type === "result";
+}
+
+export function isPlanItem(
+  item: SessionItem
+): item is { type: "plan"; id: string; data: PlanMessage } {
+  return item.type === "plan";
+}
+
+// Helper functions for finding/updating items
+export function findItemById(
+  items: SessionItem[],
+  id: string
+): SessionItem | undefined {
+  return items.find((item) => item.id === id);
+}
+
+export function findToolById(
+  items: SessionItem[],
+  toolCallId: string
+): ToolBlock | undefined {
+  const item = items.find((i) => i.type === "tool" && i.id === toolCallId);
+  return item?.type === "tool" ? item.data : undefined;
+}
+
+export function findAgentById(
+  items: SessionItem[],
+  toolCallId: string
+): AgentBlock | undefined {
+  const item = items.find((i) => i.type === "agent" && i.id === toolCallId);
+  return item?.type === "agent" ? item.data : undefined;
+}
+
+export function updateItemById(
+  items: SessionItem[],
+  id: string,
+  updater: (item: SessionItem) => SessionItem
+): SessionItem[] {
+  return items.map((item) => (item.id === id ? updater(item) : item));
 }

@@ -1,6 +1,6 @@
 import { type Accessor, createContext, type JSX, useContext } from "solid-js";
 import type {
-  RichMessage,
+  SessionItem,
   SessionState,
   TodoItem,
 } from "#parsers/message-types";
@@ -19,7 +19,7 @@ export interface AppStateContextValue {
   toolCallCount: Accessor<number>;
   prdItems: Accessor<PrdFeature[]>;
   // Derived from activeSession for convenience
-  messages: Accessor<RichMessage[]>;
+  items: Accessor<SessionItem[]>;
   todos: Accessor<TodoItem[]>;
 }
 

@@ -62,7 +62,7 @@ function App(props: AppProps) {
 
   // Derived from sessions
   const activeSession = createMemo(() => sessions().at(-1));
-  const messages = createMemo(() => activeSession()?.messages ?? []);
+  const items = createMemo(() => activeSession()?.items ?? []);
   const todos = createMemo(() => activeSession()?.todos ?? []);
 
   // Tab state
@@ -134,7 +134,7 @@ function App(props: AppProps) {
     totalCost,
     toolCallCount,
     prdItems,
-    messages,
+    items,
     todos,
   };
 

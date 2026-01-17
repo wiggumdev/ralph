@@ -3,6 +3,7 @@ import type {
   MessageRole,
   ResultMessage,
   RichMessage,
+  SessionItem,
   SessionState,
   SystemMessage,
   TextDelta,
@@ -105,8 +106,7 @@ function createSessionState(
     cwd: "/Users/test/project",
     mcpServers: [],
     availableCommands: [],
-    messages: [],
-    toolCalls: new Map(),
+    items: [],
     usage: { inputTokens: 0, outputTokens: 0, cost: 0, toolCallCount: 0 },
     todos: [],
     startTime: Date.now(),
@@ -115,6 +115,41 @@ function createSessionState(
     activity: "idle",
     ...overrides,
   };
+}
+
+// Helper to convert messages to items for backward compatibility
+function messagesToItems(messages: RichMessage[]): SessionItem[] {
+  return messages.map((msg, index) => {
+    const id = `item-${index}`;
+    if (msg.type === "message") {
+      return { type: "message" as const, id, data: msg as Message };
+    }
+    if (msg.type === "system") {
+      return { type: "system" as const, id, data: msg as SystemMessage };
+    }
+    if (msg.type === "result") {
+      return { type: "result" as const, id, data: msg as ResultMessage };
+    }
+    if (msg.type === "text_delta") {
+      return { type: "text_delta" as const, id, data: msg as TextDelta };
+    }
+    if (msg.type === "thinking_delta") {
+      return {
+        type: "thinking_delta" as const,
+        id,
+        data: msg as import("#parsers/message-types").ThinkingDelta,
+      };
+    }
+    if (msg.type === "plan") {
+      return {
+        type: "plan" as const,
+        id,
+        data: msg as import("#parsers/message-types").PlanMessage,
+      };
+    }
+    // Fallback - treat as message
+    return { type: "message" as const, id, data: msg as unknown as Message };
+  });
 }
 
 // ============================================================================
@@ -126,7 +161,11 @@ export const SAMPLE_SESSION_COMPLETE: SessionState = createSessionState({
   iteration: 1,
   startTime: Date.now() - 60_000,
   endTime: Date.now() - 30_000,
-  messages: [SAMPLE_SYSTEM_MESSAGE, SAMPLE_TEXT_MESSAGE, SAMPLE_RESULT_SUCCESS],
+  items: messagesToItems([
+    SAMPLE_SYSTEM_MESSAGE,
+    SAMPLE_TEXT_MESSAGE,
+    SAMPLE_RESULT_SUCCESS,
+  ]),
   usage: {
     inputTokens: 2500,
     outputTokens: 1200,
@@ -141,12 +180,12 @@ export const SAMPLE_SESSION_RUNNING: SessionState = createSessionState({
   id: "session-2",
   iteration: 2,
   startTime: Date.now() - 10_000,
-  messages: [
+  items: messagesToItems([
     SAMPLE_SYSTEM_MESSAGE,
     SAMPLE_TEXT_MESSAGE,
     SAMPLE_TOOL_USE_MESSAGE,
     SAMPLE_TOOL_RESULT_MESSAGE,
-  ],
+  ]),
   usage: {
     inputTokens: 1500,
     outputTokens: 800,
@@ -193,11 +232,11 @@ export const SCENARIO_COMPLETE: AppState = {
       id: "session-2",
       iteration: 2,
       endTime: Date.now() - 20_000,
-      messages: [
+      items: messagesToItems([
         SAMPLE_SYSTEM_MESSAGE,
         SAMPLE_TEXT_MESSAGE,
         SAMPLE_RESULT_SUCCESS,
-      ],
+      ]),
       usage: {
         inputTokens: 2500,
         outputTokens: 1200,
@@ -210,7 +249,7 @@ export const SCENARIO_COMPLETE: AppState = {
       id: "session-3",
       iteration: 3,
       endTime: Date.now(),
-      messages: [
+      items: messagesToItems([
         SAMPLE_SYSTEM_MESSAGE,
         SAMPLE_TEXT_MESSAGE,
         {
@@ -220,7 +259,7 @@ export const SCENARIO_COMPLETE: AppState = {
           timestamp: Date.now(),
         },
         SAMPLE_RESULT_SUCCESS,
-      ],
+      ]),
       usage: {
         inputTokens: 2500,
         outputTokens: 1200,
@@ -248,11 +287,11 @@ export const SCENARIO_ERROR: AppState = {
       id: "session-1",
       iteration: 1,
       startTime: Date.now() - 5000,
-      messages: [
+      items: messagesToItems([
         SAMPLE_SYSTEM_MESSAGE,
         SAMPLE_TEXT_MESSAGE,
         SAMPLE_RESULT_ERROR,
-      ],
+      ]),
       usage: {
         inputTokens: 1000,
         outputTokens: 200,
@@ -279,11 +318,11 @@ export const SCENARIO_PAUSED: AppState = {
     createSessionState({
       id: "session-2",
       iteration: 2,
-      messages: [
+      items: messagesToItems([
         SAMPLE_SYSTEM_MESSAGE,
         SAMPLE_TEXT_MESSAGE,
         SAMPLE_TOOL_USE_MESSAGE,
-      ],
+      ]),
       usage: {
         inputTokens: 1200,
         outputTokens: 600,

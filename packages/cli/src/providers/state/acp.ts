@@ -7,16 +7,19 @@ import type {
 } from "#adapters/acp";
 import { Log } from "#log";
 import type {
+  AgentBlock,
   Message,
   RichMessage,
   SessionActivity,
+  SessionItem,
   SessionState,
   ThinkingDelta,
   ToolBlock,
   ToolCallContent,
-  ToolReference,
 } from "#parsers/message-types";
 import {
+  findAgentById,
+  findToolById,
   isMessage,
   isPlanMessage,
   isResultMessage,
@@ -24,6 +27,7 @@ import {
   isThinkingDelta,
   isToolResultBlock,
   isToolUseBlock,
+  updateItemById,
 } from "#parsers/message-types";
 import type {
   PermissionRequest,
@@ -69,12 +73,12 @@ export class AcpStateProvider implements StateProvider {
   // Text accumulation state
   private textBuffer = "";
   private lastTextTimestamp = 0;
-  private accumulatedMessageIndex = -1;
+  private accumulatedTextItemId: string | null = null;
 
   // Thinking accumulation state
   private thinkingBuffer = "";
   private lastThinkingTimestamp = 0;
-  private accumulatedThinkingIndex = -1;
+  private accumulatedThinkingItemId: string | null = null;
 
   // Permission handling - queue to handle concurrent requests
   private readonly pendingPermissions = new Map<string, DeferredPermission>();
@@ -86,10 +90,20 @@ export class AcpStateProvider implements StateProvider {
     { formattedName: string; status: "allowed" | "denied"; count: number }
   >();
 
+  // Agent tracking - stack for nested agents (toolCallIds)
+  private readonly activeAgentStack: string[] = [];
+
+  // ID counter for items
+  private itemIdCounter = 0;
+
   constructor(adapter: AcpAdapter, options: AcpStateProviderOptions) {
     this.adapter = adapter;
     this.options = options;
     this.maxIterations = options.maxIterations ?? 10;
+  }
+
+  private generateItemId(): string {
+    return `item-${Date.now()}-${this.itemIdCounter++}`;
   }
 
   getInitialState(): AppState {
@@ -260,8 +274,7 @@ export class AcpStateProvider implements StateProvider {
       cwd: this.options.cwd ?? process.cwd(),
       mcpServers: [],
       availableCommands: [],
-      messages: [],
-      toolCalls: new Map(),
+      items: [],
       usage: { inputTokens: 0, outputTokens: 0, cost: 0, toolCallCount: 0 },
       todos: [],
       startTime: Date.now(),
@@ -307,6 +320,106 @@ export class AcpStateProvider implements StateProvider {
     }
   }
 
+  // --- Item management helpers ---
+
+  private findItemById(id: string): SessionItem | undefined {
+    if (!this.currentSession) {
+      return undefined;
+    }
+    // Check session items
+    const found = this.currentSession.items.find((i) => i.id === id);
+    if (found) {
+      return found;
+    }
+    // Check agent items (nested)
+    for (const item of this.currentSession.items) {
+      if (item.type === "agent") {
+        const agentItem = item.data.items.find((i) => i.id === id);
+        if (agentItem) {
+          return agentItem;
+        }
+      }
+    }
+    return undefined;
+  }
+
+  private addItem(item: SessionItem): void {
+    if (!this.currentSession) {
+      return;
+    }
+
+    const agentId = this.getCurrentAgentId();
+    if (agentId) {
+      // Add to current agent's items
+      this.currentSession = {
+        ...this.currentSession,
+        items: updateItemById(
+          this.currentSession.items,
+          agentId,
+          (agentItem) =>
+            agentItem.type === "agent"
+              ? {
+                  ...agentItem,
+                  data: {
+                    ...agentItem.data,
+                    items: [...agentItem.data.items, item],
+                  },
+                }
+              : agentItem
+        ),
+      };
+    } else {
+      // Add to session items
+      this.currentSession = {
+        ...this.currentSession,
+        items: [...this.currentSession.items, item],
+      };
+    }
+    this.sessions = [...this.sessions.slice(0, -1), this.currentSession];
+  }
+
+  private updateItem(
+    id: string,
+    updater: (item: SessionItem) => SessionItem
+  ): void {
+    if (!this.currentSession) {
+      return;
+    }
+
+    // Try to update in session items first
+    const found = this.currentSession.items.some((i) => i.id === id);
+    if (found) {
+      this.currentSession = {
+        ...this.currentSession,
+        items: updateItemById(this.currentSession.items, id, updater),
+      };
+    } else {
+      // Search in agent items
+      this.currentSession = {
+        ...this.currentSession,
+        items: this.currentSession.items.map((item) => {
+          if (item.type === "agent") {
+            const agentData = item.data;
+            const foundInAgent = agentData.items.some((i) => i.id === id);
+            if (foundInAgent) {
+              return {
+                ...item,
+                data: {
+                  ...agentData,
+                  items: updateItemById(agentData.items, id, updater),
+                },
+              };
+            }
+          }
+          return item;
+        }),
+      };
+    }
+    this.sessions = [...this.sessions.slice(0, -1), this.currentSession];
+  }
+
+  // --- Message handling ---
+
   private handleMessage(message: RichMessage): void {
     if (isThinkingDelta(message)) {
       this.handleThinkingDelta(message);
@@ -344,7 +457,7 @@ export class AcpStateProvider implements StateProvider {
   private handlePlanMessage(
     message: import("#parsers/message-types").PlanMessage
   ): void {
-    // Update session plan (not added to messages array)
+    // Update session plan (not added to items array)
     if (this.currentSession) {
       this.currentSession = {
         ...this.currentSession,
@@ -366,7 +479,7 @@ export class AcpStateProvider implements StateProvider {
       this.updateActivity("tool_executing");
     }
 
-    // Filter out tool blocks from message content for the messages array
+    // Filter out tool blocks from message content
     const isToolRelated = (b: import("#parsers/message-types").ContentBlock) =>
       isToolUseBlock(b) || isToolResultBlock(b) || isTerminalBlock(b);
     const nonToolContent = message.content.filter((b) => !isToolRelated(b));
@@ -379,33 +492,19 @@ export class AcpStateProvider implements StateProvider {
         ...message,
         content: nonToolContent,
       };
-      this.currentSession = {
-        ...this.currentSession,
-        messages: [...this.currentSession.messages, filteredMessage],
+      const item: SessionItem = {
+        type: "message",
+        id: this.generateItemId(),
+        data: filteredMessage,
       };
-      this.sessions = [...this.sessions.slice(0, -1), this.currentSession];
+      this.addItem(item);
     }
 
+    // Process tool blocks
     if (toolUseBlocks.length > 0 || toolResultBlocks.length > 0) {
-      // Flush text before processing tool blocks
       this.flushTextBuffer();
       this.flushThinkingBuffer();
-      // Process tool blocks into toolCalls map
       this.processToolBlocks(toolUseBlocks, toolResultBlocks, terminalBlocks);
-
-      // Insert tool references for each tool_use block
-      if (this.currentSession && toolUseBlocks.length > 0) {
-        const toolRefs: ToolReference[] = toolUseBlocks.map((block) => ({
-          type: "tool_reference" as const,
-          toolCallId: block.id,
-          timestamp: Date.now(),
-        }));
-        this.currentSession = {
-          ...this.currentSession,
-          messages: [...this.currentSession.messages, ...toolRefs],
-        };
-        this.sessions = [...this.sessions.slice(0, -1), this.currentSession];
-      }
     }
 
     // Update usage tracking
@@ -418,19 +517,31 @@ export class AcpStateProvider implements StateProvider {
     this.flushTextBuffer();
     this.flushThinkingBuffer();
 
-    // Add to current session
-    if (this.currentSession) {
-      this.currentSession = {
-        ...this.currentSession,
-        messages: [...this.currentSession.messages, message],
-      };
-
-      // Update usage tracking
-      this.updateSessionUsage(message);
-
-      this.sessions = [...this.sessions.slice(0, -1), this.currentSession];
+    if (!this.currentSession) {
+      return;
     }
 
+    // Create appropriate item based on message type
+    let item: SessionItem;
+    if (message.type === "system") {
+      item = {
+        type: "system",
+        id: this.generateItemId(),
+        data: message as import("#parsers/message-types").SystemMessage,
+      };
+    } else if (message.type === "result") {
+      item = {
+        type: "result",
+        id: this.generateItemId(),
+        data: message as import("#parsers/message-types").ResultMessage,
+      };
+    } else {
+      // Fallback - shouldn't happen with current types
+      return;
+    }
+
+    this.addItem(item);
+    this.updateSessionUsage(message);
     this.emitStateUpdate();
   }
 
@@ -443,26 +554,122 @@ export class AcpStateProvider implements StateProvider {
       return;
     }
 
-    const toolCalls = new Map(this.currentSession.toolCalls);
-
     for (const block of toolUseBlocks) {
-      this.addToolUseBlock(toolCalls, block);
-    }
-    for (const block of toolResultBlocks) {
-      this.updateToolWithResult(toolCalls, block);
-    }
-    for (const block of terminalBlocks) {
-      this.attachTerminalToTool(toolCalls, block);
+      if (this.isTaskTool(block.name)) {
+        this.startAgentBlock(block);
+      } else {
+        this.addToolBlock(block);
+      }
     }
 
-    this.currentSession = { ...this.currentSession, toolCalls };
-    this.sessions = [...this.sessions.slice(0, -1), this.currentSession];
+    for (const block of toolResultBlocks) {
+      this.updateToolWithResult(block);
+    }
+
+    for (const block of terminalBlocks) {
+      this.attachTerminalToTool(block);
+    }
   }
 
-  private addToolUseBlock(
-    toolCalls: Map<string, ToolBlock>,
+  private isTaskTool(name: string): boolean {
+    return name.toLowerCase() === "task";
+  }
+
+  private startAgentBlock(
     block: import("#parsers/message-types").ToolUseBlock
   ): void {
+    // Check if agent already exists - if so, update it
+    const existing = this.findItemById(block.id);
+    if (existing) {
+      this.updateItem(block.id, (item) => {
+        if (item.type !== "agent") {
+          return item;
+        }
+        return {
+          ...item,
+          data: {
+            ...item.data,
+            status: block.status ?? item.data.status,
+          },
+        };
+      });
+      return;
+    }
+
+    const title =
+      typeof block.input?.description === "string"
+        ? block.input.description
+        : "Agent";
+
+    const agentBlock: AgentBlock = {
+      type: "agent",
+      toolCallId: block.id,
+      title,
+      status: block.status ?? "pending",
+      items: [],
+      startTime: Date.now(),
+      collapsed: true,
+    };
+
+    const item: SessionItem = {
+      type: "agent",
+      id: block.id,
+      data: agentBlock,
+    };
+
+    // Add to parent agent or session
+    this.addItem(item);
+    this.activeAgentStack.push(block.id);
+  }
+
+  private completeAgentBlock(toolCallId: string, isError: boolean): void {
+    this.updateItem(toolCallId, (item) =>
+      item.type === "agent"
+        ? {
+            ...item,
+            data: {
+              ...item.data,
+              status: isError ? "failed" : "completed",
+              endTime: Date.now(),
+            },
+          }
+        : item
+    );
+
+    // Pop from stack
+    const stackIndex = this.activeAgentStack.indexOf(toolCallId);
+    if (stackIndex >= 0) {
+      this.activeAgentStack.splice(stackIndex, 1);
+    }
+  }
+
+  private getCurrentAgentId(): string | null {
+    return this.activeAgentStack.length > 0
+      ? (this.activeAgentStack.at(-1) ?? null)
+      : null;
+  }
+
+  private addToolBlock(
+    block: import("#parsers/message-types").ToolUseBlock
+  ): void {
+    // Check if tool already exists - if so, update it
+    const existing = this.findItemById(block.id);
+    if (existing) {
+      this.updateItem(block.id, (item) => {
+        if (item.type !== "tool") {
+          return item;
+        }
+        return {
+          ...item,
+          data: {
+            ...item.data,
+            status: block.status ?? item.data.status,
+          },
+        };
+      });
+      return;
+    }
+
     const toolBlock: ToolBlock = {
       type: "tool",
       toolCallId: block.id,
@@ -472,29 +679,72 @@ export class AcpStateProvider implements StateProvider {
       locations: block.locations,
       rawInput: block.input,
     };
-    toolCalls.set(block.id, toolBlock);
+
+    const item: SessionItem = {
+      type: "tool",
+      id: block.id,
+      data: toolBlock,
+    };
+
+    this.addItem(item);
   }
 
   private updateToolWithResult(
-    toolCalls: Map<string, ToolBlock>,
     block: import("#parsers/message-types").ToolResultBlock
   ): void {
-    const existing = toolCalls.get(block.tool_use_id);
-    if (!existing) {
+    // Check if this is a Task tool completion
+    const agentBlock = findAgentById(
+      this.currentSession?.items ?? [],
+      block.tool_use_id
+    );
+    if (agentBlock) {
+      this.completeAgentBlock(block.tool_use_id, !!block.is_error);
       return;
     }
 
-    const content: ToolCallContent[] = existing.content ?? [];
-    const text = this.extractResultText(block.content);
-    if (text) {
-      content.push({ type: "content", content: { type: "text", text } });
+    // Find and update the tool
+    const existingTool = findToolById(
+      this.currentSession?.items ?? [],
+      block.tool_use_id
+    );
+
+    // Also check in agent items
+    let foundInAgent = false;
+    if (!existingTool && this.currentSession) {
+      for (const item of this.currentSession.items) {
+        if (item.type === "agent") {
+          const agentTool = findToolById(item.data.items, block.tool_use_id);
+          if (agentTool) {
+            foundInAgent = true;
+            break;
+          }
+        }
+      }
     }
 
-    toolCalls.set(block.tool_use_id, {
-      ...existing,
-      status: block.is_error ? "failed" : "completed",
-      rawOutput: block.content,
-      content,
+    if (!(existingTool || foundInAgent)) {
+      return;
+    }
+
+    this.updateItem(block.tool_use_id, (item) => {
+      if (item.type !== "tool") {
+        return item;
+      }
+      const existing = item.data;
+      const content: ToolCallContent[] = existing.content ?? [];
+      const text = this.extractResultText(block.content);
+      if (text) {
+        content.push({ type: "content", content: { type: "text", text } });
+      }
+      return {
+        ...item,
+        data: {
+          ...existing,
+          status: block.is_error ? "failed" : "completed",
+          rawOutput: block.content,
+          content,
+        },
+      };
     });
   }
 
@@ -514,15 +764,27 @@ export class AcpStateProvider implements StateProvider {
   }
 
   private attachTerminalToTool(
-    toolCalls: Map<string, ToolBlock>,
     block: import("#parsers/message-types").TerminalBlock
   ): void {
-    for (const [id, tool] of toolCalls) {
-      if (tool.status === "in_progress" || tool.status === "pending") {
-        const content: ToolCallContent[] = tool.content ?? [];
-        content.push({ type: "terminal", terminalId: block.terminalId });
-        toolCalls.set(id, { ...tool, content });
-        break;
+    if (!this.currentSession) {
+      return;
+    }
+
+    // Find first in-progress or pending tool
+    for (const item of this.currentSession.items) {
+      if (item.type === "tool") {
+        const tool = item.data;
+        if (tool.status === "in_progress" || tool.status === "pending") {
+          this.updateItem(item.id, (i) => {
+            if (i.type !== "tool") {
+              return i;
+            }
+            const content: ToolCallContent[] = i.data.content ?? [];
+            content.push({ type: "terminal", terminalId: block.terminalId });
+            return { ...i, data: { ...i.data, content } };
+          });
+          return;
+        }
       }
     }
   }
@@ -564,34 +826,33 @@ export class AcpStateProvider implements StateProvider {
       return;
     }
 
-    // Create accumulated text message
-    const textMessage: Message = {
-      type: "message",
-      role: "assistant",
-      content: [{ type: "text", text: this.textBuffer }],
-      timestamp: this.lastTextTimestamp,
-    };
-
-    // Update current session messages
-    const sessionMessages = this.currentSession.messages;
-    if (this.accumulatedMessageIndex >= 0) {
-      this.currentSession = {
-        ...this.currentSession,
-        messages: [
-          ...sessionMessages.slice(0, this.accumulatedMessageIndex),
-          textMessage,
-          ...sessionMessages.slice(this.accumulatedMessageIndex + 1),
-        ],
-      };
+    if (this.accumulatedTextItemId) {
+      // Update existing item
+      this.updateItem(this.accumulatedTextItemId, () => ({
+        type: "text_delta",
+        id: this.accumulatedTextItemId!,
+        data: {
+          type: "text_delta",
+          text: this.textBuffer,
+          timestamp: this.lastTextTimestamp,
+        },
+      }));
     } else {
-      this.accumulatedMessageIndex = sessionMessages.length;
-      this.currentSession = {
-        ...this.currentSession,
-        messages: [...sessionMessages, textMessage],
+      // Add new item
+      this.accumulatedTextItemId = this.generateItemId();
+      const item: SessionItem = {
+        type: "text_delta",
+        id: this.accumulatedTextItemId,
+        data: {
+          type: "text_delta",
+          text: this.textBuffer,
+          timestamp: this.lastTextTimestamp,
+        },
       };
+      this.addItem(item);
     }
-    this.sessions = [...this.sessions.slice(0, -1), this.currentSession];
 
+    this.sessions = [...this.sessions.slice(0, -1), this.currentSession!];
     this.emitStateUpdate();
   }
 
@@ -600,33 +861,33 @@ export class AcpStateProvider implements StateProvider {
       return;
     }
 
-    // Create accumulated thinking message
-    const thinkingMessage: ThinkingDelta = {
-      type: "thinking_delta",
-      text: this.thinkingBuffer,
-      timestamp: this.lastThinkingTimestamp,
-    };
-
-    // Update current session messages
-    const sessionMessages = this.currentSession.messages;
-    if (this.accumulatedThinkingIndex >= 0) {
-      this.currentSession = {
-        ...this.currentSession,
-        messages: [
-          ...sessionMessages.slice(0, this.accumulatedThinkingIndex),
-          thinkingMessage,
-          ...sessionMessages.slice(this.accumulatedThinkingIndex + 1),
-        ],
-      };
+    if (this.accumulatedThinkingItemId) {
+      // Update existing item
+      this.updateItem(this.accumulatedThinkingItemId, () => ({
+        type: "thinking_delta",
+        id: this.accumulatedThinkingItemId!,
+        data: {
+          type: "thinking_delta",
+          text: this.thinkingBuffer,
+          timestamp: this.lastThinkingTimestamp,
+        },
+      }));
     } else {
-      this.accumulatedThinkingIndex = sessionMessages.length;
-      this.currentSession = {
-        ...this.currentSession,
-        messages: [...sessionMessages, thinkingMessage],
+      // Add new item
+      this.accumulatedThinkingItemId = this.generateItemId();
+      const item: SessionItem = {
+        type: "thinking_delta",
+        id: this.accumulatedThinkingItemId,
+        data: {
+          type: "thinking_delta",
+          text: this.thinkingBuffer,
+          timestamp: this.lastThinkingTimestamp,
+        },
       };
+      this.addItem(item);
     }
-    this.sessions = [...this.sessions.slice(0, -1), this.currentSession];
 
+    this.sessions = [...this.sessions.slice(0, -1), this.currentSession!];
     this.emitStateUpdate();
   }
 
@@ -647,12 +908,12 @@ export class AcpStateProvider implements StateProvider {
 
   private flushTextBuffer(): void {
     this.textBuffer = "";
-    this.accumulatedMessageIndex = -1;
+    this.accumulatedTextItemId = null;
   }
 
   private flushThinkingBuffer(): void {
     this.thinkingBuffer = "";
-    this.accumulatedThinkingIndex = -1;
+    this.accumulatedThinkingItemId = null;
   }
 
   private handleComplete(result: AcpCompletionResult): void {
@@ -677,7 +938,6 @@ export class AcpStateProvider implements StateProvider {
     if (this.currentSession) {
       const completedSession: SessionState = {
         ...this.currentSession,
-        toolCalls: new Map(this.currentSession.toolCalls),
         status: "complete" as const,
         endTime: Date.now(),
       };
@@ -714,7 +974,6 @@ export class AcpStateProvider implements StateProvider {
     if (this.currentSession) {
       const errorSession: SessionState = {
         ...this.currentSession,
-        toolCalls: new Map(this.currentSession.toolCalls),
         status: "error" as const,
         endTime: Date.now(),
       };

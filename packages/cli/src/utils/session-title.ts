@@ -1,5 +1,5 @@
-import type { RichMessage, SessionState } from "#parsers/message-types";
-import { isMessage, isTextBlock } from "#parsers/message-types";
+import type { SessionItem, SessionState } from "#parsers/message-types";
+import { isMessageItem, isTextBlock } from "#parsers/message-types";
 
 const MAX_TITLE_LENGTH = 50;
 
@@ -12,7 +12,7 @@ export function getSessionTitle(session: SessionState): string {
     return "";
   }
 
-  const lastMessage = findLastTextMessage(session.messages);
+  const lastMessage = findLastTextMessage(session.items);
   if (!lastMessage) {
     return "";
   }
@@ -20,12 +20,13 @@ export function getSessionTitle(session: SessionState): string {
   return truncateTitle(lastMessage, MAX_TITLE_LENGTH);
 }
 
-function findLastTextMessage(messages: RichMessage[]): string | null {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i];
-    if (!(msg && isMessage(msg))) {
+function findLastTextMessage(items: SessionItem[]): string | null {
+  for (let i = items.length - 1; i >= 0; i--) {
+    const item = items[i];
+    if (!(item && isMessageItem(item))) {
       continue;
     }
+    const msg = item.data;
     if (msg.role !== "assistant") {
       continue;
     }
