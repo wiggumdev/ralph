@@ -100,7 +100,7 @@ export function SessionContainer(props: SessionContainerProps) {
         </Show>
         <span style={{ fg: "#606060" }}> {sessionId()}</span>
         <Show when={props.selected}>
-          <span style={{ fg: "#666666" }}>
+          <span style={{ fg: "#333333" }}>
             {" "}
             [l] expand [h] collapse{props.canOpen && " [o] open"}{" "}
             {props.session.status === "running" && "[p] pause"}

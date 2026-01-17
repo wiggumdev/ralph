@@ -13,6 +13,7 @@ export interface AppStateContextValue {
   activeSession: Accessor<SessionState | undefined>;
   status: Accessor<AppStatus>;
   iteration: Accessor<number>;
+  maxIterations: Accessor<number>;
   totalInputTokens: Accessor<number>;
   totalOutputTokens: Accessor<number>;
   totalCost: Accessor<number>;

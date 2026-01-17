@@ -72,7 +72,7 @@ function App(props: AppProps) {
   const [expanded, setExpanded] = createSignal(true);
   const [helpVisible, setHelpVisible] = createSignal(false);
   const [selectedIndex, setSelectedIndex] = createSignal(0);
-  const maxIterations = props.maxIterations ?? 10;
+  const maxIterations = () => props.maxIterations ?? 10;
 
   // Session navigation helpers
   const selectPrev = () => setSelectedIndex((i) => Math.max(0, i - 1));
@@ -129,6 +129,7 @@ function App(props: AppProps) {
     activeSession,
     status,
     iteration,
+    maxIterations,
     totalInputTokens,
     totalOutputTokens,
     totalCost,
@@ -265,7 +266,6 @@ function App(props: AppProps) {
               <Match when={currentTab() === "loop"}>
                 <LoopContent
                   canOpen={canOpen()}
-                  maxIterations={maxIterations}
                   onToggleSession={toggleSessionCollapse}
                   selectedIndex={selectedIndex}
                 />
@@ -379,28 +379,17 @@ function applyStatusUpdate(
 }
 
 interface LoopContentProps {
-  maxIterations: number;
   selectedIndex: () => number;
   canOpen: boolean;
   onToggleSession: (index: number) => void;
 }
 
 function LoopContent(props: LoopContentProps) {
-  const { sessions, iteration } = useAppState();
+  const { sessions } = useAppState();
   const { expanded } = useUI();
 
-  const progressBar = () => {
-    const width = 20;
-    const filled = Math.round((iteration() / props.maxIterations) * width);
-    return "█".repeat(filled) + "░".repeat(width - filled);
-  };
-
   return (
-    <LoopTab
-      iteration={iteration}
-      maxIterations={props.maxIterations}
-      progressBar={progressBar()}
-    >
+    <LoopTab>
       <SessionList
         canOpen={props.canOpen}
         expanded={expanded()}
