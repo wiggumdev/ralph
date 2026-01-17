@@ -144,6 +144,7 @@ function App(props: AppProps) {
   const handleExit = () => {
     props.provider.stop();
     renderer.destroy();
+    process.exit(0);
   };
 
   const handleOpen = async () => {
@@ -427,5 +428,5 @@ function BacklogTab() {
 }
 
 export function main(props: AppProps): void {
-  render(() => <App {...props} />, { useMouse: true });
+  render(() => <App {...props} />, { useMouse: true, exitOnCtrlC: true });
 }
