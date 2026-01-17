@@ -50,7 +50,7 @@ export function SessionContainer(props: SessionContainerProps) {
       case "running":
         return "↻";
       case "complete":
-        return "✓";
+        return "↻";
       case "error":
         return "✗";
       case "paused":
@@ -65,7 +65,7 @@ export function SessionContainer(props: SessionContainerProps) {
       case "running":
         return "#00aaff";
       case "complete":
-        return "#00ff00";
+        return "#333333";
       case "error":
         return "#ff0000";
       case "paused":
@@ -86,7 +86,7 @@ export function SessionContainer(props: SessionContainerProps) {
   const rowColor = () => (props.selected ? "#ffffff" : "#00aaff");
 
   return (
-    <box flexDirection="column" style={{ marginBottom: 1 }}>
+    <box flexDirection="column">
       <text>
         <span style={{ fg: statusColor() }}>{statusIcon()}</span>
         <Show when={activityIndicator()}>
