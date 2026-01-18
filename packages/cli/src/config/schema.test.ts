@@ -72,6 +72,7 @@ describe("ConfigSchema", () => {
       tui: true,
       showUsage: false,
       yolo: false,
+      transportLog: false,
       hooks: {},
     };
 

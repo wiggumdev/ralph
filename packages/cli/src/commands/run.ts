@@ -31,6 +31,7 @@ interface RunArgs {
   cwd?: string;
   debug?: boolean;
   yolo?: boolean;
+  transportLog?: boolean;
 }
 
 function resolvePrompt(promptArg: string | undefined, cwd: string): string {
@@ -83,6 +84,11 @@ export const runCommand: CommandModule<object, RunArgs> = {
         alias: "y",
         type: "boolean",
         describe: "Auto-approve all permission requests",
+      })
+      .option("transport-log", {
+        alias: "t",
+        type: "boolean",
+        describe: "Enable raw ACP transport logging to file",
       }),
 
   handler: async (argv) => {
@@ -133,12 +139,14 @@ export const runCommand: CommandModule<object, RunArgs> = {
     // Run ACP adapter with TUI
     const maxIterations = argv.maxIterations ?? config.maxIterations ?? 10;
     const yolo = argv.yolo ?? config.yolo ?? false;
+    const transportLog = argv.transportLog ?? config.transportLog ?? false;
     const provider = new AcpStateProvider(adapter, {
       prompt: promptContent,
       cwd,
       debug,
       maxIterations,
       yolo,
+      transportLog,
     });
 
     runWithProvider({

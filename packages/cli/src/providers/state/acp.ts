@@ -44,6 +44,7 @@ export interface AcpStateProviderOptions extends AcpAdapterOptions {
   prompt: string;
   maxIterations?: number;
   yolo?: boolean;
+  transportLog?: boolean;
 }
 
 interface DeferredPermission {

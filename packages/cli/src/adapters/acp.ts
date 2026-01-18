@@ -19,6 +19,11 @@ import type {
 } from "#parsers/permission-types";
 import { formatPermissionName } from "#utils/permission-formatter";
 import { mapUpdateToRichMessage } from "./acp/message-mapper";
+import {
+  initTransportLog,
+  wrapReadableWithLogging,
+  wrapWritableWithLogging,
+} from "./acp/transport-logger";
 
 const log = Log.create({ service: "acp" });
 
@@ -26,6 +31,7 @@ export interface AcpAdapterOptions {
   cwd?: string;
   debug?: boolean;
   yolo?: boolean;
+  transportLog?: boolean;
   onPermissionRequest?: (req: PermissionRequest) => Promise<PermissionResponse>;
   onPermissionTracked?: (name: string, status: "allowed" | "denied") => void;
 }
@@ -135,13 +141,24 @@ export abstract class AcpAdapter {
       // ndJsonStream(output, input) - output is writable, input is readable
       const stream = ndJsonStream(writableStream, readableStream);
 
+      // Wrap streams for transport logging if enabled
+      let finalStream = stream;
+      if (options.transportLog) {
+        const logFile = initTransportLog(options.cwd ?? process.cwd());
+        log.debug("transport_log_init", { logFile });
+        finalStream = {
+          readable: wrapReadableWithLogging(stream.readable),
+          writable: wrapWritableWithLogging(stream.writable),
+        };
+      }
+
       // Create client-side connection
       this.connection = new ClientSideConnection(
         () => ({
           sessionUpdate: this.handleSessionUpdate.bind(this),
           requestPermission: this.handleRequestPermission.bind(this),
         }),
-        stream
+        finalStream
       );
 
       // Initialize the connection

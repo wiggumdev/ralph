@@ -45,6 +45,7 @@ describe("Config Loader", () => {
         tui: true,
         showUsage: false,
         yolo: false,
+        transportLog: false,
         hooks: {},
       };
 
@@ -66,6 +67,7 @@ describe("Config Loader", () => {
         tui: true,
         showUsage: false,
         yolo: false,
+        transportLog: false,
         hooks: {},
       };
 
@@ -89,6 +91,7 @@ describe("Config Loader", () => {
         tui: true,
         showUsage: false,
         yolo: false,
+        transportLog: false,
         hooks: {},
       };
 
@@ -112,6 +115,7 @@ describe("Config Loader", () => {
         tui: true,
         showUsage: false,
         yolo: false,
+        transportLog: false,
         hooks: {},
       };
 
@@ -135,6 +139,7 @@ describe("Config Loader", () => {
         tui: true,
         showUsage: false,
         yolo: false,
+        transportLog: false,
         hooks: {},
       };
 
