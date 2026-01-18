@@ -48,9 +48,9 @@ describe("HookExecutor", () => {
     });
 
     /**
-     * Tests that verbose defaults to false.
+     * Tests that debug defaults to false.
      */
-    test("defaults verbose to false", () => {
+    test("defaults debug to false", () => {
       const executor = createHookExecutor({
         hooks: {},
         cwd: tempDir,
@@ -377,9 +377,9 @@ describe("HookExecutor", () => {
 
   describe("hook failure logging", () => {
     /**
-     * Tests that hook failures are logged even when verbose=false.
+     * Tests that hook failures are logged even when debug=false.
      */
-    test("logs hook failures regardless of verbose flag", async () => {
+    test("logs hook failures regardless of debug flag", async () => {
       const logSpy: Array<{ level: string; message: string; extra?: any }> = [];
 
       const executor = createHookExecutor({
@@ -387,7 +387,7 @@ describe("HookExecutor", () => {
           ralph_start: "exit 42",
         },
         cwd: tempDir,
-        verbose: false,
+        debug: false,
         logger: {
           error: (message: string, extra?: any) => {
             logSpy.push({ level: "error", message, extra });
@@ -424,7 +424,7 @@ describe("HookExecutor", () => {
           ralph_start: "exit 0",
         },
         cwd: tempDir,
-        verbose: false,
+        debug: false,
         logger: {
           error: (message: string, extra?: any) => {
             logSpy.push({ level: "error", message, extra });

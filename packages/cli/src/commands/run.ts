@@ -29,7 +29,7 @@ interface RunArgs {
   once?: boolean;
   prompt?: string;
   cwd?: string;
-  verbose?: boolean;
+  debug?: boolean;
   yolo?: boolean;
 }
 
@@ -74,10 +74,10 @@ export const runCommand: CommandModule<object, RunArgs> = {
         type: "string",
         describe: "Working directory",
       })
-      .option("verbose", {
-        alias: "v",
+      .option("debug", {
+        alias: "d",
         type: "boolean",
-        describe: "Enable verbose output",
+        describe: "Enable debug logging to file",
       })
       .option("yolo", {
         alias: "y",
@@ -88,10 +88,10 @@ export const runCommand: CommandModule<object, RunArgs> = {
   handler: async (argv) => {
     const cwd = argv.cwd ?? process.cwd();
     const config = await loadConfig({ cwd });
-    const verbose = argv.verbose ?? config.verbose;
+    const debug = argv.debug ?? config.debug;
 
-    // Initialize debug logging if verbose
-    if (verbose) {
+    // Initialize debug logging if debug flag set
+    if (debug) {
       await Log.init({
         print: false,
         logPath: path.join(cwd, `ralph-debug-${Date.now()}.log`),
@@ -136,7 +136,7 @@ export const runCommand: CommandModule<object, RunArgs> = {
     const provider = new AcpStateProvider(adapter, {
       prompt: promptContent,
       cwd,
-      verbose,
+      debug,
       maxIterations,
       yolo,
     });

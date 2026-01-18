@@ -392,7 +392,7 @@ describe("validateTomlOutput", () => {
    * Tests that valid TOML output (plain object) is accepted.
    */
   test("accepts plain objects from TOML parser", () => {
-    const validToml = { adapter: "claude", verbose: true };
+    const validToml = { adapter: "claude", debug: true };
     const result = validateTomlOutput(validToml);
     expect(result).toEqual(validToml);
   });

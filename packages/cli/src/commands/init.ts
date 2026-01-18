@@ -142,7 +142,7 @@ export const initCommand: CommandModule<object, InitArgs> = {
 adapter = "${adapter}"
 plansDir = "${plansDir}"
 maxIterations = 10
-verbose = false
+debug = false
 tui = true
 `;
     writeFileSync(configPath, configContent);

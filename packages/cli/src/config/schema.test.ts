@@ -68,7 +68,7 @@ describe("ConfigSchema", () => {
       adapter: "claude" as const,
       plansDir: ".plans",
       maxIterations: 10,
-      verbose: false,
+      debug: false,
       tui: true,
       showUsage: false,
       yolo: false,
@@ -93,7 +93,7 @@ describe("ConfigSchema", () => {
       expect(result.data.adapter).toBe("claude");
       expect(result.data.plansDir).toBe(".plans");
       expect(result.data.maxIterations).toBe(10);
-      expect(result.data.verbose).toBe(false);
+      expect(result.data.debug).toBe(false);
       expect(result.data.tui).toBe(true);
       expect(result.data.showUsage).toBe(false);
     }
@@ -115,7 +115,7 @@ describe("ConfigSchema", () => {
       expect(result.data.maxIterations).toBe(5);
       // Defaults applied
       expect(result.data.plansDir).toBe(".plans");
-      expect(result.data.verbose).toBe(false);
+      expect(result.data.debug).toBe(false);
       expect(result.data.tui).toBe(true);
       expect(result.data.showUsage).toBe(false);
     }
@@ -202,14 +202,14 @@ describe("ConfigSchema", () => {
 
   describe("boolean flags", () => {
     /**
-     * Tests that verbose mode can be enabled.
-     * This controls debug output verbosity.
+     * Tests that debug mode can be enabled.
+     * This controls debug logging to file.
      */
-    test("accepts verbose true", () => {
-      const result = ConfigSchema.safeParse({ verbose: true });
+    test("accepts debug true", () => {
+      const result = ConfigSchema.safeParse({ debug: true });
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.verbose).toBe(true);
+        expect(result.data.debug).toBe(true);
       }
     });
 
@@ -245,7 +245,7 @@ describe("DEFAULT_CONFIG", () => {
     expect(DEFAULT_CONFIG).toHaveProperty("adapter");
     expect(DEFAULT_CONFIG).toHaveProperty("plansDir");
     expect(DEFAULT_CONFIG).toHaveProperty("maxIterations");
-    expect(DEFAULT_CONFIG).toHaveProperty("verbose");
+    expect(DEFAULT_CONFIG).toHaveProperty("debug");
     expect(DEFAULT_CONFIG).toHaveProperty("tui");
     expect(DEFAULT_CONFIG).toHaveProperty("showUsage");
     expect(DEFAULT_CONFIG).toHaveProperty("hooks");

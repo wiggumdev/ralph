@@ -43,7 +43,7 @@ export type HookEnv =
 export interface HookExecutorOptions {
   hooks: Hooks;
   cwd: string;
-  verbose?: boolean;
+  debug?: boolean;
   timeout?: number;
   logger?: {
     info(message: string, extra?: Record<string, any>): void;
@@ -56,7 +56,7 @@ export interface HookExecutorOptions {
 export class HookExecutor {
   private readonly hooks: Hooks;
   private readonly cwd: string;
-  private readonly verbose: boolean;
+  private readonly debug: boolean;
   private readonly timeout?: number;
   private readonly logger?: {
     info(message: string, extra?: Record<string, any>): void;
@@ -68,7 +68,7 @@ export class HookExecutor {
   constructor(options: HookExecutorOptions) {
     this.hooks = options.hooks;
     this.cwd = options.cwd;
-    this.verbose = options.verbose ?? false;
+    this.debug = options.debug ?? false;
     this.timeout = options.timeout;
     this.logger = options.logger;
   }
@@ -79,10 +79,6 @@ export class HookExecutor {
       return;
     }
 
-    if (this.verbose) {
-      console.log(`[HOOK] Executing ${hookType}: ${command}`);
-    }
-
     this.logger?.debug(`Executing hook ${hookType}`, { command });
 
     const proc = Bun.spawn(["sh", "-c", command], {
@@ -91,8 +87,8 @@ export class HookExecutor {
         ...process.env,
         ...env,
       },
-      stdout: this.verbose ? "inherit" : "ignore",
-      stderr: this.verbose ? "inherit" : "ignore",
+      stdout: "ignore",
+      stderr: "ignore",
     });
 
     let exitCode: number;
@@ -114,27 +110,18 @@ export class HookExecutor {
       exitCode = await proc.exited;
     }
 
-    // Log results to logger (always, regardless of verbose flag)
+    // Log results to logger
     if (timedOut) {
       const message = `Hook ${hookType} timed out after ${this.timeout}ms`;
       this.logger?.warn(message, { hookType, timeout: this.timeout });
-      if (this.verbose) {
-        console.log(`[HOOK] ${message}`);
-      }
     } else if (exitCode !== 0) {
       const message = `Hook ${hookType} failed with exit code ${exitCode}`;
       this.logger?.error(message, { hookType, exitCode, command });
-      if (this.verbose) {
-        console.log(`[HOOK] ${hookType} exited with code ${exitCode}`);
-      }
     } else {
       this.logger?.info(`Hook ${hookType} completed successfully`, {
         hookType,
         exitCode,
       });
-      if (this.verbose) {
-        console.log(`[HOOK] ${hookType} completed successfully`);
-      }
     }
   }
 

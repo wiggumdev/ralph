@@ -24,7 +24,7 @@ const log = Log.create({ service: "acp" });
 
 export interface AcpAdapterOptions {
   cwd?: string;
-  verbose?: boolean;
+  debug?: boolean;
   yolo?: boolean;
   onPermissionRequest?: (req: PermissionRequest) => Promise<PermissionResponse>;
   onPermissionTracked?: (name: string, status: "allowed" | "denied") => void;
@@ -103,7 +103,7 @@ export abstract class AcpAdapter {
         cwd: options.cwd,
         stdin: "pipe",
         stdout: "pipe",
-        stderr: options.verbose ? "inherit" : "pipe",
+        stderr: "pipe",
       });
 
       // Get Bun process streams
@@ -209,6 +209,10 @@ export abstract class AcpAdapter {
       }
 
       // Handle completion
+      log.debug("ACP prompt complete", {
+        stopReason: promptResponse.stopReason,
+        _meta: promptResponse._meta,
+      });
       const stopReason = promptResponse.stopReason ?? "end_turn";
       const needsMoreWork = stopReason !== "end_turn";
       handler.onComplete({
@@ -360,7 +364,13 @@ export abstract class AcpAdapter {
   private async handleSessionUpdate(
     params: SessionNotification
   ): Promise<void> {
-    log.debug("ACP IN", { update: params.update });
+    const updateMeta = (params.update as { _meta?: Record<string, unknown> })
+      ._meta;
+    log.debug("ACP IN", {
+      type: params.update.sessionUpdate,
+      notificationMeta: params._meta,
+      updateMeta,
+    });
     const message = mapUpdateToRichMessage(params.update);
     if (message) {
       this.handler?.onMessage(message);

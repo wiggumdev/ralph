@@ -4,6 +4,8 @@
  */
 import type {
   ContentChunk,
+  CurrentModeUpdate,
+  Plan,
   SessionUpdate,
   ToolCall,
   ToolCallContent,
@@ -26,6 +28,19 @@ import type {
 } from "#parsers/message-types";
 
 const log = Log.create({ service: "acp-mapper" });
+
+/**
+ * Log _meta for session update types when present.
+ */
+function logMeta(
+  updateType: string,
+  id: string | undefined,
+  meta: unknown
+): void {
+  if (meta) {
+    log.debug(`${updateType} _meta`, { id, meta });
+  }
+}
 
 /**
  * Create a Message with content blocks.
@@ -286,14 +301,21 @@ export function mapUpdateToRichMessage(
   const timestamp = Date.now();
 
   switch (update.sessionUpdate) {
-    case "agent_message_chunk":
-      return mapContentChunk(update as ContentChunk, timestamp);
+    case "agent_message_chunk": {
+      const chunk = update as ContentChunk;
+      logMeta("agent_message_chunk", undefined, chunk._meta);
+      return mapContentChunk(chunk, timestamp);
+    }
 
-    case "agent_thought_chunk":
-      return mapThoughtChunk(update as ContentChunk, timestamp);
+    case "agent_thought_chunk": {
+      const chunk = update as ContentChunk;
+      logMeta("agent_thought_chunk", undefined, chunk._meta);
+      return mapThoughtChunk(chunk, timestamp);
+    }
 
     case "user_message_chunk": {
       const chunk = update as ContentChunk & { sessionUpdate: string };
+      logMeta("user_message_chunk", undefined, chunk._meta);
       const content = chunk.content;
       if (content.type === "text") {
         const message: Message = {
@@ -309,6 +331,7 @@ export function mapUpdateToRichMessage(
 
     case "tool_call": {
       const toolCall = update as ToolCall & { sessionUpdate: string };
+      logMeta("tool_call", toolCall.toolCallId, toolCall._meta);
       const contentBlocks: InternalContentBlock[] = [
         {
           type: "tool_use",
@@ -334,6 +357,7 @@ export function mapUpdateToRichMessage(
 
     case "tool_call_update": {
       const toolUpdate = update as ToolCallUpdate & { sessionUpdate: string };
+      logMeta("tool_call_update", toolUpdate.toolCallId, toolUpdate._meta);
       const contentBlocks: InternalContentBlock[] = [];
 
       if (toolUpdate.content && toolUpdate.content.length > 0) {
@@ -374,6 +398,14 @@ export function mapUpdateToRichMessage(
     }
 
     case "current_mode_update": {
+      const modeUpdate = update as CurrentModeUpdate & {
+        sessionUpdate: string;
+      };
+      logMeta(
+        "current_mode_update",
+        modeUpdate.currentModeId,
+        modeUpdate._meta
+      );
       const systemMessage: SystemMessage = {
         type: "system",
         subtype: "mode_change",
@@ -383,14 +415,13 @@ export function mapUpdateToRichMessage(
     }
 
     case "plan": {
-      const planUpdate = update as {
-        sessionUpdate: string;
-        entries: Array<{
-          content: string;
-          priority: "high" | "medium" | "low";
-          status: "pending" | "in_progress" | "completed";
-        }>;
-      };
+      const planUpdate = update as Plan & { sessionUpdate: string };
+      logMeta("plan", undefined, planUpdate._meta);
+      planUpdate.entries.forEach((e, i) => {
+        if (e._meta) {
+          log.debug("plan_entry _meta", { index: i, meta: e._meta });
+        }
+      });
       const planMessage: PlanMessage = {
         type: "plan",
         entries: planUpdate.entries.map((e) => ({
@@ -405,11 +436,12 @@ export function mapUpdateToRichMessage(
 
     case "available_commands_update":
     case "config_option_update":
-    case "session_info_update":
-      log.debug("Skipped session update type", {
-        type: update.sessionUpdate,
-      });
+    case "session_info_update": {
+      const skipped = update as { sessionUpdate: string; _meta?: unknown };
+      logMeta(update.sessionUpdate, undefined, skipped._meta);
+      log.debug("Skipped session update type", { type: update.sessionUpdate });
       return null;
+    }
 
     default: {
       const unknownUpdate = update as { sessionUpdate: string };

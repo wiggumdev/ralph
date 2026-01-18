@@ -7,7 +7,7 @@
  * - Iteration limits (--max-iterations, -n)
  * - Single run mode (--once, -o)
  * - Output format selection (--output-format, -f)
- * - Verbose mode (--verbose, -v)
+ * - Debug mode (--debug, -d)
  *
  * Note: Direct import of runCommand is avoided because it pulls in JSX
  * components that don't work in the test environment. Instead, we test
@@ -197,17 +197,17 @@ describe("run command expected yargs options", () => {
     expect(expectedOptions.once.alias).toBe("o");
   });
 
-  test("--verbose should be a boolean", () => {
+  test("--debug should be a boolean", () => {
     const expectedOptions = {
-      verbose: {
-        alias: "v",
+      debug: {
+        alias: "d",
         type: "boolean",
-        describe: "Enable verbose output",
+        describe: "Enable debug logging to file",
       },
     };
 
-    expect(expectedOptions.verbose.type).toBe("boolean");
-    expect(expectedOptions.verbose.alias).toBe("v");
+    expect(expectedOptions.debug.type).toBe("boolean");
+    expect(expectedOptions.debug.alias).toBe("d");
   });
 });
 
