@@ -1,8 +1,10 @@
 import { Show } from "solid-js";
 import type { TerminalBlock as TerminalBlockType } from "#parsers/message-types";
+import { defaultSyntaxStyle } from "#ui/styles/syntax-styles";
 
 export interface TerminalBlockProps {
   block: TerminalBlockType;
+  showOutput?: boolean;
 }
 
 export function TerminalBlock(props: TerminalBlockProps) {
@@ -64,6 +66,15 @@ export function TerminalBlock(props: TerminalBlockProps) {
           <span style={{ fg: statusColor() }}>{statusIcon()}</span>
           <span style={{ fg: "#666666" }}> {summary()}</span>
         </text>
+      </Show>
+      <Show when={props.showOutput && props.block.output}>
+        <box style={{ marginLeft: 2, marginTop: 1 }}>
+          <code
+            content={props.block.output ?? ""}
+            filetype="bash"
+            syntaxStyle={defaultSyntaxStyle}
+          />
+        </box>
       </Show>
     </box>
   );

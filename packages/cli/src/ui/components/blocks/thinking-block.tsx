@@ -27,7 +27,7 @@ export function ThinkingBlock(props: ThinkingBlockProps) {
     <box flexDirection="column" style={{ marginBottom: 1 }}>
       <text>
         <span style={{ fg: PURPLE }}>
-          {isExpanded() ? "\u25bc" : "\u25b6"} Thinking
+          {isExpanded() ? "\u25bc" : "\u25b6"} <i>Thinking</i>
         </span>
         <Show when={!isExpanded()}>
           <span style={{ fg: "#666666" }}> {preview()}</span>
@@ -35,7 +35,14 @@ export function ThinkingBlock(props: ThinkingBlockProps) {
       </text>
       <Show when={isExpanded()}>
         <box style={{ paddingLeft: 2, marginTop: 0 }}>
-          <text style={{ fg: "#888888" }}>{text()}</text>
+          <text
+            selectable
+            selectionBg="#264F78"
+            selectionFg="#FFFFFF"
+            style={{ fg: "#333333" }}
+          >
+            <i>{text()}</i>
+          </text>
         </box>
       </Show>
     </box>

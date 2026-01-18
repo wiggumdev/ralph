@@ -7,7 +7,9 @@ export interface TextBlockProps {
 export function TextBlock(props: TextBlockProps) {
   return (
     <box style={{ paddingLeft: 2 }}>
-      <text>{props.block.text}</text>
+      <text selectable selectionBg="#264F78" selectionFg="#FFFFFF">
+        {props.block.text}
+      </text>
     </box>
   );
 }

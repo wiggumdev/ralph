@@ -58,6 +58,7 @@
     "#hooks": "./src/hooks/index.ts",
     "#hooks/*": "./src/hooks/*.ts",
     "#ui/*": "./src/ui/*.tsx",
+    "#ui/styles/*": "./src/ui/styles/*.ts",
     "#ui/test-harness/harness-app": "./src/ui/test-harness/harness-app.tsx",
     "#ui/test-harness/*": "./src/ui/test-harness/*.ts",
     "#ui/components/*": "./src/ui/components/*.tsx",

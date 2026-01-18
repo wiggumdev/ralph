@@ -1,22 +1,18 @@
 import type { ToolKind } from "@agentclientprotocol/sdk";
-import { diffLines as computeDiff } from "diff";
-import { For, Show } from "solid-js";
+import { Show } from "solid-js";
 import type {
   ToolBlock as ToolBlockType,
   ToolCallContent,
 } from "#parsers/message-types";
+import { CodeResultBlock } from "#ui/components/blocks/code-result-block";
+import { defaultSyntaxStyle } from "#ui/styles/syntax-styles";
+import { generateUnifiedDiff } from "#utils/diff-formatter";
+import { getFiletypeFromPath } from "#utils/filetype";
 import { formatToolDisplay } from "#utils/tool-formatter";
 
 export interface ToolBlockProps {
   block: ToolBlockType;
   expanded: boolean;
-}
-
-interface DiffLine {
-  lineNum: string;
-  prefix: string;
-  content: string;
-  color: string;
 }
 
 function getToolIconByKind(kind: ToolKind | undefined): string {
@@ -130,64 +126,37 @@ function getToolColor(name: string, kind: ToolKind | undefined): string {
   return getToolColorByName(name);
 }
 
-function computeDiffData(
-  oldStr: string,
-  newStr: string
-): { lines: DiffLine[]; added: number; removed: number } {
-  const changes = computeDiff(oldStr, newStr);
-  const lines: DiffLine[] = [];
-  let oldLineNum = 1;
-  let newLineNum = 1;
-  let added = 0;
-  let removed = 0;
-
-  for (const change of changes) {
-    const changeLines = change.value.split("\n");
-    if (changeLines.at(-1) === "") {
-      changeLines.pop();
-    }
-
-    for (const line of changeLines) {
-      if (change.added) {
-        lines.push({
-          lineNum: String(newLineNum).padStart(5),
-          prefix: "+",
-          content: line,
-          color: "#00ff00",
-        });
-        newLineNum++;
-        added++;
-      } else if (change.removed) {
-        lines.push({
-          lineNum: String(oldLineNum).padStart(5),
-          prefix: "-",
-          content: line,
-          color: "#ff6666",
-        });
-        oldLineNum++;
-        removed++;
-      } else {
-        lines.push({
-          lineNum: String(newLineNum).padStart(5),
-          prefix: " ",
-          content: line,
-          color: "#888888",
-        });
-        oldLineNum++;
-        newLineNum++;
-      }
-    }
-  }
-
-  return { lines, added, removed };
-}
-
 // Claude format: "    1\u2192content"
 const CLAUDE_READ_PATTERN = /^\s*\d+\u2192/;
+const CLAUDE_READ_LINE_NUM_PATTERN = /^\s*(\d+)\u2192/;
+const CLAUDE_READ_STRIP_PATTERN = /^\s*\d+\u2192/;
 
 function countReadLines(text: string): number {
   return text.split("\n").filter((line) => CLAUDE_READ_PATTERN.test(line))
     .length;
+}
+
+function extractReadContent(text: string): {
+  content: string;
+  startLine: number;
+} {
+  const lines = text
+    .split("\n")
+    .filter((line) => CLAUDE_READ_PATTERN.test(line));
+  if (lines.length === 0) {
+    return { content: "", startLine: 1 };
+  }
+
+  // Extract start line from first line (format: "    1→content")
+  const firstMatch = lines[0]?.match(CLAUDE_READ_LINE_NUM_PATTERN);
+  const startLine = firstMatch ? Number.parseInt(firstMatch[1] ?? "1", 10) : 1;
+
+  // Remove line number prefix from each line
+  const content = lines
+    .map((line) => line.replace(CLAUDE_READ_STRIP_PATTERN, ""))
+    .join("\n");
+
+  return { content, startLine };
 }
 
 function getResultSummary(content: ToolCallContent[] | undefined): string {
@@ -255,30 +224,45 @@ export function ToolBlock(props: ToolBlockProps) {
   };
 
   const isEdit = () => toolName() === "edit";
-  const diffData = () => {
+
+  const filePath = () => (input().file_path as string) || "";
+
+  const unifiedDiff = () => {
     if (!isEdit()) {
-      return { lines: [], added: 0, removed: 0 };
+      return "";
     }
     const oldStr =
       (input().old_string as string) || (input().oldString as string) || "";
     const newStr =
       (input().new_string as string) || (input().newString as string) || "";
-    return computeDiffData(oldStr, newStr);
+    if (!(oldStr || newStr)) {
+      return "";
+    }
+    return generateUnifiedDiff(oldStr, newStr, filePath());
   };
 
-  const diffSummary = () => {
-    const { added, removed } = diffData();
-    const parts: string[] = [];
-    if (added > 0) {
-      parts.push(`Added ${added} line${added !== 1 ? "s" : ""}`);
-    }
-    if (removed > 0) {
-      parts.push(`removed ${removed} line${removed !== 1 ? "s" : ""}`);
-    }
-    return parts.join(", ");
-  };
+  const filetype = () => getFiletypeFromPath(filePath());
 
   const resultSummary = () => getResultSummary(props.block.content);
+
+  const isRead = () => toolName() === "read";
+
+  const readContent = () => {
+    if (!(isRead() && props.block.content)) {
+      return null;
+    }
+    for (const item of props.block.content) {
+      if (item.type === "content" && item.content.type === "text") {
+        const text = item.content.text;
+        if (CLAUDE_READ_PATTERN.test(text)) {
+          return extractReadContent(text);
+        }
+      }
+    }
+    return null;
+  };
+
+  const readFilePath = () => (input().file_path as string) || "";
 
   return (
     <box flexDirection="column">
@@ -288,32 +272,46 @@ export function ToolBlock(props: ToolBlockProps) {
         <span style={{ fg: "#808080" }}>{displayName()}</span>
       </text>
 
-      <Show when={isEdit() && diffData().lines.length > 0}>
-        <text>
-          <span style={{ fg: "#888888" }}>⎿ {diffSummary()}</span>
-        </text>
-        <box flexDirection="column" style={{ marginLeft: 4 }}>
-          <For each={diffData().lines}>
-            {(line) => (
-              <text>
-                <span style={{ fg: "#666666" }}>{line.lineNum}</span>
-                <span style={{ fg: line.color }}>
-                  {line.prefix} {line.content}
-                </span>
-              </text>
-            )}
-          </For>
+      <Show when={isEdit() && unifiedDiff()}>
+        <box style={{ marginLeft: 2 }}>
+          <diff
+            addedBg="#1a4d1a"
+            addedSignColor="#22c55e"
+            diff={unifiedDiff()}
+            filetype={filetype()}
+            removedBg="#4d1a1a"
+            removedSignColor="#ef4444"
+            showLineNumbers={true}
+            syntaxStyle={defaultSyntaxStyle}
+            view="unified"
+          />
         </box>
       </Show>
 
       <Show
         when={
-          !isEdit() &&
+          !(isEdit() || isRead()) &&
           props.block.status === "completed" &&
           resultSummary() &&
           resultSummary().trim().length > 1
         }
       >
+        <text>
+          <span style={{ fg: "#666666" }}> ⎿ {resultSummary()}</span>
+        </text>
+      </Show>
+
+      <Show when={isRead() && props.expanded && readContent()}>
+        <box style={{ marginLeft: 2 }}>
+          <CodeResultBlock
+            content={readContent()?.content ?? ""}
+            filePath={readFilePath()}
+            startLine={readContent()?.startLine}
+          />
+        </box>
+      </Show>
+
+      <Show when={isRead() && !props.expanded && resultSummary()}>
         <text>
           <span style={{ fg: "#666666" }}> ⎿ {resultSummary()}</span>
         </text>

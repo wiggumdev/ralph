@@ -24,7 +24,7 @@ function PrdItem(props: { expanded: boolean; item: PrdFeature }) {
       </box>
       <Show when={props.expanded}>
         <box style={{ marginLeft: 2 }}>
-          <text>
+          <text selectable selectionBg="#264F78" selectionFg="#FFFFFF">
             <span style={{ fg: "#aaaaaa" }}>{props.item.description}</span>
           </text>
         </box>

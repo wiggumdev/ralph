@@ -37,7 +37,7 @@ export function PermissionsTab(props: PermissionsTabProps) {
             </span>
           </text>
           <text> </text>
-          <text>
+          <text selectable selectionBg="#264F78" selectionFg="#FFFFFF">
             <span style={{ fg: "#00ff00" }}>{jsonArray()}</span>
           </text>
         </box>
