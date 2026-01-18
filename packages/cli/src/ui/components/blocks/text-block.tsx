@@ -1,4 +1,5 @@
 import type { TextBlock as TextBlockType } from "#parsers/message-types";
+import { markdownSyntaxStyle } from "#ui/styles/syntax-styles";
 
 export interface TextBlockProps {
   block: TextBlockType;
@@ -7,9 +8,15 @@ export interface TextBlockProps {
 export function TextBlock(props: TextBlockProps) {
   return (
     <box style={{ paddingLeft: 2 }}>
-      <text selectable selectionBg="#264F78" selectionFg="#FFFFFF">
-        {props.block.text}
-      </text>
+      <code
+        content={props.block.text}
+        drawUnstyledText={false}
+        filetype="markdown"
+        selectable
+        selectionBg="#264F78"
+        selectionFg="#FFFFFF"
+        syntaxStyle={markdownSyntaxStyle}
+      />
     </box>
   );
 }

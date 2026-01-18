@@ -1,4 +1,5 @@
 import type { TextDelta } from "#parsers/message-types";
+import { markdownSyntaxStyle } from "#ui/styles/syntax-styles";
 
 export interface TextDeltaBlockProps {
   message: TextDelta;
@@ -7,7 +8,13 @@ export interface TextDeltaBlockProps {
 export function TextDeltaBlock(props: TextDeltaBlockProps) {
   return (
     <box style={{ paddingLeft: 2 }}>
-      <text style={{ fg: "#cccccc" }}>{props.message.text}</text>
+      <code
+        content={props.message.text}
+        drawUnstyledText={false}
+        filetype="markdown"
+        streaming={true}
+        syntaxStyle={markdownSyntaxStyle}
+      />
     </box>
   );
 }

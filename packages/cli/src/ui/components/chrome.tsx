@@ -22,10 +22,10 @@ export function Chrome(props: ChromeProps) {
 
 function Footer() {
   return (
-    <text>
-      <span style={{ fg: "#333333" }}>
-        [1-3] tabs | [tab] cycle | [e] expand | [?] help | [q] quit
-      </span>
-    </text>
+    <box flexDirection="row" style={{ flexGrow: 1, marginTop: 1 }}>
+      <text>
+        <span style={{ fg: "#333333" }} />
+      </text>
+    </box>
   );
 }
