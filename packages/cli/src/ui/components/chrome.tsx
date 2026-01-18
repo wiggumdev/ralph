@@ -12,9 +12,13 @@ export function Chrome(props: ChromeProps) {
   return (
     <box flexDirection="column" style={{ padding: 1 }}>
       <TabBar currentTab={currentTab} />
-      <box flexDirection="column" style={{ flexGrow: 1, marginTop: 1 }}>
+      <scrollbox
+        flexDirection="column"
+        stickyScroll
+        style={{ flexGrow: 1, marginTop: 1 }}
+      >
         {props.children}
-      </box>
+      </scrollbox>
       <Footer />
     </box>
   );

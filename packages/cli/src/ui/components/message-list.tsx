@@ -18,11 +18,7 @@ export interface MessageListProps {
 
 export function MessageList(props: MessageListProps) {
   return (
-    <scrollbox
-      stickyScroll
-      stickyStart="bottom"
-      style={{ marginTop: 1, flexGrow: 1 }}
-    >
+    <box style={{ marginTop: 1, flexGrow: 1 }}>
       <For each={props.messages}>
         {(msg) => (
           <box>
@@ -56,6 +52,6 @@ export function MessageList(props: MessageListProps) {
           </box>
         )}
       </For>
-    </scrollbox>
+    </box>
   );
 }

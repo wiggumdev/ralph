@@ -403,7 +403,7 @@ function LoopContent(props: LoopContentProps) {
 
 function LearningTab() {
   return (
-    <box>
+    <box flexDirection="column" style={{ flexGrow: 1 }}>
       <text>
         <span style={{ fg: "#666666" }}>Learning tab - coming soon</span>
       </text>

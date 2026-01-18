@@ -97,7 +97,7 @@ export function PrdItemsTab(props: PrdItemsTabProps) {
         </text>
       </box>
 
-      <scrollbox style={{ flexGrow: 1 }}>
+      <box style={{ flexGrow: 1 }}>
         <Show
           fallback={
             <text>
@@ -110,7 +110,7 @@ export function PrdItemsTab(props: PrdItemsTabProps) {
             {(item) => <PrdItem expanded={false} item={item} />}
           </For>
         </Show>
-      </scrollbox>
+      </box>
     </box>
   );
 }

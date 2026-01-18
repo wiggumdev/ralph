@@ -115,7 +115,12 @@ export function SessionContainer(props: SessionContainerProps) {
             <span style={{ fg: "#444444" }}>{"─".repeat(60)}</span>
           </text>
         </box>
-        <box flexDirection="column" style={{ marginLeft: 2 }}>
+        <box
+          border={["left"]}
+          borderColor={"#00aaff"}
+          flexDirection="column"
+          style={{ marginLeft: 2, paddingLeft: 2 }}
+        >
           {/* Render items directly - no more references */}
           <For each={props.session.items}>
             {(item) => (

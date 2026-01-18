@@ -13,11 +13,7 @@ export interface SessionListProps {
 
 export function SessionList(props: SessionListProps) {
   return (
-    <scrollbox
-      stickyScroll
-      stickyStart="bottom"
-      style={{ marginTop: 1, flexGrow: 1 }}
-    >
+    <box style={{ marginTop: 1, flexGrow: 1 }}>
       <For each={props.sessions}>
         {(session, index) => (
           <SessionContainer
@@ -29,6 +25,6 @@ export function SessionList(props: SessionListProps) {
           />
         )}
       </For>
-    </scrollbox>
+    </box>
   );
 }
