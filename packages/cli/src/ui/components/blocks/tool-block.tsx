@@ -5,6 +5,7 @@ import type {
   ToolBlock as ToolBlockType,
   ToolCallContent,
 } from "#parsers/message-types";
+import { formatToolDisplay } from "#utils/tool-formatter";
 
 export interface ToolBlockProps {
   block: ToolBlockType;
@@ -129,35 +130,6 @@ function getToolColor(name: string, kind: ToolKind | undefined): string {
   return getToolColorByName(name);
 }
 
-function formatParams(name: string, input: Record<string, unknown>): string {
-  const filePath =
-    (input.file_path as string) || (input.filePath as string) || "";
-
-  switch (name.toLowerCase()) {
-    case "read":
-    case "write":
-    case "edit":
-      return filePath;
-    case "bash": {
-      const cmd = (input.command as string) || "";
-      return cmd.length > 50 ? `${cmd.slice(0, 50)}...` : cmd;
-    }
-    case "glob":
-      return `"${input.pattern}"`;
-    case "grep": {
-      const path = input.path as string;
-      return path ? `"${input.pattern}" in ${path}` : `"${input.pattern}"`;
-    }
-    case "task":
-      return (input.description as string) || "";
-    case "todowrite":
-    case "todo_write":
-      return "";
-    default:
-      return "";
-  }
-}
-
 function computeDiffData(
   oldStr: string,
   newStr: string
@@ -238,7 +210,8 @@ function getResultSummary(content: ToolCallContent[] | undefined): string {
 }
 
 export function ToolBlock(props: ToolBlockProps) {
-  const toolName = () => props.block.title.toLowerCase();
+  const toolName = () =>
+    (props.block.resolvedName || props.block.title).toLowerCase();
 
   // Don't render TodoWrite - handled by session panel sidebar
   if (toolName() === "todowrite" || toolName() === "todo_write") {
@@ -246,7 +219,8 @@ export function ToolBlock(props: ToolBlockProps) {
   }
 
   const input = () => props.block.rawInput ?? {};
-  const params = () => formatParams(props.block.title, input());
+  const displayName = () =>
+    formatToolDisplay(props.block.resolvedName || props.block.title, input());
   const icon = () => getToolIcon(props.block.title, props.block.kind);
   const iconColor = () => getToolColor(props.block.title, props.block.kind);
 
@@ -280,22 +254,6 @@ export function ToolBlock(props: ToolBlockProps) {
     }
   };
 
-  const locationSummary = () => {
-    const locs = props.block.locations;
-    if (!locs || locs.length === 0) {
-      return "";
-    }
-    const first = locs[0];
-    if (!first) {
-      return "";
-    }
-    const lineInfo = first.line ? `:${first.line}` : "";
-    if (locs.length === 1) {
-      return `${first.path}${lineInfo}`;
-    }
-    return `${first.path}${lineInfo} (+${locs.length - 1} more)`;
-  };
-
   const isEdit = () => toolName() === "edit";
   const diffData = () => {
     if (!isEdit()) {
@@ -327,13 +285,7 @@ export function ToolBlock(props: ToolBlockProps) {
       <text>
         <span style={{ fg: statusColor() }}>{statusIndicator()} </span>
         <span style={{ fg: iconColor() }}>{icon()} </span>
-        <span style={{ fg: "#808080" }}>{toolName()}</span>
-        <Show when={params()}>
-          <span style={{ fg: "#606060" }}> {params()}</span>
-        </Show>
-        <Show when={!params() && locationSummary()}>
-          <span style={{ fg: "#606060" }}> {locationSummary()}</span>
-        </Show>
+        <span style={{ fg: "#808080" }}>{displayName()}</span>
       </text>
 
       <Show when={isEdit() && diffData().lines.length > 0}>

@@ -9,6 +9,8 @@ export interface PermissionRequest {
   toolCall: ToolCallUpdate;
   options: PermissionOption[];
   timestamp: number;
+  /** Resolved tool name from earlier tool_call update (for permission formatting) */
+  resolvedToolName?: string;
 }
 
 export interface PermissionResponse {

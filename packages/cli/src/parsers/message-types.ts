@@ -44,6 +44,7 @@ export interface ToolBlock {
   type: "tool";
   toolCallId: string;
   title: string;
+  resolvedName?: string;
   kind?: ToolKind;
   status: ToolCallStatus;
   locations?: ToolCallLocation[];
@@ -57,6 +58,7 @@ export interface ToolUseBlock extends BaseContentBlock {
   id: string;
   name: string;
   input: Record<string, unknown>;
+  resolvedName?: string;
   kind?: ToolKind;
   status?: ToolCallStatus;
   locations?: ToolCallLocation[];

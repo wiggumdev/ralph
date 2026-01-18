@@ -10,13 +10,20 @@ import type {
  * - WebFetch → extract full URL: "WebFetch(https://example.com)"
  * - WebSearch → extract query: "WebSearch(query text)"
  * - Others → just tool name
+ *
+ * @param toolCall - The tool call update from ACP
+ * @param resolvedToolName - Optional pre-resolved tool name (from cache)
  */
-export function formatPermissionName(toolCall: ToolCallUpdate): string {
-  const title = toolCall.title ?? "Unknown";
-  // Extract tool name: handle "Tool(args)" and "Tool arg" formats
-  const toolName = title.includes("(")
-    ? (title.split("(")[0] ?? title)
-    : (title.split(" ")[0] ?? title);
+export function formatPermissionName(
+  toolCall: ToolCallUpdate,
+  resolvedToolName?: string
+): string {
+  // Use resolved name first, then try _meta, then fallback to title
+  const claudeCode = (
+    toolCall._meta as { claudeCode?: { toolName?: string } } | undefined
+  )?.claudeCode;
+  const toolName =
+    resolvedToolName ?? claudeCode?.toolName ?? toolCall.title ?? "Unknown";
   const rawInput = toolCall.rawInput as Record<string, unknown> | undefined;
 
   switch (toolName) {

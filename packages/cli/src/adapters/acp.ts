@@ -78,6 +78,7 @@ export abstract class AcpAdapter {
   private stopped = false;
   private currentOptions?: AcpAdapterOptions;
   private readonly permissionCache = new Map<string, string>();
+  private readonly toolNameCache = new Map<string, string>();
 
   /**
    * Check if the adapter command is available.
@@ -367,6 +368,14 @@ export abstract class AcpAdapter {
     return null;
   }
 
+  /**
+   * Extract adapter-specific tool name from _meta.
+   * Override in subclasses to provide adapter-specific tool name extraction.
+   */
+  extractToolName(_meta: Record<string, unknown> | undefined): string | null {
+    return null;
+  }
+
   private async cleanup(): Promise<void> {
     if (this.process) {
       this.process.kill();
@@ -388,7 +397,21 @@ export abstract class AcpAdapter {
       notificationMeta: params._meta,
       updateMeta,
     });
-    const message = mapUpdateToRichMessage(params.update);
+
+    // Cache toolName for permission requests (tool_call and tool_call_update have _meta)
+    const updateType = params.update.sessionUpdate;
+    if (updateType === "tool_call" || updateType === "tool_call_update") {
+      const toolUpdate = params.update as { toolCallId?: string };
+      const toolName = this.extractToolName(updateMeta);
+      if (toolName && toolUpdate.toolCallId) {
+        this.toolNameCache.set(toolUpdate.toolCallId, toolName);
+      }
+    }
+
+    const message = mapUpdateToRichMessage(
+      params.update,
+      this.extractToolName.bind(this)
+    );
     if (message) {
       this.handler?.onMessage(message);
     }
@@ -403,7 +426,10 @@ export abstract class AcpAdapter {
   ): Promise<RequestPermissionResponse> {
     log.debug("permission_request", { params });
     const options = this.currentOptions;
-    const formattedName = formatPermissionName(params.toolCall);
+
+    // Look up cached tool name from earlier tool_call update
+    const cachedToolName = this.toolNameCache.get(params.toolCall.toolCallId);
+    const formattedName = formatPermissionName(params.toolCall, cachedToolName);
 
     // Find first allow option for yolo/cache
     const firstAllowOption = params.options.find(
@@ -440,6 +466,7 @@ export abstract class AcpAdapter {
         toolCall: params.toolCall,
         options: params.options,
         timestamp: Date.now(),
+        resolvedToolName: cachedToolName,
       };
 
       const callbackResponse = await options.onPermissionRequest(request);

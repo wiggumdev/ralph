@@ -17,4 +17,11 @@ export class ClaudeAcpAdapter extends AcpAdapter {
   protected override getPreferredModeId(): string | null {
     return "acceptEdits";
   }
+
+  override extractToolName(
+    _meta: Record<string, unknown> | undefined
+  ): string | null {
+    const claudeCode = _meta?.claudeCode as { toolName?: string } | undefined;
+    return claudeCode?.toolName ?? null;
+  }
 }

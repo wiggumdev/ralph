@@ -1,7 +1,27 @@
-import type { PermissionOption } from "@agentclientprotocol/sdk";
+import type {
+  PermissionOption,
+  ToolCallUpdate,
+} from "@agentclientprotocol/sdk";
 import { For, Show } from "solid-js";
 import type { PermissionRequest } from "#parsers/permission-types";
+import { formatToolDisplay } from "#utils/tool-formatter";
 import { Modal } from "./modal";
+
+function formatToolCall(
+  toolCall: ToolCallUpdate,
+  resolvedToolName?: string
+): string {
+  const claudeCode = (
+    toolCall._meta as { claudeCode?: { toolName?: string } } | undefined
+  )?.claudeCode;
+  const name =
+    resolvedToolName ??
+    claudeCode?.toolName ??
+    toolCall.title ??
+    toolCall.toolCallId;
+  const input = (toolCall.rawInput as Record<string, unknown>) || {};
+  return formatToolDisplay(name, input, 40);
+}
 
 interface PermissionModalProps {
   request: PermissionRequest | null;
@@ -57,7 +77,10 @@ export function PermissionModal(props: PermissionModalProps) {
               <text>
                 <span style={{ fg: "#aaaaaa" }}>Tool: </span>
                 <span style={{ fg: "#00aaff" }}>
-                  {request().toolCall.title ?? request().toolCall.toolCallId}
+                  {formatToolCall(
+                    request().toolCall,
+                    request().resolvedToolName
+                  )}
                 </span>
               </text>
             </box>

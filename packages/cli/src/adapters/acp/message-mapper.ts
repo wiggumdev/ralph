@@ -30,6 +30,13 @@ import type {
 const log = Log.create({ service: "acp-mapper" });
 
 /**
+ * Function type for extracting adapter-specific tool names from _meta.
+ */
+export type ToolNameExtractor = (
+  _meta: Record<string, unknown> | undefined
+) => string | null;
+
+/**
  * Log _meta for session update types when present.
  */
 function logMeta(
@@ -296,7 +303,8 @@ export function mapContentChunk(
  * This is the main entry point for converting ACP protocol messages to internal types.
  */
 export function mapUpdateToRichMessage(
-  update: SessionUpdate
+  update: SessionUpdate,
+  extractToolName?: ToolNameExtractor
 ): RichMessage | null {
   const timestamp = Date.now();
 
@@ -332,12 +340,15 @@ export function mapUpdateToRichMessage(
     case "tool_call": {
       const toolCall = update as ToolCall & { sessionUpdate: string };
       logMeta("tool_call", toolCall.toolCallId, toolCall._meta);
+      const resolvedName =
+        extractToolName?.(toolCall._meta ?? undefined) ?? undefined;
       const contentBlocks: InternalContentBlock[] = [
         {
           type: "tool_use",
           id: toolCall.toolCallId,
           name: toolCall.title,
           input: (toolCall.rawInput as Record<string, unknown>) || {},
+          resolvedName,
           kind: toolCall.kind as ToolKind | undefined,
           status: (toolCall.status as ToolCallStatus | undefined) ?? "pending",
           locations: toolCall.locations?.map((loc) => ({
@@ -358,6 +369,8 @@ export function mapUpdateToRichMessage(
     case "tool_call_update": {
       const toolUpdate = update as ToolCallUpdate & { sessionUpdate: string };
       logMeta("tool_call_update", toolUpdate.toolCallId, toolUpdate._meta);
+      const resolvedName =
+        extractToolName?.(toolUpdate._meta ?? undefined) ?? undefined;
       const contentBlocks: InternalContentBlock[] = [];
 
       if (toolUpdate.content && toolUpdate.content.length > 0) {
@@ -376,6 +389,7 @@ export function mapUpdateToRichMessage(
           id: toolUpdate.toolCallId,
           name: toolUpdate.title ?? "",
           input: {},
+          resolvedName,
           status:
             (toolUpdate.status as ToolCallStatus | undefined) ?? undefined,
           locations: toolUpdate.locations?.map((loc) => ({

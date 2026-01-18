@@ -217,7 +217,10 @@ export class AcpStateProvider implements StateProvider {
   ): Promise<PermissionResponse> {
     return new Promise((resolve) => {
       const id = request.toolCall.toolCallId;
-      const formattedName = formatPermissionName(request.toolCall);
+      const formattedName = formatPermissionName(
+        request.toolCall,
+        request.resolvedToolName
+      );
 
       // Wrap resolve to track outcome
       const trackingResolve = (response: PermissionResponse) => {
@@ -675,6 +678,7 @@ export class AcpStateProvider implements StateProvider {
       type: "tool",
       toolCallId: block.id,
       title: block.name,
+      resolvedName: block.resolvedName,
       kind: block.kind as ToolKind,
       status: block.status ?? "pending",
       locations: block.locations,
