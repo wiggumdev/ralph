@@ -10,15 +10,9 @@ export function Chrome(props: ChromeProps) {
   const { currentTab } = useTab();
 
   return (
-    <box flexDirection="column" style={{ padding: 1 }}>
+    <box style={{ padding: 1 }}>
       <TabBar currentTab={currentTab} />
-      <scrollbox
-        flexDirection="column"
-        stickyScroll
-        style={{ flexGrow: 1, marginTop: 1 }}
-      >
-        {props.children}
-      </scrollbox>
+      <box>{props.children}</box>
       <Footer />
     </box>
   );

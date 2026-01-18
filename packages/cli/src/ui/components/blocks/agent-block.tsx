@@ -97,7 +97,12 @@ export function AgentBlock(props: AgentBlockProps) {
       </text>
 
       <Show when={isExpanded()}>
-        <box flexDirection="column" style={{ paddingLeft: 2, marginTop: 0 }}>
+        <box
+          border={["left"]}
+          borderColor={"#00aaff"}
+          flexDirection="column"
+          style={{ marginLeft: 2, paddingLeft: 2 }}
+        >
           {/* Render all items - tools and nested agents */}
           <For each={props.block.items}>
             {(item) => (

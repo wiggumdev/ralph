@@ -1,4 +1,5 @@
-import { For, Match, Show, Switch } from "solid-js";
+import { createEffect, For, Match, Show, Switch } from "solid-js";
+import { createStore, reconcile } from "solid-js/store";
 import type {
   Message,
   ResultMessage as ResultMessageType,
@@ -42,6 +43,14 @@ const ACTIVITY_ICONS: Record<string, { icon: string; color: string }> = {
 };
 
 export function SessionContainer(props: SessionContainerProps) {
+  // Local stores for granular reactivity
+  const [items, setItems] = createStore(props.session.items);
+
+  // Sync items when props change
+  createEffect(() => {
+    setItems(reconcile(props.session.items, { key: "id" }));
+  });
+
   const title = () => getSessionTitle(props.session);
   const sessionId = () => props.session.id.slice(0, 16);
 
@@ -86,7 +95,7 @@ export function SessionContainer(props: SessionContainerProps) {
   const rowColor = () => (props.selected ? "#ffffff" : "#00aaff");
 
   return (
-    <box flexDirection="column">
+    <box>
       <text>
         <span style={{ fg: statusColor() }}>{statusIcon()}</span>
         <Show when={activityIndicator()}>
@@ -110,19 +119,13 @@ export function SessionContainer(props: SessionContainerProps) {
       </text>
 
       <Show when={!props.session.collapsed}>
-        <box style={{ marginTop: 0 }}>
-          <text>
-            <span style={{ fg: "#444444" }}>{"─".repeat(60)}</span>
-          </text>
-        </box>
         <box
           border={["left"]}
           borderColor={"#00aaff"}
-          flexDirection="column"
           style={{ marginLeft: 2, paddingLeft: 2 }}
         >
-          {/* Render items directly - no more references */}
-          <For each={props.session.items}>
+          {/* Render items via local store for granular reactivity */}
+          <For each={items}>
             {(item) => (
               <box>
                 <Switch>
@@ -167,12 +170,12 @@ export function SessionContainer(props: SessionContainerProps) {
               </box>
             )}
           </For>
+          <Show when={props.session.plan}>
+            <box style={{ marginLeft: 2 }}>
+              <AgentPlan plan={props.session.plan ?? []} />
+            </box>
+          </Show>
         </box>
-        <Show when={props.session.plan}>
-          <box style={{ marginLeft: 2 }}>
-            <AgentPlan plan={props.session.plan ?? []} />
-          </box>
-        </Show>
       </Show>
     </box>
   );

@@ -7,6 +7,7 @@ import {
   onMount,
   Switch,
 } from "solid-js";
+import { createStore, reconcile } from "solid-js/store";
 import { Log } from "#log";
 import type { SessionState } from "#parsers/message-types";
 import type {
@@ -45,8 +46,8 @@ export interface AppProps {
 function App(props: AppProps) {
   const renderer = useRenderer();
 
-  // App state signals
-  const [sessions, setSessions] = createSignal<SessionState[]>([]);
+  // App state - sessions as store for granular reactivity
+  const [sessions, setSessions] = createStore<SessionState[]>([]);
   const [status, setStatus] = createSignal<AppStatus>("idle");
   const [iteration, setIteration] = createSignal(0);
   const [totalInputTokens, setTotalInputTokens] = createSignal(0);
@@ -61,7 +62,7 @@ function App(props: AppProps) {
   >(undefined);
 
   // Derived from sessions
-  const activeSession = createMemo(() => sessions().at(-1));
+  const activeSession = createMemo(() => sessions.at(-1));
   const items = createMemo(() => activeSession()?.items ?? []);
   const todos = createMemo(() => activeSession()?.todos ?? []);
 
@@ -77,8 +78,8 @@ function App(props: AppProps) {
   // Session navigation helpers
   const selectPrev = () => setSelectedIndex((i) => Math.max(0, i - 1));
   const selectNext = () =>
-    setSelectedIndex((i) => Math.min(sessions().length - 1, i + 1));
-  const selectedSession = () => sessions()[selectedIndex()];
+    setSelectedIndex((i) => Math.min(sessions.length - 1, i + 1));
+  const selectedSession = () => sessions[selectedIndex()];
 
   // Session control functions
   const togglePause = () => {
@@ -91,15 +92,12 @@ function App(props: AppProps) {
   };
 
   const toggleSessionCollapse = (index: number) => {
-    const updated = sessions().map((s, i) =>
-      i === index ? { ...s, collapsed: !s.collapsed } : s
-    );
-    setSessions(updated);
+    setSessions(index, "collapsed", (c) => !c);
   };
 
   const collapseSelected = () => {
     const idx = selectedIndex();
-    const session = sessions()[idx];
+    const session = sessions[idx];
     if (session && !session.collapsed) {
       toggleSessionCollapse(idx);
     }
@@ -107,7 +105,7 @@ function App(props: AppProps) {
 
   const expandSelected = () => {
     const idx = selectedIndex();
-    const session = sessions()[idx];
+    const session = sessions[idx];
     if (session?.collapsed) {
       toggleSessionCollapse(idx);
     }
@@ -125,7 +123,7 @@ function App(props: AppProps) {
 
   // Context values
   const appStateValue: AppStateContextValue = {
-    sessions,
+    sessions: () => sessions,
     activeSession,
     status,
     iteration,
@@ -179,7 +177,7 @@ function App(props: AppProps) {
   };
 
   const applyStateUpdate = (update: Partial<AppState>) => {
-    applySimpleUpdates(update, setters, sessions, setSelectedIndex);
+    applySimpleUpdates(update, setters, () => sessions, setSelectedIndex);
     applyStatusUpdate(update, setStatus, props.autoExit ?? false, handleExit);
   };
 
@@ -300,7 +298,7 @@ function App(props: AppProps) {
 function applySimpleUpdates(
   update: Partial<AppState>,
   setters: {
-    sessions: (v: SessionState[]) => void;
+    sessions: import("solid-js/store").SetStoreFunction<SessionState[]>;
     iteration: (v: number) => void;
     totalInputTokens: (v: number) => void;
     totalOutputTokens: (v: number) => void;
@@ -322,7 +320,7 @@ function applySimpleUpdates(
     if (isNewIteration) {
       // Collapse all sessions and select the new one
       const collapsed = update.sessions.map((s) => ({ ...s, collapsed: true }));
-      setters.sessions(collapsed);
+      setters.sessions(reconcile(collapsed, { key: "id" }));
       setSelectedIndex(update.sessions.length - 1);
     } else {
       // Preserve local UI state (collapsed) when merging sessions
@@ -333,7 +331,7 @@ function applySimpleUpdates(
         ...s,
         collapsed: collapsedMap.get(s.id) ?? s.collapsed,
       }));
-      setters.sessions(merged);
+      setters.sessions(reconcile(merged, { key: "id" }));
     }
   }
   if (update.iteration !== undefined) {
