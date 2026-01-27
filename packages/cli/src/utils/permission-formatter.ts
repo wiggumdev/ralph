@@ -4,6 +4,9 @@ import type {
   TrackedPermission,
 } from "#parsers/permission-types";
 
+// Extract base tool name (e.g., "Bash(ls)" → "Bash")
+const TOOL_NAME_REGEX = /^(\w+)/;
+
 /**
  * Format a tool call to Claude settings format.
  * - Bash → extract command param: "Bash(bunx vitest)"
@@ -25,7 +28,7 @@ export function formatPermissionName(
   const rawToolName =
     resolvedToolName ?? claudeCode?.toolName ?? toolCall.title ?? "Unknown";
   // Extract base tool name (e.g., "Bash(ls)" → "Bash", "Fetch https://..." → "Fetch")
-  const toolName = rawToolName.match(/^(\w+)/)?.[1] ?? rawToolName;
+  const toolName = rawToolName.match(TOOL_NAME_REGEX)?.[1] ?? rawToolName;
   const rawInput = toolCall.rawInput as Record<string, unknown> | undefined;
 
   switch (toolName) {

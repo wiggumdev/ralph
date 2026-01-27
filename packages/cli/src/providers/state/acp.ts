@@ -40,6 +40,9 @@ import { formatPermissionName } from "#utils/permission-formatter";
 
 const log = Log.create({ service: "state" });
 
+// Regex for detecting promise completion tag (case-insensitive)
+const PROMISE_COMPLETE_REGEX = /<promise>complete<\/promise>/i;
+
 export interface AcpStateProviderOptions extends AcpAdapterOptions {
   prompt: string;
   maxIterations?: number;
@@ -96,6 +99,9 @@ export class AcpStateProvider implements StateProvider {
 
   // ID counter for items
   private itemIdCounter = 0;
+
+  // Promise completion detection
+  private promiseComplete = false;
 
   constructor(adapter: AcpAdapter, options: AcpStateProviderOptions) {
     this.adapter = adapter;
@@ -270,6 +276,7 @@ export class AcpStateProvider implements StateProvider {
     // Reset text and thinking accumulation for new iteration
     this.flushTextBuffer();
     this.flushThinkingBuffer();
+    this.promiseComplete = false;
 
     // Create new session for this iteration
     this.currentSession = {
@@ -456,6 +463,11 @@ export class AcpStateProvider implements StateProvider {
     this.lastTextTimestamp = message.timestamp;
     this.updateActivity("responding");
     this.emitAccumulatedText();
+
+    // Check accumulated buffer for promise completion (handles split streaming)
+    if (PROMISE_COMPLETE_REGEX.test(this.textBuffer)) {
+      this.promiseComplete = true;
+    }
   }
 
   private handlePlanMessage(
@@ -534,10 +546,16 @@ export class AcpStateProvider implements StateProvider {
         data: message as import("#parsers/message-types").SystemMessage,
       };
     } else if (message.type === "result") {
+      const resultMsg =
+        message as import("#parsers/message-types").ResultMessage;
+      // Check for promise completion in result
+      if (resultMsg.result && PROMISE_COMPLETE_REGEX.test(resultMsg.result)) {
+        this.promiseComplete = true;
+      }
       item = {
         type: "result",
         id: this.generateItemId(),
-        data: message as import("#parsers/message-types").ResultMessage,
+        data: resultMsg,
       };
     } else {
       // Fallback - shouldn't happen with current types
@@ -951,7 +969,13 @@ export class AcpStateProvider implements StateProvider {
       this.emitStateUpdate();
     }
 
-    if (this.iteration < this.maxIterations) {
+    if (this.promiseComplete) {
+      // Promise complete detected - stop loop
+      this.callback?.({
+        status: "complete",
+        permissionSummary: this.getPermissionSummary(),
+      });
+    } else if (this.iteration < this.maxIterations) {
       // Continue to next iteration - defer to allow current run() to complete cleanup
       this.iteration++;
       setTimeout(() => this.runIteration(), 100);

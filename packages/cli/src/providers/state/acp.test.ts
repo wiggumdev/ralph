@@ -130,3 +130,174 @@ describe("AcpStateProvider permission tracking", () => {
     });
   });
 });
+
+describe("AcpStateProvider promise completion detection", () => {
+  let capturedHandler: {
+    onMessage: (msg: unknown) => void;
+    onComplete: (result: unknown) => void;
+    onError: (err: Error) => void;
+  } | null = null;
+
+  function createCapturingMockAdapter(): AcpAdapter {
+    return {
+      name: "test",
+      command: "test",
+      args: [],
+      isAvailable: () => Promise.resolve(true),
+      run: (
+        _prompt: string,
+        _options: unknown,
+        handler: typeof capturedHandler
+      ) => {
+        capturedHandler = handler;
+        return Promise.resolve();
+      },
+      cancel: () => Promise.resolve(),
+      getSessionId: () => undefined,
+      getResumeCommand: () => null,
+      supportsLoadSession: () => false,
+    } as unknown as AcpAdapter;
+  }
+
+  beforeEach(() => {
+    capturedHandler = null;
+  });
+
+  test("detects <promise>Complete</promise> in text delta", async () => {
+    const adapter = createCapturingMockAdapter();
+    const options: AcpStateProviderOptions = {
+      prompt: "test",
+      maxIterations: 5,
+    };
+    const provider = new AcpStateProvider(adapter, options);
+    const mockCallback = mock();
+    provider.subscribe(mockCallback);
+    provider.start();
+
+    // Simulate text delta with promise complete
+    capturedHandler?.onMessage({
+      type: "text_delta",
+      text: "All done! <promise>Complete</promise>",
+      timestamp: Date.now(),
+    });
+
+    // Simulate completion
+    capturedHandler?.onComplete({ stopReason: "end_turn" });
+
+    // Should emit status: "complete" (not continue to next iteration)
+    const completeCalls = mockCallback.mock.calls.filter(
+      (call) => (call[0] as { status?: string }).status === "complete"
+    );
+    expect(completeCalls.length).toBeGreaterThan(0);
+  });
+
+  test("detects <promise>COMPLETE</promise> case insensitive", async () => {
+    const adapter = createCapturingMockAdapter();
+    const options: AcpStateProviderOptions = {
+      prompt: "test",
+      maxIterations: 5,
+    };
+    const provider = new AcpStateProvider(adapter, options);
+    const mockCallback = mock();
+    provider.subscribe(mockCallback);
+    provider.start();
+
+    capturedHandler?.onMessage({
+      type: "text_delta",
+      text: "<PROMISE>COMPLETE</PROMISE>",
+      timestamp: Date.now(),
+    });
+
+    capturedHandler?.onComplete({ stopReason: "end_turn" });
+
+    const completeCalls = mockCallback.mock.calls.filter(
+      (call) => (call[0] as { status?: string }).status === "complete"
+    );
+    expect(completeCalls.length).toBeGreaterThan(0);
+  });
+
+  test("detects promise complete split across streaming chunks", async () => {
+    const adapter = createCapturingMockAdapter();
+    const options: AcpStateProviderOptions = {
+      prompt: "test",
+      maxIterations: 5,
+    };
+    const provider = new AcpStateProvider(adapter, options);
+    const mockCallback = mock();
+    provider.subscribe(mockCallback);
+    provider.start();
+
+    // Simulate split streaming
+    capturedHandler?.onMessage({
+      type: "text_delta",
+      text: "Done! <promise>Comp",
+      timestamp: Date.now(),
+    });
+    capturedHandler?.onMessage({
+      type: "text_delta",
+      text: "lete</promise>",
+      timestamp: Date.now(),
+    });
+
+    capturedHandler?.onComplete({ stopReason: "end_turn" });
+
+    const completeCalls = mockCallback.mock.calls.filter(
+      (call) => (call[0] as { status?: string }).status === "complete"
+    );
+    expect(completeCalls.length).toBeGreaterThan(0);
+  });
+
+  test("detects promise complete in result message", async () => {
+    const adapter = createCapturingMockAdapter();
+    const options: AcpStateProviderOptions = {
+      prompt: "test",
+      maxIterations: 5,
+    };
+    const provider = new AcpStateProvider(adapter, options);
+    const mockCallback = mock();
+    provider.subscribe(mockCallback);
+    provider.start();
+
+    capturedHandler?.onMessage({
+      type: "result",
+      result: "Task finished. <promise>Complete</promise>",
+      timestamp: Date.now(),
+    });
+
+    capturedHandler?.onComplete({ stopReason: "end_turn" });
+
+    const completeCalls = mockCallback.mock.calls.filter(
+      (call) => (call[0] as { status?: string }).status === "complete"
+    );
+    expect(completeCalls.length).toBeGreaterThan(0);
+  });
+
+  test("continues loop when promise not detected", async () => {
+    const adapter = createCapturingMockAdapter();
+    const options: AcpStateProviderOptions = {
+      prompt: "test",
+      maxIterations: 2,
+    };
+    const provider = new AcpStateProvider(adapter, options);
+    const mockCallback = mock();
+    provider.subscribe(mockCallback);
+    provider.start();
+
+    // Normal text without promise complete
+    capturedHandler?.onMessage({
+      type: "text_delta",
+      text: "Working on it...",
+      timestamp: Date.now(),
+    });
+
+    capturedHandler?.onComplete({ stopReason: "end_turn" });
+
+    // Should emit iteration: 2 (continuing to next iteration)
+    await new Promise((r) => setTimeout(r, 150));
+
+    const iterationCalls = mockCallback.mock.calls.filter(
+      (call) => (call[0] as { iteration?: number }).iteration === 2
+    );
+    expect(iterationCalls.length).toBeGreaterThan(0);
+  });
+});
