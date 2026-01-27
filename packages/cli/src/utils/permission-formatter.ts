@@ -22,8 +22,10 @@ export function formatPermissionName(
   const claudeCode = (
     toolCall._meta as { claudeCode?: { toolName?: string } } | undefined
   )?.claudeCode;
-  const toolName =
+  const rawToolName =
     resolvedToolName ?? claudeCode?.toolName ?? toolCall.title ?? "Unknown";
+  // Extract base tool name (e.g., "Bash(ls)" → "Bash", "Fetch https://..." → "Fetch")
+  const toolName = rawToolName.match(/^(\w+)/)?.[1] ?? rawToolName;
   const rawInput = toolCall.rawInput as Record<string, unknown> | undefined;
 
   switch (toolName) {
