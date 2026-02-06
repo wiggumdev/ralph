@@ -1,5 +1,9 @@
 import type { SessionItem, SessionState } from "#parsers/message-types";
-import { isMessageItem, isTextBlock } from "#parsers/message-types";
+import {
+  isMessageItem,
+  isTextBlock,
+  isTextDeltaItem,
+} from "#parsers/message-types";
 
 const MAX_TITLE_LENGTH = 50;
 
@@ -20,24 +24,35 @@ export function getSessionTitle(session: SessionState): string {
   return truncateTitle(lastMessage, MAX_TITLE_LENGTH);
 }
 
-function findLastTextMessage(items: SessionItem[]): string | null {
-  for (let i = items.length - 1; i >= 0; i--) {
-    const item = items[i];
-    if (!(item && isMessageItem(item))) {
-      continue;
-    }
-    const msg = item.data;
-    if (msg.role !== "assistant") {
-      continue;
-    }
+function extractItemText(item: SessionItem): string | null {
+  if (isTextDeltaItem(item)) {
+    const text = extractFirstLine(item.data.text);
+    return text.length > 0 ? text : null;
+  }
 
-    for (const block of msg.content) {
+  if (isMessageItem(item) && item.data.role === "assistant") {
+    for (const block of item.data.content) {
       if (isTextBlock(block)) {
         const text = extractFirstLine(block.text);
         if (text.length > 0) {
           return text;
         }
       }
+    }
+  }
+
+  return null;
+}
+
+function findLastTextMessage(items: SessionItem[]): string | null {
+  for (let i = items.length - 1; i >= 0; i--) {
+    const item = items[i];
+    if (!item) {
+      continue;
+    }
+    const text = extractItemText(item);
+    if (text) {
+      return text;
     }
   }
   return null;

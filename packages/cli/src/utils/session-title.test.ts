@@ -3,59 +3,11 @@ import type {
   Message,
   SessionItem,
   SessionState,
+  TextDelta,
 } from "#parsers/message-types";
+import { getSessionTitle } from "./session-title";
 
-// Re-implement for testing (same logic as session-title.ts)
 const MAX_TITLE_LENGTH = 50;
-
-function getSessionTitle(session: SessionState): string {
-  if (session.status === "running" || session.status === "paused") {
-    return "";
-  }
-
-  const lastMessage = findLastTextMessage(session.items);
-  if (!lastMessage) {
-    return "";
-  }
-
-  return truncateTitle(lastMessage, MAX_TITLE_LENGTH);
-}
-
-function findLastTextMessage(items: SessionItem[]): string | null {
-  for (let i = items.length - 1; i >= 0; i--) {
-    const item = items[i];
-    if (!item || item.type !== "message") {
-      continue;
-    }
-    const message = item.data as Message;
-    if (message.role !== "assistant") {
-      continue;
-    }
-
-    for (const block of message.content) {
-      if (block.type === "text") {
-        const text = extractFirstLine(block.text);
-        if (text.length > 0) {
-          return text;
-        }
-      }
-    }
-  }
-  return null;
-}
-
-function extractFirstLine(text: string): string {
-  const trimmed = text.trim();
-  const firstLine = trimmed.split("\n")[0];
-  return firstLine?.trim() || "";
-}
-
-function truncateTitle(text: string, max: number): string {
-  if (text.length <= max) {
-    return text;
-  }
-  return `${text.slice(0, max - 3)}...`;
-}
 
 function createSession(
   status: SessionState["status"],
@@ -88,6 +40,11 @@ function createTextMessage(text: string, role: "user" | "assistant"): Message {
 
 function messageToItem(message: Message, id: string): SessionItem {
   return { type: "message", id, data: message };
+}
+
+function textDeltaToItem(text: string, id: string): SessionItem {
+  const delta: TextDelta = { type: "text_delta", text, timestamp: Date.now() };
+  return { type: "text_delta", id, data: delta };
 }
 
 describe("getSessionTitle", () => {
@@ -153,5 +110,36 @@ describe("getSessionTitle", () => {
       messageToItem(createTextMessage(multilineText, "assistant"), "1"),
     ]);
     expect(getSessionTitle(session)).toBe("First line summary");
+  });
+
+  test("extracts title from text_delta items", () => {
+    const session = createSession("complete", [
+      textDeltaToItem("Streamed response text", "1"),
+    ]);
+    expect(getSessionTitle(session)).toBe("Streamed response text");
+  });
+
+  test("returns last text_delta when multiple exist", () => {
+    const session = createSession("complete", [
+      textDeltaToItem("First delta", "1"),
+      textDeltaToItem("Last delta", "2"),
+    ]);
+    expect(getSessionTitle(session)).toBe("Last delta");
+  });
+
+  test("prefers last text_delta over earlier message item", () => {
+    const session = createSession("complete", [
+      messageToItem(createTextMessage("Message text", "assistant"), "1"),
+      textDeltaToItem("Delta text", "2"),
+    ]);
+    expect(getSessionTitle(session)).toBe("Delta text");
+  });
+
+  test("falls back to message item when text_delta is empty", () => {
+    const session = createSession("complete", [
+      messageToItem(createTextMessage("Fallback text", "assistant"), "1"),
+      textDeltaToItem("", "2"),
+    ]);
+    expect(getSessionTitle(session)).toBe("Fallback text");
   });
 });
