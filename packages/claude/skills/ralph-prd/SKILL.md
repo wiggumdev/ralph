@@ -114,6 +114,12 @@ If the user says "whatever you think is best", provide your recommendation and g
 **For any story with UI changes:** Always include "Verify in browser using dev-browser skill" as acceptance criteria. This ensures visual verification of frontend work.
 **For any story that includes domain logic:** Always include "Verify with unit tests" as acceptance criteria.
 
+### Tracer Bullets
+
+When building features, build a tiny, end-to-end slice of the feature first, seek feedback, then expand out from there.
+
+Tracer bullets comes from the Pragmatic Programmer. When building systems, you want to write code that gets you feedback as quickly as possible. Tracer bullets are small slices of functionality that go through all layers of the system, allowing you to test and validate your approach early. This helps in identifying potential issues and ensures that the overall architecture is sound before investing significant time in development.
+
 ### Writing for Junior Developers
 
 The PRD reader may be a junior developer or AI agent. Therefore:
@@ -197,14 +203,6 @@ Generate the PRD json based on the following json schema:
         "type": "string",
         "description": "Testing guidance: test types needed (unit/integration/e2e), what to mock, edge cases to cover."
       },
-      "suggestedFiles": {
-        "type": "array",
-        "description": "Paths to files likely needing changes or examination. Glob patterns allowed (e.g., 'src/auth/**/*.ts').",
-        "items": {
-          "type": "string",
-          "minLength": 1
-        }
-      },
       "outOfScope": {
         "type": "array",
         "description": "Explicit exclusions to prevent over-engineering (e.g., 'No OAuth support yet', 'Skip mobile responsive').",
@@ -232,6 +230,7 @@ Before writing prd.json, verify:
 - [ ] Asked clarifying questions
 - [ ] Incorporated user's answers
 - [ ] PRD item is completable in one iteration (small enough)
+- [ ] For new features create a **Tracer Bullet** first then build a **Minimum Viable Product** (MVP)
 - [ ] UI stories have "Verify in browser using dev-browser skill" as criterion
 - [ ] Acceptance criteria are verifiable (not vague)
 - [ ] Saved to `.plans/prd.json`

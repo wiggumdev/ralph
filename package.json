@@ -14,10 +14,10 @@
     "typecheck": "turbo run typecheck"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.3.13",
-    "@cloudflare/workers-types": "4.20260127.0",
-    "turbo": "^2.7.6",
-    "ultracite": "7.1.1",
+    "@biomejs/biome": "2.3.14",
+    "@cloudflare/workers-types": "4.20260206.0",
+    "turbo": "^2.8.3",
+    "ultracite": "7.1.4",
     "vitest": "^4.0.18"
   },
   "peerDependencies": {
