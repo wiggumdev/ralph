@@ -1,5 +1,6 @@
 import { assign, setup } from "xstate";
 import { Log } from "#log";
+import type { RichMessage } from "#parsers/message-types";
 import {
   completeSession,
   computeTotals,
@@ -55,6 +56,24 @@ export const sessionMachine = setup({
   actors: {
     adapterSource,
   },
+  actions: {
+    processMsg: assign(({ context, event }) => {
+      const msg = (event as { message: RichMessage }).message;
+      const count = context.messageCount + 1;
+      log.debug("message_received", { count, type: msg.type });
+      const updates = processMessage(context, msg);
+      const mergedCtx = { ...context, ...updates };
+      const totals = computeTotals(mergedCtx.sessions);
+      return {
+        ...updates,
+        messageCount: count,
+        totalInputTokens: totals.inputTokens,
+        totalOutputTokens: totals.outputTokens,
+        totalCost: totals.cost,
+        toolCallCount: totals.toolCallCount,
+      };
+    }),
+  },
   guards: {
     hasMoreIterations: ({ context }) => {
       if (context.promiseComplete) {
@@ -68,6 +87,20 @@ export const sessionMachine = setup({
     isPromiseComplete: ({ context }) => context.promiseComplete,
     isSystemMessage: ({ event }) =>
       (event as { message: { type: string } }).message.type === "system",
+    isThinkingMessage: ({ event }) =>
+      (event as { message: { type: string } }).message.type ===
+      "thinking_delta",
+    isTextStreamMessage: ({ event }) =>
+      (event as { message: { type: string } }).message.type === "text_delta",
+    isToolMessage: ({ event }) => {
+      const msg = (event as { message: { type: string; content?: unknown[] } })
+        .message;
+      return (
+        msg.type === "message" &&
+        Array.isArray(msg.content) &&
+        msg.content.some((b) => (b as { type?: string }).type === "tool_use")
+      );
+    },
     isContentMessage: ({ event }) => {
       const t = (event as { message: { type: string } }).message.type;
       return t === "text_delta" || t === "thinking_delta" || t === "message";
@@ -114,45 +147,9 @@ export const sessionMachine = setup({
               {
                 guard: "isSystemMessage",
                 target: "prompting",
-                actions: assign(({ context, event }) => {
-                  const count = context.messageCount + 1;
-                  log.debug("message_received", {
-                    count,
-                    type: event.message.type,
-                  });
-                  const updates = processMessage(context, event.message);
-                  const mergedCtx = { ...context, ...updates };
-                  const totals = computeTotals(mergedCtx.sessions);
-                  return {
-                    ...updates,
-                    messageCount: count,
-                    totalInputTokens: totals.inputTokens,
-                    totalOutputTokens: totals.outputTokens,
-                    totalCost: totals.cost,
-                    toolCallCount: totals.toolCallCount,
-                  };
-                }),
+                actions: "processMsg",
               },
-              {
-                actions: assign(({ context, event }) => {
-                  const count = context.messageCount + 1;
-                  log.debug("message_received", {
-                    count,
-                    type: event.message.type,
-                  });
-                  const updates = processMessage(context, event.message);
-                  const mergedCtx = { ...context, ...updates };
-                  const totals = computeTotals(mergedCtx.sessions);
-                  return {
-                    ...updates,
-                    messageCount: count,
-                    totalInputTokens: totals.inputTokens,
-                    totalOutputTokens: totals.outputTokens,
-                    totalCost: totals.cost,
-                    toolCallCount: totals.toolCallCount,
-                  };
-                }),
-              },
+              { actions: "processMsg" },
             ],
           },
         },
@@ -161,73 +158,81 @@ export const sessionMachine = setup({
           on: {
             MESSAGE: [
               {
-                guard: "isContentMessage",
-                target: "streaming",
-                actions: assign(({ context, event }) => {
-                  const count = context.messageCount + 1;
-                  log.debug("message_received", {
-                    count,
-                    type: event.message.type,
-                  });
-                  const updates = processMessage(context, event.message);
-                  const mergedCtx = { ...context, ...updates };
-                  const totals = computeTotals(mergedCtx.sessions);
-                  return {
-                    ...updates,
-                    messageCount: count,
-                    totalInputTokens: totals.inputTokens,
-                    totalOutputTokens: totals.outputTokens,
-                    totalCost: totals.cost,
-                    toolCallCount: totals.toolCallCount,
-                  };
-                }),
+                guard: "isThinkingMessage",
+                target: "thinking",
+                actions: "processMsg",
               },
               {
-                actions: assign(({ context, event }) => {
-                  const count = context.messageCount + 1;
-                  log.debug("message_received", {
-                    count,
-                    type: event.message.type,
-                  });
-                  const updates = processMessage(context, event.message);
-                  const mergedCtx = { ...context, ...updates };
-                  const totals = computeTotals(mergedCtx.sessions);
-                  return {
-                    ...updates,
-                    messageCount: count,
-                    totalInputTokens: totals.inputTokens,
-                    totalOutputTokens: totals.outputTokens,
-                    totalCost: totals.cost,
-                    toolCallCount: totals.toolCallCount,
-                  };
-                }),
+                guard: "isToolMessage",
+                target: "tool_executing",
+                actions: "processMsg",
               },
+              {
+                guard: "isTextStreamMessage",
+                target: "streaming",
+                actions: "processMsg",
+              },
+              {
+                guard: "isContentMessage",
+                target: "streaming",
+                actions: "processMsg",
+              },
+              { actions: "processMsg" },
             ],
           },
         },
         streaming: {
           entry: () => log.debug("sub_state", { state: "streaming" }),
           on: {
-            MESSAGE: {
-              actions: assign(({ context, event }) => {
-                const count = context.messageCount + 1;
-                log.debug("message_received", {
-                  count,
-                  type: event.message.type,
-                });
-                const updates = processMessage(context, event.message);
-                const mergedCtx = { ...context, ...updates };
-                const totals = computeTotals(mergedCtx.sessions);
-                return {
-                  ...updates,
-                  messageCount: count,
-                  totalInputTokens: totals.inputTokens,
-                  totalOutputTokens: totals.outputTokens,
-                  totalCost: totals.cost,
-                  toolCallCount: totals.toolCallCount,
-                };
-              }),
-            },
+            MESSAGE: [
+              {
+                guard: "isThinkingMessage",
+                target: "thinking",
+                actions: "processMsg",
+              },
+              {
+                guard: "isToolMessage",
+                target: "tool_executing",
+                actions: "processMsg",
+              },
+              { actions: "processMsg" },
+            ],
+          },
+        },
+        thinking: {
+          entry: () => log.debug("sub_state", { state: "thinking" }),
+          on: {
+            MESSAGE: [
+              {
+                guard: "isTextStreamMessage",
+                target: "streaming",
+                actions: "processMsg",
+              },
+              {
+                guard: "isToolMessage",
+                target: "tool_executing",
+                actions: "processMsg",
+              },
+              { actions: "processMsg" },
+            ],
+          },
+        },
+        tool_executing: {
+          entry: () => log.debug("sub_state", { state: "tool_executing" }),
+          on: {
+            MESSAGE: [
+              {
+                guard: "isThinkingMessage",
+                target: "thinking",
+                actions: "processMsg",
+              },
+              {
+                guard: "isTextStreamMessage",
+                target: "streaming",
+                actions: "processMsg",
+              },
+              { actions: "processMsg" },
+            ],
           },
         },
         completing: {

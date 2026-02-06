@@ -639,6 +639,200 @@ describe("session machine context totals", () => {
   });
 });
 
+describe("session machine substate transitions", () => {
+  function toStreaming(actor: ReturnType<typeof createActor>) {
+    actor.send({ type: "START" });
+    actor.send({
+      type: "MESSAGE",
+      message: { type: "system", timestamp: Date.now() },
+    });
+    actor.send({
+      type: "MESSAGE",
+      message: { type: "text_delta", text: "hi", timestamp: Date.now() },
+    });
+  }
+
+  function toThinking(actor: ReturnType<typeof createActor>) {
+    actor.send({ type: "START" });
+    actor.send({
+      type: "MESSAGE",
+      message: { type: "system", timestamp: Date.now() },
+    });
+    actor.send({
+      type: "MESSAGE",
+      message: {
+        type: "thinking_delta",
+        text: "hmm",
+        timestamp: Date.now(),
+      },
+    });
+  }
+
+  function toToolExecuting(actor: ReturnType<typeof createActor>) {
+    actor.send({ type: "START" });
+    actor.send({
+      type: "MESSAGE",
+      message: { type: "system", timestamp: Date.now() },
+    });
+    actor.send({
+      type: "MESSAGE",
+      message: {
+        type: "message",
+        role: "assistant",
+        content: [{ type: "tool_use", id: "t1", name: "bash", input: {} }],
+        timestamp: Date.now(),
+      },
+    });
+  }
+
+  function makeActor() {
+    return createActor(sessionMachine, {
+      input: {
+        adapter: createMockAdapter(),
+        options: createDefaultOptions(),
+      },
+    });
+  }
+
+  test("streaming + thinking_delta → thinking", () => {
+    const actor = makeActor();
+    actor.start();
+    toStreaming(actor);
+    actor.send({
+      type: "MESSAGE",
+      message: {
+        type: "thinking_delta",
+        text: "hmm",
+        timestamp: Date.now(),
+      },
+    });
+    expect(actor.getSnapshot().value).toEqual({ running: "thinking" });
+    actor.stop();
+  });
+
+  test("thinking + text_delta → streaming", () => {
+    const actor = makeActor();
+    actor.start();
+    toThinking(actor);
+    actor.send({
+      type: "MESSAGE",
+      message: { type: "text_delta", text: "ok", timestamp: Date.now() },
+    });
+    expect(actor.getSnapshot().value).toEqual({ running: "streaming" });
+    actor.stop();
+  });
+
+  test("streaming + tool message → tool_executing", () => {
+    const actor = makeActor();
+    actor.start();
+    toStreaming(actor);
+    actor.send({
+      type: "MESSAGE",
+      message: {
+        type: "message",
+        role: "assistant",
+        content: [{ type: "tool_use", id: "t1", name: "bash", input: {} }],
+        timestamp: Date.now(),
+      },
+    });
+    expect(actor.getSnapshot().value).toEqual({
+      running: "tool_executing",
+    });
+    actor.stop();
+  });
+
+  test("tool_executing + text_delta → streaming", () => {
+    const actor = makeActor();
+    actor.start();
+    toToolExecuting(actor);
+    actor.send({
+      type: "MESSAGE",
+      message: { type: "text_delta", text: "done", timestamp: Date.now() },
+    });
+    expect(actor.getSnapshot().value).toEqual({ running: "streaming" });
+    actor.stop();
+  });
+
+  test("tool_executing + thinking_delta → thinking", () => {
+    const actor = makeActor();
+    actor.start();
+    toToolExecuting(actor);
+    actor.send({
+      type: "MESSAGE",
+      message: {
+        type: "thinking_delta",
+        text: "hmm",
+        timestamp: Date.now(),
+      },
+    });
+    expect(actor.getSnapshot().value).toEqual({ running: "thinking" });
+    actor.stop();
+  });
+
+  test("prompting + thinking_delta → thinking", () => {
+    const actor = makeActor();
+    actor.start();
+    actor.send({ type: "START" });
+    actor.send({
+      type: "MESSAGE",
+      message: { type: "system", timestamp: Date.now() },
+    });
+    actor.send({
+      type: "MESSAGE",
+      message: {
+        type: "thinking_delta",
+        text: "hmm",
+        timestamp: Date.now(),
+      },
+    });
+    expect(actor.getSnapshot().value).toEqual({ running: "thinking" });
+    actor.stop();
+  });
+
+  test("prompting + tool message → tool_executing", () => {
+    const actor = makeActor();
+    actor.start();
+    actor.send({ type: "START" });
+    actor.send({
+      type: "MESSAGE",
+      message: { type: "system", timestamp: Date.now() },
+    });
+    actor.send({
+      type: "MESSAGE",
+      message: {
+        type: "message",
+        role: "assistant",
+        content: [{ type: "tool_use", id: "t1", name: "bash", input: {} }],
+        timestamp: Date.now(),
+      },
+    });
+    expect(actor.getSnapshot().value).toEqual({
+      running: "tool_executing",
+    });
+    actor.stop();
+  });
+
+  test("non-content in tool_executing stays", () => {
+    const actor = makeActor();
+    actor.start();
+    toToolExecuting(actor);
+    actor.send({
+      type: "MESSAGE",
+      message: {
+        type: "result",
+        subtype: "success",
+        result: "ok",
+        complete: true,
+        timestamp: Date.now(),
+      },
+    });
+    expect(actor.getSnapshot().value).toEqual({
+      running: "tool_executing",
+    });
+    actor.stop();
+  });
+});
+
 describe("session machine state coverage", () => {
   const testMachine = sessionMachine.provide({
     actors: {
@@ -676,6 +870,23 @@ describe("session machine state coverage", () => {
         message: {
           type: "text_delta",
           text: "hello",
+          timestamp: Date.now(),
+        },
+      },
+      {
+        type: "MESSAGE",
+        message: {
+          type: "thinking_delta",
+          text: "hmm",
+          timestamp: Date.now(),
+        },
+      },
+      {
+        type: "MESSAGE",
+        message: {
+          type: "message",
+          role: "assistant",
+          content: [{ type: "tool_use", id: "t1", name: "bash", input: {} }],
           timestamp: Date.now(),
         },
       },

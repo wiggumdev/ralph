@@ -47,6 +47,8 @@ const LOOP_STATE_COLORS: Record<string, string> = {
   initializing: "#f5a742",
   prompting: "#f5a742",
   streaming: "#00aaff",
+  thinking: "#c792ea",
+  tool_executing: "#f78c6c",
   completing: "#00aaff",
 };
 
