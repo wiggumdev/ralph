@@ -16,7 +16,7 @@ export type Hooks = z.infer<typeof HooksSchema>;
 export const ConfigSchema = z.object({
   adapter: AdapterType.default("claude"),
   plansDir: z.string().default(".plans"),
-  maxIterations: z.number().int().positive().default(10),
+  maxIterations: z.number().int().positive().optional(),
   debug: z.boolean().default(false),
   tui: z.boolean().default(true),
   showUsage: z.boolean().default(false),
@@ -30,7 +30,7 @@ export type Config = z.infer<typeof ConfigSchema>;
 export const DEFAULT_CONFIG: Config = {
   adapter: "claude",
   plansDir: ".plans",
-  maxIterations: 10,
+  maxIterations: undefined,
   debug: false,
   tui: true,
   showUsage: false,

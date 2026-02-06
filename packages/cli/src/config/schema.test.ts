@@ -93,10 +93,18 @@ describe("ConfigSchema", () => {
     if (result.success) {
       expect(result.data.adapter).toBe("claude");
       expect(result.data.plansDir).toBe(".plans");
-      expect(result.data.maxIterations).toBe(10);
+      expect(result.data.maxIterations).toBeUndefined();
       expect(result.data.debug).toBe(false);
       expect(result.data.tui).toBe(true);
       expect(result.data.showUsage).toBe(false);
+    }
+  });
+
+  test("accepts undefined maxIterations for infinite mode", () => {
+    const result = ConfigSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.maxIterations).toBeUndefined();
     }
   });
 

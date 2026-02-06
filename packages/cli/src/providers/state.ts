@@ -8,7 +8,7 @@ import type { PrdFeature } from "#schema/prd";
 /** Core state shape matching RalphApp signals */
 export interface AppState {
   sessions: SessionState[];
-  status: "running" | "complete" | "error" | "idle" | "paused";
+  status: "running" | "complete" | "error" | "idle" | "paused" | "stopped";
   iteration: number;
 
   // Computed totals (sum of all sessions)

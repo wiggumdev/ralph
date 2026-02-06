@@ -379,6 +379,7 @@ export abstract class AcpAdapter {
   private async cleanup(): Promise<void> {
     if (this.process) {
       this.process.kill();
+      await this.process.exited;
       this.process = undefined;
     }
     this.connection = undefined;

@@ -8,6 +8,7 @@ export interface SessionListProps {
   expanded: boolean;
   selectedIndex: Accessor<number>;
   canOpen?: boolean;
+  loopState?: string;
   onToggleSession: (index: number) => void;
 }
 
@@ -23,6 +24,7 @@ export function SessionList(props: SessionListProps) {
           <SessionContainer
             canOpen={props.canOpen}
             expanded={props.expanded}
+            loopState={props.loopState}
             onToggle={() => props.onToggleSession(index())}
             selected={index() === props.selectedIndex()}
             session={session}

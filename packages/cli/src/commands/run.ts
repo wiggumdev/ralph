@@ -4,25 +4,8 @@ import type { CommandModule } from "yargs";
 import { getAdapter } from "#adapters/index";
 import { getPromptPath, loadConfig } from "#config/loader";
 import { Log } from "#log";
-import type { StateProvider } from "#providers/state";
-import { AcpStateProvider } from "#providers/state/acp";
+import type { LoopOptions } from "#machines/types";
 import { main } from "#ui/app";
-
-export interface RunOptions {
-  provider: StateProvider;
-  maxIterations: number;
-  adapterName: string;
-  showUsage?: boolean;
-}
-
-export function runWithProvider(options: RunOptions): void {
-  main({
-    provider: options.provider,
-    maxIterations: options.maxIterations,
-    adapterName: options.adapterName,
-    showUsage: options.showUsage ?? true,
-  });
-}
 
 interface RunArgs {
   maxIterations?: number;
@@ -137,20 +120,24 @@ export const runCommand: CommandModule<object, RunArgs> = {
     }
 
     // Run ACP adapter with TUI
-    const maxIterations = argv.maxIterations ?? config.maxIterations ?? 10;
+    const maxIterations = argv.once
+      ? 1
+      : (argv.maxIterations ?? config.maxIterations);
     const yolo = argv.yolo ?? config.yolo ?? false;
     const transportLog = argv.transportLog ?? config.transportLog ?? false;
-    const provider = new AcpStateProvider(adapter, {
+
+    const options: LoopOptions = {
       prompt: promptContent,
       cwd,
       debug,
       maxIterations,
       yolo,
       transportLog,
-    });
+    };
 
-    runWithProvider({
-      provider,
+    main({
+      adapter,
+      options,
       maxIterations,
       adapterName: config.adapter,
       showUsage: true,

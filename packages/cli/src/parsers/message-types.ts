@@ -227,7 +227,12 @@ export type RichMessage =
   | ThinkingDelta
   | PlanMessage;
 
-export type SessionStatus = "running" | "complete" | "error" | "paused";
+export type SessionStatus =
+  | "running"
+  | "complete"
+  | "error"
+  | "paused"
+  | "stopped";
 
 export type SessionActivity =
   | "idle"

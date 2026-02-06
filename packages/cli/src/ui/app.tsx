@@ -1,21 +1,22 @@
 import { render, useKeyboard, useRenderer } from "@opentui/solid";
+import { fromActorRef } from "@xstate/solid";
 import {
+  createEffect,
   createMemo,
   createSignal,
   Match,
   onCleanup,
-  onMount,
   Switch,
 } from "solid-js";
 import { createStore, reconcile } from "solid-js/store";
+import { createActor } from "xstate";
+import type { AcpAdapter } from "#adapters/acp";
 import { Log } from "#log";
+import { getCurrentPermissionRequest } from "#machines/actions/permission-actions";
+import { tuiMachine } from "#machines/tui-machine";
+import type { LoopContext, LoopOptions } from "#machines/types";
 import type { SessionState } from "#parsers/message-types";
-import type {
-  PermissionRequest,
-  PermissionSummary,
-} from "#parsers/permission-types";
-import type { AppState, StateProvider } from "#providers/state";
-import type { AcpStateProvider } from "#providers/state/acp";
+import type { PermissionRequest } from "#parsers/permission-types";
 import type { PrdFeature } from "#schema/prd";
 import { Chrome } from "#ui/components/chrome";
 import { HelpModal } from "#ui/components/help-modal";
@@ -33,10 +34,9 @@ import { TabProvider, type TabView } from "#ui/contexts/tab-context";
 import { UIProvider, useUI } from "#ui/contexts/ui-context";
 import { PermissionsTab } from "./components/tabs/permissions-tab";
 
-const log = Log.create({ service: "ui" });
-
 export interface AppProps {
-  provider: StateProvider;
+  adapter: AcpAdapter;
+  options: LoopOptions;
   maxIterations?: number;
   adapterName?: string;
   showUsage?: boolean;
@@ -46,50 +46,166 @@ export interface AppProps {
 function App(props: AppProps) {
   const renderer = useRenderer();
 
-  // App state - sessions as store for granular reactivity
-  const [sessions, setSessions] = createStore<SessionState[]>([]);
-  const [status, setStatus] = createSignal<AppStatus>("idle");
-  const [iteration, setIteration] = createSignal(0);
-  const [totalInputTokens, setTotalInputTokens] = createSignal(0);
-  const [totalOutputTokens, setTotalOutputTokens] = createSignal(0);
-  const [totalCost, setTotalCost] = createSignal(0);
-  const [toolCallCount, setToolCallCount] = createSignal(0);
-  const [prdItems, setPrdItems] = createSignal<PrdFeature[]>([]);
-  const [permissionRequest, setPermissionRequest] =
-    createSignal<PermissionRequest | null>(null);
-  const [permissionSummary, setPermissionSummary] = createSignal<
-    PermissionSummary[] | undefined
-  >(undefined);
+  // TUI machine owns top-level UI state (tabs, help, expand, etc.)
+  // Use createActor + manual start instead of useActorRef to ensure
+  // the actor starts synchronously (not deferred to onMount), so
+  // entry actions like sendTo(START) fire before fromActorRef subscribes.
+  const tuiRef = createActor(tuiMachine, {
+    input: {
+      adapter: props.adapter,
+      options: props.options,
+      autoExit: props.autoExit,
+      canOpen: props.adapter.supportsLoadSession(),
+    },
+  });
+  tuiRef.start();
+  onCleanup(() => tuiRef.stop());
 
-  // Derived from sessions
+  const tuiSnap = fromActorRef(tuiRef);
+  const tuiSend = tuiRef.send;
+
+  // Subscribe to the spawned loop machine's snapshot
+  // Manual signal + subscription to avoid stale fromActorRef with derived accessor
+  const [loopSnap, setLoopSnap] = createSignal<
+    | ReturnType<
+        NonNullable<
+          ReturnType<typeof tuiSnap>["context"]["loopRef"]
+        >["getSnapshot"]
+      >
+    | undefined
+  >();
+
+  createEffect(() => {
+    const ref = tuiSnap()?.context.loopRef;
+    if (!ref) {
+      setLoopSnap(undefined);
+      return;
+    }
+    setLoopSnap(ref.getSnapshot());
+    const sub = ref.subscribe((snap) => setLoopSnap(snap));
+    onCleanup(() => sub.unsubscribe());
+  });
+
+  // Local session store for granular reactivity + UI-only state (collapsed)
+  const [sessions, setSessions] = createStore<SessionState[]>([]);
+  const [selectedIndex, setSelectedIndex] = createSignal(0);
+
+  // Sync sessions from loop machine into local store
+  const log = Log.create({ service: "app" });
+  createEffect(() => {
+    const snap = loopSnap();
+    if (!snap) {
+      return;
+    }
+    const loopSessions = (snap as { context: LoopContext }).context.sessions;
+    log.debug("session_sync", {
+      loopSessionCount: loopSessions.length,
+      localSessionCount: sessions.length,
+      itemCounts: loopSessions.map((s) => ({
+        id: s.id.slice(0, 8),
+        items: s.items.length,
+      })),
+    });
+    const currentSessions = sessions;
+    const isNewIteration =
+      currentSessions.length > 0 &&
+      loopSessions.length > currentSessions.length;
+
+    if (isNewIteration) {
+      const collapsed = loopSessions.map((s) => ({ ...s, collapsed: true }));
+      setSessions(reconcile(collapsed, { key: "id" }));
+      setSelectedIndex(loopSessions.length - 1);
+    } else {
+      const collapsedMap = new Map(
+        currentSessions.map((s) => [s.id, s.collapsed])
+      );
+      const merged = loopSessions.map((s) => ({
+        ...s,
+        collapsed: collapsedMap.get(s.id) ?? s.collapsed,
+      }));
+      setSessions(reconcile(merged, { key: "id" }));
+    }
+  });
+
+  // Derived state from loop machine
+  const loopCtx = createMemo(() => {
+    const snap = loopSnap();
+    return snap ? (snap as { context: LoopContext }).context : null;
+  });
+
+  const status = createMemo<AppStatus>(() => {
+    const snap = loopSnap();
+    if (!snap) {
+      return "idle";
+    }
+    const value = (snap as { value: string | Record<string, string> }).value;
+    if (typeof value === "object" && "running" in value) {
+      return "running";
+    }
+    switch (value) {
+      case "nextIteration":
+        return "running";
+      case "paused":
+        return "paused";
+      case "complete":
+        return "complete";
+      case "error":
+        return "error";
+      case "stopped":
+        return "stopped";
+      default:
+        return "idle";
+    }
+  });
+
+  const loopState = createMemo(() => {
+    const snap = loopSnap();
+    if (!snap) {
+      return "idle";
+    }
+    const value = (snap as { value: string | Record<string, string> }).value;
+    if (typeof value === "object" && "running" in value) {
+      return value.running;
+    }
+    return typeof value === "string" ? value : "idle";
+  });
+
+  const iteration = createMemo(() => loopCtx()?.iteration ?? 0);
+  const maxIterations = () => props.maxIterations;
+  const totalInputTokens = createMemo(() => loopCtx()?.totalInputTokens ?? 0);
+  const totalOutputTokens = createMemo(() => loopCtx()?.totalOutputTokens ?? 0);
+  const totalCost = createMemo(() => loopCtx()?.totalCost ?? 0);
+  const toolCallCount = createMemo(() => loopCtx()?.toolCallCount ?? 0);
+  const prdItems = createMemo<PrdFeature[]>(() => loopCtx()?.prdItems ?? []);
+
   const activeSession = createMemo(() => sessions.at(-1));
   const items = createMemo(() => activeSession()?.items ?? []);
   const todos = createMemo(() => activeSession()?.todos ?? []);
 
-  // Tab state
-  const [currentTab, setCurrentTab] = createSignal<TabView>("loop");
+  // Permission state from loop machine
+  const permissionRequest = createMemo<PermissionRequest | null>(() => {
+    const ctx = loopCtx();
+    return ctx ? getCurrentPermissionRequest(ctx) : null;
+  });
+  const permissionSummary = createMemo(
+    () => loopCtx()?.permissionSummary ?? []
+  );
 
-  // UI state
-  const [expanded, setExpanded] = createSignal(true);
-  const [helpVisible, setHelpVisible] = createSignal(false);
-  const [selectedIndex, setSelectedIndex] = createSignal(0);
-  const maxIterations = () => props.maxIterations ?? 10;
+  // Auto-exit on terminal states
+  createEffect(() => {
+    const s = status();
+    if (
+      (s === "complete" || s === "error" || s === "stopped") &&
+      props.autoExit
+    ) {
+      setTimeout(handleExit, 500);
+    }
+  });
 
   // Session navigation helpers
   const selectPrev = () => setSelectedIndex((i) => Math.max(0, i - 1));
   const selectNext = () =>
     setSelectedIndex((i) => Math.min(sessions.length - 1, i + 1));
-  const selectedSession = () => sessions[selectedIndex()];
-
-  // Session control functions
-  const togglePause = () => {
-    const session = selectedSession();
-    if (session?.status === "running") {
-      props.provider.pause?.();
-    } else if (session?.status === "paused") {
-      props.provider.resume?.();
-    }
-  };
 
   const toggleSessionCollapse = (index: number) => {
     setSessions(index, "collapsed", (c) => !c);
@@ -111,17 +227,7 @@ function App(props: AppProps) {
     }
   };
 
-  // Tab cycling
-  const cycleTab = () => {
-    const tabs: TabView[] = ["loop", "learning", "backlog", "permissions"];
-    const idx = tabs.indexOf(currentTab());
-    const nextTab = tabs[(idx + 1) % tabs.length];
-    if (nextTab) {
-      setCurrentTab(nextTab);
-    }
-  };
-
-  // Context values
+  // Context values (populated from machine state)
   const appStateValue: AppStateContextValue = {
     sessions: () => sessions,
     activeSession,
@@ -137,21 +243,53 @@ function App(props: AppProps) {
     todos,
   };
 
+  const currentTab = () => tuiSnap().context.currentTab;
+  const setCurrentTab = (tab: TabView) => tuiSend({ type: "SET_TAB", tab });
+
+  const cycleTab = () => {
+    const tabs: TabView[] = ["loop", "learning", "backlog", "permissions"];
+    const idx = tabs.indexOf(currentTab());
+    const nextTab = tabs[(idx + 1) % tabs.length];
+    if (nextTab) {
+      setCurrentTab(nextTab);
+    }
+  };
+
   const tabValue = { currentTab, setTab: setCurrentTab, cycleTab };
+
+  const expanded = () => tuiSnap().context.expanded;
+  const setExpanded = (v: boolean | ((prev: boolean) => boolean)) => {
+    const next = typeof v === "function" ? v(expanded()) : v;
+    if (next !== expanded()) {
+      tuiSend({ type: "TOGGLE_EXPAND" });
+    }
+  };
+  const helpVisible = () => tuiSnap().context.helpVisible;
+  const setHelpVisible = (v: boolean | ((prev: boolean) => boolean)) => {
+    const next = typeof v === "function" ? v(helpVisible()) : v;
+    if (next !== helpVisible()) {
+      tuiSend({ type: "TOGGLE_HELP" });
+    }
+  };
+
   const uiValue = { expanded, setExpanded, helpVisible, setHelpVisible };
 
   const handleExit = () => {
-    props.provider.stop();
+    tuiSend({ type: "EXIT" });
     renderer.destroy();
     process.exit(0);
   };
 
   const handleOpen = async () => {
-    const openCmd = props.provider.getOpenCommand?.();
+    const sessionId = props.adapter.getSessionId();
+    if (!sessionId) {
+      return;
+    }
+    const openCmd = props.adapter.getResumeCommand(sessionId);
     if (!openCmd) {
       return;
     }
-    props.provider.stop();
+    tuiSend({ type: "STOP" });
     renderer.destroy();
     const { spawn } = await import("bun");
     const proc = spawn([openCmd.command, ...openCmd.args], {
@@ -161,81 +299,30 @@ function App(props: AppProps) {
     process.exit(0);
   };
 
-  const canOpen = () => props.provider.canOpen?.() ?? false;
-
-  const setters = {
-    sessions: setSessions,
-    status: setStatus,
-    iteration: setIteration,
-    totalInputTokens: setTotalInputTokens,
-    totalOutputTokens: setTotalOutputTokens,
-    totalCost: setTotalCost,
-    toolCallCount: setToolCallCount,
-    prdItems: setPrdItems,
-    permissionRequest: setPermissionRequest,
-    permissionSummary: setPermissionSummary,
-  };
-
-  const applyStateUpdate = (update: Partial<AppState>) => {
-    applySimpleUpdates(update, setters, () => sessions, setSelectedIndex);
-    applyStatusUpdate(update, setStatus, props.autoExit ?? false, handleExit);
-  };
+  const canOpen = () => props.adapter.supportsLoadSession();
 
   const handlePermissionSelect = (optionId: string) => {
-    const provider = props.provider as AcpStateProvider;
-    provider.resolvePermission?.({ id: "", outcome: "selected", optionId });
+    tuiSend({
+      type: "PERMISSION_RESPONSE",
+      response: { id: "", outcome: "selected", optionId },
+    });
   };
 
   const handlePermissionCancel = () => {
-    const provider = props.provider as AcpStateProvider;
-    provider.resolvePermission?.({ id: "", outcome: "cancelled" });
-  };
-
-  onMount(() => {
-    const initial = props.provider.getInitialState();
-    applyStateUpdate(initial);
-
-    const unsubscribe = props.provider.subscribe(applyStateUpdate);
-    onCleanup(() => {
-      unsubscribe();
-      props.provider.stop();
+    tuiSend({
+      type: "PERMISSION_RESPONSE",
+      response: { id: "", outcome: "cancelled" },
     });
-
-    props.provider.start();
-  });
-
-  const keyHandlers: Record<string, () => void> = {
-    "1": () => setCurrentTab("loop"),
-    "2": () => setCurrentTab("learning"),
-    "3": () => setCurrentTab("backlog"),
-    "4": () => setCurrentTab("permissions"),
-    tab: cycleTab,
-    e: () => setExpanded((prev) => !prev),
-    space: () => setExpanded((prev) => !prev),
-    "?": () => setHelpVisible(true),
-    j: selectNext,
-    k: selectPrev,
-    h: collapseSelected,
-    l: expandSelected,
-    o: () => {
-      if (canOpen()) {
-        handleOpen();
-      }
-    },
-    p: togglePause,
-    s: () => props.provider.stop(),
-    x: () => props.provider.stop(),
-    q: handleExit,
-    escape: handleExit,
   };
 
+  // Keyboard handling - delegate most keys to TUI machine
   useKeyboard((key) => {
-    log.debug("keypress", { key: key.name });
     if (helpVisible()) {
-      setHelpVisible(false);
+      tuiSend({ type: "TOGGLE_HELP" });
       return;
     }
-    // Handle permission modal keys
+
+    // Permission modal keys
     if (permissionRequest()) {
       if (key.name === "escape") {
         handlePermissionCancel();
@@ -252,7 +339,40 @@ function App(props: AppProps) {
       }
       return;
     }
-    keyHandlers[key.name]?.();
+
+    // Navigation + control keys handled locally
+    const localHandlers: Record<string, () => void> = {
+      j: selectNext,
+      k: selectPrev,
+      h: collapseSelected,
+      l: expandSelected,
+      o: () => {
+        if (canOpen()) {
+          handleOpen();
+        }
+      },
+      p: () => {
+        const session = sessions[selectedIndex()];
+        if (session?.status === "running") {
+          tuiSend({ type: "PAUSE" });
+        } else if (session?.status === "paused") {
+          tuiSend({ type: "RESUME" });
+        }
+      },
+      s: () => tuiSend({ type: "STOP" }),
+      x: () => tuiSend({ type: "STOP" }),
+      q: handleExit,
+      escape: handleExit,
+    };
+
+    const handler = localHandlers[key.name];
+    if (handler) {
+      handler();
+      return;
+    }
+
+    // Tab/expand/help keys go to TUI machine
+    tuiSend({ type: "KEY", key: key.name });
   });
 
   return (
@@ -264,6 +384,7 @@ function App(props: AppProps) {
               <Match when={currentTab() === "loop"}>
                 <LoopContent
                   canOpen={canOpen()}
+                  loopState={loopState()}
                   onToggleSession={toggleSessionCollapse}
                   selectedIndex={selectedIndex}
                 />
@@ -275,12 +396,12 @@ function App(props: AppProps) {
                 <BacklogTab />
               </Match>
               <Match when={currentTab() === "permissions"}>
-                <PermissionsTab summary={permissionSummary() ?? []} />
+                <PermissionsTab summary={permissionSummary()} />
               </Match>
             </Switch>
           </Chrome>
           <HelpModal
-            onClose={() => setHelpVisible(false)}
+            onClose={() => tuiSend({ type: "TOGGLE_HELP" })}
             visible={helpVisible()}
           />
           <PermissionModal
@@ -294,91 +415,10 @@ function App(props: AppProps) {
   );
 }
 
-// Helper to apply simple field updates
-function applySimpleUpdates(
-  update: Partial<AppState>,
-  setters: {
-    sessions: import("solid-js/store").SetStoreFunction<SessionState[]>;
-    iteration: (v: number) => void;
-    totalInputTokens: (v: number) => void;
-    totalOutputTokens: (v: number) => void;
-    totalCost: (v: number) => void;
-    toolCallCount: (v: number) => void;
-    prdItems: (v: PrdFeature[]) => void;
-    permissionRequest: (v: PermissionRequest | null) => void;
-    permissionSummary: (v: PermissionSummary[] | undefined) => void;
-  },
-  getSessions: () => SessionState[],
-  setSelectedIndex: (v: number) => void
-) {
-  if (update.sessions !== undefined) {
-    const currentSessions = getSessions();
-    const isNewIteration =
-      currentSessions.length > 0 &&
-      update.sessions.length > currentSessions.length;
-
-    if (isNewIteration) {
-      // Collapse all sessions and select the new one
-      const collapsed = update.sessions.map((s) => ({ ...s, collapsed: true }));
-      setters.sessions(reconcile(collapsed, { key: "id" }));
-      setSelectedIndex(update.sessions.length - 1);
-    } else {
-      // Preserve local UI state (collapsed) when merging sessions
-      const collapsedMap = new Map(
-        currentSessions.map((s) => [s.id, s.collapsed])
-      );
-      const merged = update.sessions.map((s) => ({
-        ...s,
-        collapsed: collapsedMap.get(s.id) ?? s.collapsed,
-      }));
-      setters.sessions(reconcile(merged, { key: "id" }));
-    }
-  }
-  if (update.iteration !== undefined) {
-    setters.iteration(update.iteration);
-  }
-  if (update.totalInputTokens !== undefined) {
-    setters.totalInputTokens(update.totalInputTokens);
-  }
-  if (update.totalOutputTokens !== undefined) {
-    setters.totalOutputTokens(update.totalOutputTokens);
-  }
-  if (update.totalCost !== undefined) {
-    setters.totalCost(update.totalCost);
-  }
-  if (update.toolCallCount !== undefined) {
-    setters.toolCallCount(update.toolCallCount);
-  }
-  if (update.prdItems !== undefined) {
-    setters.prdItems(update.prdItems);
-  }
-  if (update.permissionRequest !== undefined) {
-    setters.permissionRequest(update.permissionRequest);
-  }
-  if (update.permissionSummary !== undefined) {
-    setters.permissionSummary(update.permissionSummary);
-  }
-}
-
-// Helper to apply status update with auto-exit logic
-function applyStatusUpdate(
-  update: Partial<AppState>,
-  setStatus: (v: AppStatus) => void,
-  autoExit: boolean,
-  handleExit: () => void
-) {
-  if (update.status === undefined) {
-    return;
-  }
-  setStatus(update.status);
-  if ((update.status === "complete" || update.status === "error") && autoExit) {
-    setTimeout(handleExit, 500);
-  }
-}
-
 interface LoopContentProps {
   selectedIndex: () => number;
   canOpen: boolean;
+  loopState?: string;
   onToggleSession: (index: number) => void;
 }
 
@@ -391,6 +431,7 @@ function LoopContent(props: LoopContentProps) {
       <SessionList
         canOpen={props.canOpen}
         expanded={expanded()}
+        loopState={props.loopState}
         onToggleSession={props.onToggleSession}
         selectedIndex={props.selectedIndex}
         sessions={sessions()}

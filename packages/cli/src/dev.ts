@@ -2,12 +2,12 @@
 
 /**
  * Dev entrypoint for TUI development.
- * Uses PlaybackEngine with fixture data for testing UI without live adapter.
+ * Uses PlaybackAdapter with fixture data for testing UI without live adapter.
  *
  * Run with: bun run src/dev.ts
  */
 
-import { PlaybackEngine } from "#providers/state/playback";
+import { PlaybackAdapter } from "#adapters/playback";
 import { main } from "#ui/app";
 import {
   SAMPLE_PERMISSION_REQUESTS,
@@ -25,7 +25,7 @@ import {
 
 const showPermissions = process.argv.includes("--permissions");
 
-const provider = new PlaybackEngine({
+const adapter = new PlaybackAdapter({
   iterations: [
     SEQUENCE_STREAMING, // Iteration 1: Word-by-word streaming
     SEQUENCE_THINKING, // Iteration 2: Thinking blocks
@@ -47,7 +47,8 @@ const provider = new PlaybackEngine({
 });
 
 main({
-  provider,
+  adapter,
+  options: { prompt: "dev playback", maxIterations: 10 },
   maxIterations: 10,
   adapterName: "playback",
   showUsage: true,

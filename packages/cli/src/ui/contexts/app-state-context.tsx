@@ -6,14 +6,20 @@ import type {
 } from "#parsers/message-types";
 import type { PrdFeature } from "#schema/prd";
 
-export type AppStatus = "running" | "complete" | "error" | "idle" | "paused";
+export type AppStatus =
+  | "running"
+  | "complete"
+  | "error"
+  | "idle"
+  | "paused"
+  | "stopped";
 
 export interface AppStateContextValue {
   sessions: Accessor<SessionState[]>;
   activeSession: Accessor<SessionState | undefined>;
   status: Accessor<AppStatus>;
   iteration: Accessor<number>;
-  maxIterations: Accessor<number>;
+  maxIterations: Accessor<number | undefined>;
   totalInputTokens: Accessor<number>;
   totalOutputTokens: Accessor<number>;
   totalCost: Accessor<number>;

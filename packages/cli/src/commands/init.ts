@@ -141,7 +141,6 @@ export const initCommand: CommandModule<object, InitArgs> = {
     const configContent = `# Ralph configuration
 adapter = "${adapter}"
 plansDir = "${plansDir}"
-maxIterations = 10
 debug = false
 tui = true
 `;

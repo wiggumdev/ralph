@@ -127,12 +127,12 @@ export class HookExecutor {
 
   async executeRalphStart(
     tasksNotPassing: number,
-    maxIterations: number
+    maxIterations: number | undefined
   ): Promise<void> {
     const env: RalphStartEnv = {
       RALPH_CWD: this.cwd,
       RALPH_TASKS_NOT_PASSING: tasksNotPassing.toString(),
-      RALPH_MAX_ITERATIONS: maxIterations.toString(),
+      RALPH_MAX_ITERATIONS: maxIterations?.toString() ?? "unlimited",
     };
     await this.executeHook("ralph_start", env);
   }

@@ -32,6 +32,7 @@ export interface SessionContainerProps {
   expanded: boolean;
   selected?: boolean;
   canOpen?: boolean;
+  loopState?: string;
   onToggle: () => void;
 }
 
@@ -40,6 +41,13 @@ const ACTIVITY_ICONS: Record<string, { icon: string; color: string }> = {
   responding: { icon: "\u25c9", color: "#00aaff" },
   tool_executing: { icon: "\u26a1", color: "#f5a742" },
   waiting: { icon: "\u25cc", color: "#808080" },
+};
+
+const LOOP_STATE_COLORS: Record<string, string> = {
+  initializing: "#f5a742",
+  prompting: "#f5a742",
+  streaming: "#00aaff",
+  completing: "#00aaff",
 };
 
 export function SessionContainer(props: SessionContainerProps) {
@@ -64,6 +72,8 @@ export function SessionContainer(props: SessionContainerProps) {
         return "✗";
       case "paused":
         return "⏸";
+      case "stopped":
+        return "⏹";
       default:
         return "?";
     }
@@ -79,6 +89,8 @@ export function SessionContainer(props: SessionContainerProps) {
         return "#ff0000";
       case "paused":
         return "#ffff00";
+      case "stopped":
+        return "#ffaa00";
       default:
         return "#808080";
     }
@@ -102,6 +114,14 @@ export function SessionContainer(props: SessionContainerProps) {
           {(indicator: () => { icon: string; color: string }) => (
             <span style={{ fg: indicator().color }}> {indicator().icon}</span>
           )}
+        </Show>
+        <Show when={props.loopState && props.session.status === "running"}>
+          <span
+            style={{ fg: LOOP_STATE_COLORS[props.loopState!] ?? "#808080" }}
+          >
+            {" "}
+            {props.loopState}
+          </span>
         </Show>
         <span style={{ fg: rowColor() }}> Loop {props.session.iteration}</span>
         <Show when={title()}>

@@ -40,7 +40,7 @@ describe("Config Loader", () => {
       const config = {
         adapter: "claude" as const,
         plansDir: ".plans",
-        maxIterations: 10,
+        maxIterations: undefined,
         debug: false,
         tui: true,
         showUsage: false,
@@ -62,7 +62,7 @@ describe("Config Loader", () => {
       const config = {
         adapter: "claude" as const,
         plansDir: "custom-plans",
-        maxIterations: 10,
+        maxIterations: undefined,
         debug: false,
         tui: true,
         showUsage: false,
@@ -86,7 +86,7 @@ describe("Config Loader", () => {
       const config = {
         adapter: "claude" as const,
         plansDir: ".plans",
-        maxIterations: 10,
+        maxIterations: undefined,
         debug: false,
         tui: true,
         showUsage: false,
@@ -110,7 +110,7 @@ describe("Config Loader", () => {
       const config = {
         adapter: "claude" as const,
         plansDir: ".plans",
-        maxIterations: 10,
+        maxIterations: undefined,
         debug: false,
         tui: true,
         showUsage: false,
@@ -134,7 +134,7 @@ describe("Config Loader", () => {
       const config = {
         adapter: "claude" as const,
         plansDir: ".plans",
-        maxIterations: 10,
+        maxIterations: undefined,
         debug: false,
         tui: true,
         showUsage: false,
@@ -252,7 +252,7 @@ maxIterations = 15
 
     expect(config.adapter).toBe("claude");
     expect(config.plansDir).toBe(".plans");
-    expect(config.maxIterations).toBe(10);
+    expect(config.maxIterations).toBeUndefined();
     expect(config.debug).toBe(false);
     expect(config.tui).toBe(true);
   });
