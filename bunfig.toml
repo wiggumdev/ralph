@@ -1,0 +1,2 @@
+[test]
+preload = ["./packages/cli/node_modules/@opentui/solid/scripts/preload.ts"]

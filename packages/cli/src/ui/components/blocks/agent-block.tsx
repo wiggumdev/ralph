@@ -1,6 +1,12 @@
 import { For, Show } from "solid-js";
 import type { AgentBlock as AgentBlockType } from "#parsers/message-types";
 import { isAgentItem, isToolItem } from "#parsers/message-types";
+import {
+  CYAN,
+  getStatusColor,
+  getStatusIndicator,
+  truncatePreview,
+} from "./agent-block-utils";
 import { ToolBlock } from "./tool-block";
 
 export interface AgentBlockProps {
@@ -8,50 +14,11 @@ export interface AgentBlockProps {
   expanded: boolean;
 }
 
-const CYAN = "#56b6c2";
-const COLLAPSED_PREVIEW_LENGTH = 40;
-
-function getStatusIndicator(status: AgentBlockType["status"]): string {
-  switch (status) {
-    case "pending":
-      return "\u25cb";
-    case "in_progress":
-      return "\u25d0";
-    case "completed":
-      return "\u2713";
-    case "failed":
-      return "\u2717";
-    default:
-      return "";
-  }
-}
-
-function getStatusColor(status: AgentBlockType["status"]): string {
-  switch (status) {
-    case "pending":
-      return "#666666";
-    case "in_progress":
-      return "#f5a742";
-    case "completed":
-      return "#7fd88f";
-    case "failed":
-      return "#ff6666";
-    default:
-      return "#666666";
-  }
-}
-
 export function AgentBlock(props: AgentBlockProps) {
   const isExpanded = () => props.expanded;
 
   const title = () => props.block.title;
-  const preview = () => {
-    const t = title();
-    if (t.length <= COLLAPSED_PREVIEW_LENGTH) {
-      return t;
-    }
-    return `${t.slice(0, COLLAPSED_PREVIEW_LENGTH)}...`;
-  };
+  const preview = () => truncatePreview(title());
 
   // Count different item types
   const toolCount = () =>
