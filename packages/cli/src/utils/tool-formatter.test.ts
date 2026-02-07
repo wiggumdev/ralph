@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { formatToolDisplay } from "./tool-formatter";
+import { formatToolDisplay, formatToolParts } from "./tool-formatter";
 
 describe("formatToolDisplay", () => {
   test("bash prefers description over command", () => {
@@ -147,5 +147,51 @@ describe("formatToolDisplay", () => {
       "/Users/user/dev/project"
     );
     expect(result).toBe("Grep(TODO in src)");
+  });
+});
+
+describe("formatToolParts", () => {
+  test("returns name and param for bash with description", () => {
+    const result = formatToolParts("Bash", {
+      description: "List files",
+      command: "ls -la",
+    });
+    expect(result).toEqual({ name: "Bash", param: "List files" });
+  });
+
+  test("returns empty param when no input", () => {
+    const result = formatToolParts("Bash", {});
+    expect(result).toEqual({ name: "Bash", param: "" });
+  });
+
+  test("returns name and file path param for read", () => {
+    const result = formatToolParts("Read", {
+      file_path: "/src/index.ts",
+    });
+    expect(result).toEqual({ name: "Read", param: "/src/index.ts" });
+  });
+
+  test("truncates long param", () => {
+    const longCmd = "a".repeat(100);
+    const result = formatToolParts("Bash", { command: longCmd });
+    expect(result).toEqual({
+      name: "Bash",
+      param: `${"a".repeat(50)}...`,
+    });
+  });
+
+  test("shortens path with cwd", () => {
+    const result = formatToolParts(
+      "Read",
+      { file_path: "/Users/user/dev/project/src/index.ts" },
+      50,
+      "/Users/user/dev/project"
+    );
+    expect(result).toEqual({ name: "Read", param: "src/index.ts" });
+  });
+
+  test("unknown tool returns empty param", () => {
+    const result = formatToolParts("CustomTool", { foo: "bar" });
+    expect(result).toEqual({ name: "CustomTool", param: "" });
   });
 });

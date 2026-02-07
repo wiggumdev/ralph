@@ -4,7 +4,7 @@ import { CodeResultBlock } from "#ui/components/blocks/code-result-block";
 import { defaultSyntaxStyle } from "#ui/styles/syntax-styles";
 import { generateUnifiedDiff } from "#utils/diff-formatter";
 import { getFiletypeFromPath } from "#utils/filetype";
-import { formatToolDisplay } from "#utils/tool-formatter";
+import { formatToolParts } from "#utils/tool-formatter";
 import {
   CLAUDE_READ_PATTERN,
   extractReadContent,
@@ -29,8 +29,8 @@ export function ToolBlock(props: ToolBlockProps) {
   }
 
   const input = () => props.block.rawInput ?? {};
-  const displayName = () =>
-    formatToolDisplay(
+  const toolParts = () =>
+    formatToolParts(
       props.block.resolvedName || props.block.title,
       input(),
       50,
@@ -115,7 +115,10 @@ export function ToolBlock(props: ToolBlockProps) {
       <text>
         <span style={{ fg: statusColor() }}>{statusIndicator()} </span>
         <span style={{ fg: iconColor() }}>{icon()} </span>
-        <span style={{ fg: "#808080" }}>{displayName()}</span>
+        <strong>{toolParts().name}</strong>
+        <Show when={toolParts().param}>
+          <span style={{ fg: "#808080" }}>({toolParts().param})</span>
+        </Show>
       </text>
 
       <Show when={isEdit() && unifiedDiff()}>

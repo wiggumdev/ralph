@@ -48,6 +48,28 @@ function extractToolParam(
   }
 }
 
+export interface ToolParts {
+  name: string;
+  param: string;
+}
+
+/**
+ * Return structured { name, param } for a tool call.
+ */
+export function formatToolParts(
+  resolvedName: string,
+  input: Record<string, unknown>,
+  maxLength = 50,
+  cwd?: string
+): ToolParts {
+  const name = resolvedName.toLowerCase();
+  const truncate = (s: string) =>
+    s.length > maxLength ? `${s.slice(0, maxLength)}...` : s;
+
+  const raw = extractToolParam(name, input, cwd);
+  return { name: resolvedName, param: raw ? truncate(raw) : "" };
+}
+
 /**
  * Format tool display as ToolName(params).
  * Uses resolvedName which already has proper casing from adapter.
@@ -58,10 +80,6 @@ export function formatToolDisplay(
   maxLength = 50,
   cwd?: string
 ): string {
-  const name = resolvedName.toLowerCase();
-  const truncate = (s: string) =>
-    s.length > maxLength ? `${s.slice(0, maxLength)}...` : s;
-
-  const param = extractToolParam(name, input, cwd);
-  return param ? `${resolvedName}(${truncate(param)})` : resolvedName;
+  const { name, param } = formatToolParts(resolvedName, input, maxLength, cwd);
+  return param ? `${name}(${param})` : name;
 }

@@ -111,7 +111,7 @@ describe("ToolBlock", () => {
     expect(frame).toContain("Found 5 matching files");
   });
 
-  test("renders bash tool with description from rawInput", async () => {
+  test("renders bash tool with bold name and gray param from rawInput", async () => {
     const block = createToolBlock({
       title: "Bash",
       resolvedName: "Bash",
@@ -125,7 +125,8 @@ describe("ToolBlock", () => {
     );
     await renderOnce();
     const frame = captureCharFrame();
-    expect(frame).toContain("Bash(List files)");
+    expect(frame).toContain("Bash");
+    expect(frame).toContain("(List files)");
   });
 
   test("read with cwd shows shortened path", async () => {
@@ -148,7 +149,8 @@ describe("ToolBlock", () => {
     );
     await renderOnce();
     const frame = captureCharFrame();
-    expect(frame).toContain("Read(src/index.ts)");
+    expect(frame).toContain("Read");
+    expect(frame).toContain("(src/index.ts)");
   });
 
   test("shows read line count for read tool", async () => {
