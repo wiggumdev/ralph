@@ -59,7 +59,7 @@ describe("xstate snapshot identity (useActor bug basis)", () => {
     const snapBefore = actor.getSnapshot();
     expect(snapBefore.context.currentTab).toBe("loop");
 
-    actor.send({ type: "KEY", key: "2" });
+    actor.send({ type: "SET_TAB", tab: "learning" });
 
     const snapAfter = actor.getSnapshot();
     expect(snapAfter.context.currentTab).toBe("learning");
@@ -83,8 +83,8 @@ describe("xstate snapshot identity (useActor bug basis)", () => {
     expect(captured.context.currentTab).toBe("loop");
 
     // Machine state changes...
-    actor.send({ type: "KEY", key: "2" });
-    actor.send({ type: "KEY", key: "e" });
+    actor.send({ type: "SET_TAB", tab: "learning" });
+    actor.send({ type: "TOGGLE_EXPAND" });
 
     // But captured reference is frozen at initial state
     expect(captured.context.currentTab).toBe("loop");
@@ -112,10 +112,10 @@ describe("xstate snapshot identity (useActor bug basis)", () => {
 
     expect(accessor().context.currentTab).toBe("loop");
 
-    actor.send({ type: "KEY", key: "2" });
+    actor.send({ type: "SET_TAB", tab: "learning" });
     expect(accessor().context.currentTab).toBe("learning");
 
-    actor.send({ type: "KEY", key: "?" });
+    actor.send({ type: "TOGGLE_HELP" });
     expect(accessor().context.helpVisible).toBe(true);
 
     actor.stop();

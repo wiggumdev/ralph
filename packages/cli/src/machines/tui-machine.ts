@@ -25,7 +25,6 @@ export interface TUIContext {
 }
 
 export type TUIEvent =
-  | { type: "KEY"; key: string }
   | { type: "SET_TAB"; tab: TabView }
   | { type: "TOGGLE_HELP" }
   | { type: "TOGGLE_EXPAND" }
@@ -35,8 +34,6 @@ export type TUIEvent =
   | { type: "PAUSE" }
   | { type: "RESUME" }
   | { type: "START_LOOP" };
-
-const TABS: TabView[] = ["loop", "learning", "backlog", "permissions"];
 
 export const tuiMachine = setup({
   types: {
@@ -79,12 +76,6 @@ export const tuiMachine = setup({
       ],
 
       on: {
-        KEY: {
-          actions: assign(({ context, event }) =>
-            handleKeypress(context, event.key)
-          ),
-        },
-
         SET_TAB: {
           actions: assign({ currentTab: ({ event }) => event.tab }),
         },
@@ -140,45 +131,3 @@ export const tuiMachine = setup({
     },
   },
 });
-
-function handleKeypress(
-  context: TUIContext,
-  key: string
-): Partial<TUIContext> | Record<string, never> {
-  // Help modal intercepts all keys
-  if (context.helpVisible) {
-    return { helpVisible: false };
-  }
-
-  // Tab switching
-  switch (key) {
-    case "1":
-      return { currentTab: "loop" };
-    case "2":
-      return { currentTab: "learning" };
-    case "3":
-      return { currentTab: "backlog" };
-    case "4":
-      return { currentTab: "permissions" };
-    case "tab": {
-      const idx = TABS.indexOf(context.currentTab);
-      const nextTab = TABS[(idx + 1) % TABS.length];
-      return nextTab ? { currentTab: nextTab } : {};
-    }
-    case "e":
-    case "space":
-      return { expanded: !context.expanded };
-    case "?":
-      return { helpVisible: true };
-    case "j":
-      return {};
-    case "k":
-      return {};
-    case "h":
-      return {};
-    case "l":
-      return {};
-    default:
-      return {};
-  }
-}
