@@ -122,6 +122,9 @@ export const sessionMachine = setup({
 
       entry: assign(({ context }) => {
         log.debug("iteration_start", { iteration: context.iteration });
+        if (context.currentSession) {
+          return { messageCount: 0 } as Partial<LoopContext>;
+        }
         const sessionUpdates = initSession(context);
         return { ...sessionUpdates, messageCount: 0 } as Partial<LoopContext>;
       }),

@@ -806,6 +806,35 @@ describe("session machine substate transitions", () => {
   });
 });
 
+describe("session machine pause/resume", () => {
+  function makeActor() {
+    return createActor(sessionMachine, {
+      input: {
+        adapter: createMockAdapter(),
+        options: createDefaultOptions(),
+      },
+    });
+  }
+
+  test("pause/resume reuses existing session, no duplicate", () => {
+    const actor = makeActor();
+    actor.start();
+    actor.send({ type: "START" });
+    expect(actor.getSnapshot().context.sessions).toHaveLength(1);
+
+    actor.send({ type: "PAUSE" });
+    actor.send({ type: "RESUME" });
+    expect(actor.getSnapshot().context.sessions).toHaveLength(1);
+
+    // Second cycle
+    actor.send({ type: "PAUSE" });
+    actor.send({ type: "RESUME" });
+    expect(actor.getSnapshot().context.sessions).toHaveLength(1);
+    expect(actor.getSnapshot().context.currentSession?.status).toBe("running");
+    actor.stop();
+  });
+});
+
 describe("session machine state coverage", () => {
   const testMachine = sessionMachine.provide({
     actors: {
