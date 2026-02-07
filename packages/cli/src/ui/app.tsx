@@ -362,7 +362,6 @@ function App(props: AppProps) {
         cycleTab();
         break;
       case "toggle_expand":
-        tuiSend({ type: "TOGGLE_EXPAND" });
         break;
       case "toggle_help":
         tuiSend({ type: "TOGGLE_HELP" });

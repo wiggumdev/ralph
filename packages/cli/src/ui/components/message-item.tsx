@@ -18,7 +18,6 @@ import { ThinkingBlock } from "./blocks/thinking-block";
 
 export interface MessageItemProps {
   message: Message;
-  expanded: boolean;
 }
 
 export function MessageItem(props: MessageItemProps) {
@@ -33,10 +32,7 @@ export function MessageItem(props: MessageItemProps) {
               />
             </Match>
             <Match when={block.type === "thinking"}>
-              <ThinkingBlock
-                block={block as ThinkingBlockType}
-                expanded={props.expanded}
-              />
+              <ThinkingBlock block={block as ThinkingBlockType} />
             </Match>
             <Match when={block.type === "image"}>
               <ImageBlock block={block as ImageBlockType} />

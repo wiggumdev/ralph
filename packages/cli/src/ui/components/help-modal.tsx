@@ -11,7 +11,7 @@ const KEYBINDINGS: KeyBinding[] = [
   { key: "Tab", desc: "Cycle tabs" },
   { key: "j/k", desc: "Navigate sessions" },
   { key: "h/l", desc: "Collapse/expand session" },
-  { key: "e/Space", desc: "Toggle expand" },
+  { key: "e/Space", desc: "Toggle thinking" },
   { key: "p", desc: "Pause/resume session" },
   { key: "s", desc: "Stop session" },
   { key: "x", desc: "Exit session" },

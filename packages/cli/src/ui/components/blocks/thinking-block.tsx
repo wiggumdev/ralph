@@ -1,4 +1,5 @@
-import { Show } from "solid-js";
+import { useKeyboard } from "@opentui/solid";
+import { createSignal, Show } from "solid-js";
 import type {
   ThinkingBlock as ThinkingBlockType,
   ThinkingDelta,
@@ -6,15 +7,23 @@ import type {
 
 export interface ThinkingBlockProps {
   block: ThinkingBlockType | ThinkingDelta;
-  expanded?: boolean;
+  active?: boolean;
 }
 
 const PURPLE = "#9d7cd8";
 const COLLAPSED_PREVIEW_LENGTH = 60;
 
 export function ThinkingBlock(props: ThinkingBlockProps) {
+  const [expanded, setExpanded] = createSignal(false);
+
+  useKeyboard((key) => {
+    if (props.active && (key.name === "e" || key.name === "space")) {
+      setExpanded((v) => !v);
+    }
+  });
+
   const text = () => props.block.text;
-  const isExpanded = () => props.expanded ?? false;
+  const isExpanded = () => expanded();
   const preview = () => {
     const t = text();
     if (t.length <= COLLAPSED_PREVIEW_LENGTH) {

@@ -1,4 +1,4 @@
-import { createEffect, For, Match, Show, Switch } from "solid-js";
+import { createEffect, createMemo, For, Match, Show, Switch } from "solid-js";
 import { createStore, reconcile } from "solid-js/store";
 import type {
   Message,
@@ -58,6 +58,17 @@ export function SessionContainer(props: SessionContainerProps) {
   const statusColor = () => getStatusColor(props.session.status);
   const activityIndicator = () => getActivityIndicator(props.session.activity);
 
+  const lastThinkingDeltaIndex = createMemo(() => {
+    let last = -1;
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      if (it && isThinkingDeltaItem(it)) {
+        last = i;
+      }
+    }
+    return last;
+  });
+
   const rowColor = () => (props.selected ? "#ffffff" : "#00aaff");
 
   return (
@@ -100,14 +111,11 @@ export function SessionContainer(props: SessionContainerProps) {
         >
           {/* Render items via local store for granular reactivity */}
           <For each={items}>
-            {(item) => (
+            {(item, index) => (
               <box>
                 <Switch>
                   <Match when={isMessageItem(item)}>
-                    <MessageItem
-                      expanded={props.expanded}
-                      message={item.data as Message}
-                    />
+                    <MessageItem message={item.data as Message} />
                   </Match>
                   <Match when={isResultItem(item)}>
                     <ResultMessage message={item.data as ResultMessageType} />
@@ -117,8 +125,8 @@ export function SessionContainer(props: SessionContainerProps) {
                   </Match>
                   <Match when={isThinkingDeltaItem(item)}>
                     <ThinkingBlock
+                      active={index() === lastThinkingDeltaIndex()}
                       block={item.data as ThinkingDelta}
-                      expanded={props.expanded}
                     />
                   </Match>
                   <Match when={isSystemItem(item)}>
