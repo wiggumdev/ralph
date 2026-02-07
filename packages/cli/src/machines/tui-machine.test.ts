@@ -20,7 +20,7 @@ function createMockAdapter(): AcpAdapter {
 }
 
 function createDefaultOptions(
-  overrides: Partial<LoopOptions> = {},
+  overrides: Partial<LoopOptions> = {}
 ): LoopOptions {
   return {
     prompt: "test prompt",
