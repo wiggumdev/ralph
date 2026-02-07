@@ -8,13 +8,9 @@ export interface TextBlockProps {
 export function TextBlock(props: TextBlockProps) {
   return (
     <box style={{ paddingLeft: 2 }}>
-      <code
+      <markdown
+        conceal
         content={props.block.text}
-        drawUnstyledText={false}
-        filetype="markdown"
-        selectable
-        selectionBg="#264F78"
-        selectionFg="#FFFFFF"
         syntaxStyle={markdownSyntaxStyle}
       />
     </box>

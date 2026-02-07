@@ -8,10 +8,9 @@ export interface TextDeltaBlockProps {
 export function TextDeltaBlock(props: TextDeltaBlockProps) {
   return (
     <box style={{ paddingLeft: 2 }}>
-      <code
+      <markdown
+        conceal
         content={props.message.text}
-        drawUnstyledText={false}
-        filetype="markdown"
         streaming={true}
         syntaxStyle={markdownSyntaxStyle}
       />
