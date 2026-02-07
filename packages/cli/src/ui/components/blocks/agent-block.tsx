@@ -11,6 +11,7 @@ import { ToolBlock } from "./tool-block";
 
 export interface AgentBlockProps {
   block: AgentBlockType;
+  cwd?: string;
   expanded: boolean;
 }
 
@@ -79,6 +80,7 @@ export function AgentBlock(props: AgentBlockProps) {
                     block={
                       item.data as import("#parsers/message-types").ToolBlock
                     }
+                    cwd={props.cwd}
                     expanded={props.expanded}
                   />
                 </Show>
@@ -87,6 +89,7 @@ export function AgentBlock(props: AgentBlockProps) {
                     block={
                       item.data as import("#parsers/message-types").AgentBlock
                     }
+                    cwd={props.cwd}
                     expanded={props.expanded}
                   />
                 </Show>

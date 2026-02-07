@@ -388,8 +388,9 @@ export function mapUpdateToRichMessage(
           type: "tool_use",
           id: toolUpdate.toolCallId,
           name: toolUpdate.title ?? "",
-          input: {},
+          input: (toolUpdate.rawInput as Record<string, unknown>) || {},
           resolvedName,
+          kind: toolUpdate.kind as ToolKind | undefined,
           status:
             (toolUpdate.status as ToolCallStatus | undefined) ?? undefined,
           locations: toolUpdate.locations?.map((loc) => ({

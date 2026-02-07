@@ -472,6 +472,32 @@ describe("mapUpdateToRichMessage", () => {
     });
   });
 
+  test("maps tool_call_update with rawInput and kind", () => {
+    const update = {
+      sessionUpdate: "tool_call_update",
+      toolCallId: "call-456",
+      title: "Bash",
+      rawInput: { command: "ls -la", description: "List files" },
+      kind: "execute",
+      status: "in_progress",
+    };
+
+    const result = mapUpdateToRichMessage(update as never);
+
+    expect(result).toMatchObject({
+      type: "message",
+      content: [
+        {
+          type: "tool_use",
+          id: "call-456",
+          input: { command: "ls -la", description: "List files" },
+          kind: "execute",
+          status: "in_progress",
+        },
+      ],
+    });
+  });
+
   test("returns null for tool_call_update without content or status", () => {
     const update = {
       sessionUpdate: "tool_call_update",

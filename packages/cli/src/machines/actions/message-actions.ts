@@ -262,6 +262,25 @@ interface ToolProcessState {
   activeAgentStack: string[];
 }
 
+function findItemInSession(
+  items: SessionItem[],
+  id: string
+): SessionItem | undefined {
+  const direct = items.find((i) => i.id === id);
+  if (direct) {
+    return direct;
+  }
+  for (const item of items) {
+    if (item.type === "agent") {
+      const nested = item.data.items.find((i) => i.id === id);
+      if (nested) {
+        return nested;
+      }
+    }
+  }
+  return undefined;
+}
+
 function processToolUseBlock(
   state: ToolProcessState,
   block: ToolUseBlock
@@ -269,7 +288,7 @@ function processToolUseBlock(
   let { session, activeAgentStack: stack } = state;
 
   if (isTaskTool(block.name)) {
-    const existing = session.items.find((i) => i.id === block.id);
+    const existing = findItemInSession(session.items, block.id);
     if (existing) {
       session = updateItemInSession(session, block.id, (item) =>
         item.type === "agent"
@@ -302,13 +321,23 @@ function processToolUseBlock(
       stack = [...stack, block.id];
     }
   } else {
-    const existing = session.items.find((i) => i.id === block.id);
+    const existing = findItemInSession(session.items, block.id);
     if (existing) {
       session = updateItemInSession(session, block.id, (item) =>
         item.type === "tool"
           ? {
               ...item,
-              data: { ...item.data, status: block.status ?? item.data.status },
+              data: {
+                ...item.data,
+                status: block.status ?? item.data.status,
+                rawInput:
+                  Object.keys(block.input).length > 0
+                    ? block.input
+                    : item.data.rawInput,
+                resolvedName: block.resolvedName ?? item.data.resolvedName,
+                kind: (block.kind as ToolKind) ?? item.data.kind,
+                locations: block.locations ?? item.data.locations,
+              },
             }
           : item
       );

@@ -111,6 +111,46 @@ describe("ToolBlock", () => {
     expect(frame).toContain("Found 5 matching files");
   });
 
+  test("renders bash tool with description from rawInput", async () => {
+    const block = createToolBlock({
+      title: "Bash",
+      resolvedName: "Bash",
+      kind: "execute",
+      status: "in_progress",
+      rawInput: { command: "ls -la", description: "List files" },
+    });
+    const { captureCharFrame, renderOnce } = await testRender(
+      () => <ToolBlock block={block as any} expanded={false} />,
+      { width: 80, height: 10 }
+    );
+    await renderOnce();
+    const frame = captureCharFrame();
+    expect(frame).toContain("Bash(List files)");
+  });
+
+  test("read with cwd shows shortened path", async () => {
+    const block = createToolBlock({
+      title: "Read",
+      resolvedName: "Read",
+      kind: "read",
+      status: "completed",
+      rawInput: { file_path: "/Users/user/dev/project/src/index.ts" },
+    });
+    const { captureCharFrame, renderOnce } = await testRender(
+      () => (
+        <ToolBlock
+          block={block as any}
+          cwd="/Users/user/dev/project"
+          expanded={false}
+        />
+      ),
+      { width: 80, height: 10 }
+    );
+    await renderOnce();
+    const frame = captureCharFrame();
+    expect(frame).toContain("Read(src/index.ts)");
+  });
+
   test("shows read line count for read tool", async () => {
     const block = createToolBlock({
       title: "Read",

@@ -1,3 +1,53 @@
+function shortenPath(path: string, cwd?: string): string {
+  if (cwd && path.startsWith(cwd)) {
+    const stripped = path.slice(cwd.length);
+    return stripped.startsWith("/") ? stripped.slice(1) : stripped;
+  }
+  return path;
+}
+
+/**
+ * Extract the key parameter string for a tool based on its name.
+ */
+function extractToolParam(
+  name: string,
+  input: Record<string, unknown>,
+  cwd?: string
+): string {
+  switch (name) {
+    case "bash": {
+      const desc = (input.description as string) || "";
+      const cmd = (input.command as string) || "";
+      return desc || cmd;
+    }
+    case "read":
+    case "write":
+    case "edit": {
+      const filePath =
+        (input.file_path as string) || (input.filePath as string) || "";
+      return shortenPath(filePath, cwd);
+    }
+    case "glob":
+      return (input.pattern as string) || "";
+    case "grep": {
+      const pattern = input.pattern as string;
+      if (!pattern) {
+        return "";
+      }
+      const path = input.path as string;
+      return path ? `${pattern} in ${shortenPath(path, cwd)}` : pattern;
+    }
+    case "websearch":
+      return (input.query as string) || "";
+    case "webfetch":
+      return (input.url as string) || "";
+    case "task":
+      return (input.description as string) || "";
+    default:
+      return "";
+  }
+}
+
 /**
  * Format tool display as ToolName(params).
  * Uses resolvedName which already has proper casing from adapter.
@@ -5,44 +55,13 @@
 export function formatToolDisplay(
   resolvedName: string,
   input: Record<string, unknown>,
-  maxLength = 50
+  maxLength = 50,
+  cwd?: string
 ): string {
   const name = resolvedName.toLowerCase();
   const truncate = (s: string) =>
     s.length > maxLength ? `${s.slice(0, maxLength)}...` : s;
 
-  switch (name) {
-    case "bash": {
-      const cmd = (input.command as string) || "";
-      return cmd ? `${resolvedName}(${truncate(cmd)})` : resolvedName;
-    }
-    case "read":
-    case "write":
-    case "edit": {
-      const path =
-        (input.file_path as string) || (input.filePath as string) || "";
-      return path ? `${resolvedName}(${path})` : resolvedName;
-    }
-    case "glob":
-      return input.pattern ? `${resolvedName}(${input.pattern})` : resolvedName;
-    case "grep": {
-      const pattern = input.pattern as string;
-      const path = input.path as string;
-      if (!pattern) {
-        return resolvedName;
-      }
-      const suffix = path ? `${pattern} in ${path}` : pattern;
-      return `${resolvedName}(${suffix})`;
-    }
-    case "websearch":
-      return input.query ? `${resolvedName}(${input.query})` : resolvedName;
-    case "webfetch":
-      return input.url ? `${resolvedName}(${input.url})` : resolvedName;
-    case "task":
-      return input.description
-        ? `${resolvedName}(${input.description})`
-        : resolvedName;
-    default:
-      return resolvedName;
-  }
+  const param = extractToolParam(name, input, cwd);
+  return param ? `${resolvedName}(${truncate(param)})` : resolvedName;
 }

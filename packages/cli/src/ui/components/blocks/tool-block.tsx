@@ -15,6 +15,7 @@ import {
 
 export interface ToolBlockProps {
   block: ToolBlockType;
+  cwd?: string;
   expanded: boolean;
 }
 
@@ -29,7 +30,12 @@ export function ToolBlock(props: ToolBlockProps) {
 
   const input = () => props.block.rawInput ?? {};
   const displayName = () =>
-    formatToolDisplay(props.block.resolvedName || props.block.title, input());
+    formatToolDisplay(
+      props.block.resolvedName || props.block.title,
+      input(),
+      50,
+      props.cwd
+    );
   const icon = () => getToolIcon(props.block.title, props.block.kind);
   const iconColor = () => getToolColor(props.block.title, props.block.kind);
 

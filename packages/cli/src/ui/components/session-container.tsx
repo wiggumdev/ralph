@@ -137,6 +137,7 @@ export function SessionContainer(props: SessionContainerProps) {
                       block={
                         item.data as import("#parsers/message-types").ToolBlock
                       }
+                      cwd={props.session.cwd}
                       expanded={props.expanded}
                     />
                   </Match>
@@ -145,6 +146,7 @@ export function SessionContainer(props: SessionContainerProps) {
                       block={
                         item.data as import("#parsers/message-types").AgentBlock
                       }
+                      cwd={props.session.cwd}
                       expanded={props.expanded}
                     />
                   </Match>
