@@ -1,8 +1,5 @@
 import type { SessionState, SessionUsage } from "#parsers/message-types";
-import type {
-  PermissionRequest,
-  PermissionSummary,
-} from "#parsers/permission-types";
+import type { PermissionRequest } from "#parsers/permission-types";
 import type { PrdFeature } from "#schema/prd";
 
 /** Core state shape matching RalphApp signals */
@@ -22,9 +19,6 @@ export interface AppState {
 
   // Permission request (shown in modal)
   permissionRequest: PermissionRequest | null;
-
-  // Permission summary for exit display
-  permissionSummary?: PermissionSummary[];
 }
 
 /** Command to open a session in the native CLI */

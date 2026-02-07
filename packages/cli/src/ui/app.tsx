@@ -1,5 +1,4 @@
 import { render, useKeyboard, useRenderer } from "@opentui/solid";
-import { fromActorRef } from "@xstate/solid";
 import {
   createEffect,
   createMemo,
@@ -32,7 +31,7 @@ import {
 } from "#ui/contexts/app-state-context";
 import { TabProvider, type TabView } from "#ui/contexts/tab-context";
 import { UIProvider, useUI } from "#ui/contexts/ui-context";
-import { PermissionsTab } from "./components/tabs/permissions-tab";
+import { cycleTab as cycleTabFn, resolveKeyAction } from "./key-actions";
 
 export interface AppProps {
   adapter: AcpAdapter;
@@ -61,7 +60,9 @@ function App(props: AppProps) {
   tuiRef.start();
   onCleanup(() => tuiRef.stop());
 
-  const tuiSnap = fromActorRef(tuiRef);
+  const [tuiSnap, setTuiSnap] = createSignal(tuiRef.getSnapshot());
+  const tuiSub = tuiRef.subscribe((snap) => setTuiSnap(() => snap));
+  onCleanup(() => tuiSub.unsubscribe());
   const tuiSend = tuiRef.send;
 
   // Subscribe to the spawned loop machine's snapshot
@@ -187,10 +188,6 @@ function App(props: AppProps) {
     const ctx = loopCtx();
     return ctx ? getCurrentPermissionRequest(ctx) : null;
   });
-  const permissionSummary = createMemo(
-    () => loopCtx()?.permissionSummary ?? []
-  );
-
   // Auto-exit on terminal states
   createEffect(() => {
     const s = status();
@@ -246,14 +243,7 @@ function App(props: AppProps) {
   const currentTab = () => tuiSnap().context.currentTab;
   const setCurrentTab = (tab: TabView) => tuiSend({ type: "SET_TAB", tab });
 
-  const cycleTab = () => {
-    const tabs: TabView[] = ["loop", "learning", "backlog", "permissions"];
-    const idx = tabs.indexOf(currentTab());
-    const nextTab = tabs[(idx + 1) % tabs.length];
-    if (nextTab) {
-      setCurrentTab(nextTab);
-    }
-  };
+  const cycleTab = () => setCurrentTab(cycleTabFn(currentTab()));
 
   const tabValue = { currentTab, setTab: setCurrentTab, cycleTab };
 
@@ -315,64 +305,73 @@ function App(props: AppProps) {
     });
   };
 
-  // Keyboard handling - delegate most keys to TUI machine
+  // Keyboard handling — resolveKeyAction is a pure function, tested in key-actions.test.ts
   useKeyboard((key) => {
-    if (helpVisible()) {
-      tuiSend({ type: "TOGGLE_HELP" });
-      return;
-    }
+    const req = permissionRequest();
+    const action = resolveKeyAction(
+      {
+        helpVisible: helpVisible(),
+        permissionOptions: req ? req.options : null,
+        sessionStatus: sessions[selectedIndex()]?.status,
+        canOpen: canOpen(),
+      },
+      key.name
+    );
 
-    // Permission modal keys
-    if (permissionRequest()) {
-      if (key.name === "escape") {
+    switch (action.type) {
+      case "dismiss_help":
+        tuiSend({ type: "TOGGLE_HELP" });
+        break;
+      case "permission_select":
+        handlePermissionSelect(action.optionId);
+        break;
+      case "permission_cancel":
         handlePermissionCancel();
-        return;
-      }
-      const num = Number.parseInt(key.name, 10);
-      if (num >= 1 && num <= 9) {
-        const req = permissionRequest();
-        const option = req?.options[num - 1];
-        if (option) {
-          handlePermissionSelect(option.optionId);
-        }
-        return;
-      }
-      return;
+        break;
+      case "select_next":
+        selectNext();
+        break;
+      case "select_prev":
+        selectPrev();
+        break;
+      case "collapse":
+        collapseSelected();
+        break;
+      case "expand":
+        expandSelected();
+        break;
+      case "open":
+        handleOpen();
+        break;
+      case "pause":
+        tuiSend({ type: "PAUSE" });
+        break;
+      case "resume":
+        tuiSend({ type: "RESUME" });
+        break;
+      case "stop":
+        tuiSend({ type: "STOP" });
+        break;
+      case "exit":
+        handleExit();
+        break;
+      case "set_tab":
+        setCurrentTab(action.tab);
+        break;
+      case "cycle_tab":
+        cycleTab();
+        break;
+      case "toggle_expand":
+        tuiSend({ type: "TOGGLE_EXPAND" });
+        break;
+      case "toggle_help":
+        tuiSend({ type: "TOGGLE_HELP" });
+        break;
+      case "none":
+        break;
+      default:
+        break;
     }
-
-    // Navigation + control keys handled locally
-    const localHandlers: Record<string, () => void> = {
-      j: selectNext,
-      k: selectPrev,
-      h: collapseSelected,
-      l: expandSelected,
-      o: () => {
-        if (canOpen()) {
-          handleOpen();
-        }
-      },
-      p: () => {
-        const session = sessions[selectedIndex()];
-        if (session?.status === "running") {
-          tuiSend({ type: "PAUSE" });
-        } else if (session?.status === "paused") {
-          tuiSend({ type: "RESUME" });
-        }
-      },
-      s: () => tuiSend({ type: "STOP" }),
-      x: () => tuiSend({ type: "STOP" }),
-      q: handleExit,
-      escape: handleExit,
-    };
-
-    const handler = localHandlers[key.name];
-    if (handler) {
-      handler();
-      return;
-    }
-
-    // Tab/expand/help keys go to TUI machine
-    tuiSend({ type: "KEY", key: key.name });
   });
 
   return (
@@ -394,9 +393,6 @@ function App(props: AppProps) {
               </Match>
               <Match when={currentTab() === "backlog"}>
                 <BacklogTab />
-              </Match>
-              <Match when={currentTab() === "permissions"}>
-                <PermissionsTab summary={permissionSummary()} />
               </Match>
             </Switch>
           </Chrome>

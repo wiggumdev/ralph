@@ -4,7 +4,6 @@ import type { RichMessage, SessionState } from "#parsers/message-types";
 import type {
   PermissionRequest,
   PermissionResponse,
-  PermissionSummary,
 } from "#parsers/permission-types";
 import type { PrdFeature } from "#schema/prd";
 import type { sessionMachine } from "./session-machine";
@@ -27,11 +26,6 @@ export interface LoopContext {
   // Permissions
   pendingPermissions: Map<string, DeferredPermission>;
   currentPermissionId: string | null;
-  trackedPermissions: Map<
-    string,
-    { formattedName: string; status: "allowed" | "denied"; count: number }
-  >;
-
   // Counters
   messageCount: number;
 
@@ -49,7 +43,6 @@ export interface LoopContext {
   totalCost: number;
   toolCallCount: number;
   prdItems: PrdFeature[];
-  permissionSummary: PermissionSummary[];
   error?: Error;
 }
 
@@ -79,11 +72,6 @@ export type LoopEvent =
       resolve: (response: PermissionResponse) => void;
     }
   | { type: "PERMISSION_RESPONSE"; response: PermissionResponse }
-  | {
-      type: "PERMISSION_TRACKED";
-      formattedName: string;
-      status: "allowed" | "denied";
-    }
   | { type: "NEXT_ITERATION" };
 
 export interface LoopInput {
@@ -93,26 +81,17 @@ export interface LoopInput {
 
 // --- TUI Machine Types ---
 
-export type TabView = "loop" | "learning" | "backlog" | "permissions";
+export type TabView = "loop" | "learning" | "backlog";
 
 export interface TUIContext {
   loopRef: ActorRefFrom<typeof sessionMachine> | null;
   currentTab: TabView;
   helpVisible: boolean;
-  permissionRequest: PermissionRequest | null;
   selectedIndex: number;
   expanded: boolean;
   autoExit: boolean;
   canOpen: boolean;
 }
-
-export type TUIEvent =
-  | { type: "KEY"; key: string }
-  | { type: "LOOP_STATUS_CHANGED"; status: string }
-  | { type: "SET_TAB"; tab: TabView }
-  | { type: "TOGGLE_HELP" }
-  | { type: "TOGGLE_EXPAND" }
-  | { type: "EXIT" };
 
 // --- Source Actor Types ---
 

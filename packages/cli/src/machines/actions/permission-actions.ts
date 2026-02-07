@@ -1,7 +1,6 @@
 import type {
   PermissionRequest,
   PermissionResponse,
-  PermissionSummary,
 } from "#parsers/permission-types";
 import type { LoopContext } from "../types";
 
@@ -58,27 +57,6 @@ export function resolvePermission(
   };
 }
 
-/** Track a permission (from auto-approval or manual response) */
-export function trackPermission(
-  ctx: LoopContext,
-  formattedName: string,
-  status: "allowed" | "denied"
-): Partial<LoopContext> {
-  const tracked = new Map(ctx.trackedPermissions);
-  const key = `${status}:${formattedName}`;
-  const existing = tracked.get(key);
-  if (existing) {
-    tracked.set(key, { ...existing, count: existing.count + 1 });
-  } else {
-    tracked.set(key, { formattedName, status, count: 1 });
-  }
-
-  return {
-    trackedPermissions: tracked,
-    permissionSummary: getPermissionSummary(tracked),
-  };
-}
-
 /** Get current permission request to display */
 export function getCurrentPermissionRequest(
   ctx: LoopContext
@@ -87,14 +65,4 @@ export function getCurrentPermissionRequest(
     return null;
   }
   return ctx.pendingPermissions.get(ctx.currentPermissionId)?.request ?? null;
-}
-
-/** Build permission summary from tracked permissions */
-function getPermissionSummary(
-  tracked: Map<
-    string,
-    { formattedName: string; status: "allowed" | "denied"; count: number }
-  >
-): PermissionSummary[] {
-  return Array.from(tracked.values()).map((p) => ({ ...p }));
 }

@@ -578,33 +578,6 @@ describe("session machine permission handling", () => {
     expect(resolve).toHaveBeenCalled();
     actor.stop();
   });
-
-  test("tracks permissions via PERMISSION_TRACKED", () => {
-    const actor = createActor(sessionMachine, {
-      input: {
-        adapter: createMockAdapter(),
-        options: createDefaultOptions(),
-      },
-    });
-    actor.start();
-    actor.send({ type: "START" });
-
-    actor.send({
-      type: "PERMISSION_TRACKED",
-      formattedName: "Bash(ls)",
-      status: "allowed",
-    });
-    actor.send({
-      type: "PERMISSION_TRACKED",
-      formattedName: "Bash(ls)",
-      status: "allowed",
-    });
-
-    const ctx = actor.getSnapshot().context;
-    expect(ctx.permissionSummary).toHaveLength(1);
-    expect(ctx.permissionSummary[0]?.count).toBe(2);
-    actor.stop();
-  });
 });
 
 describe("session machine context totals", () => {

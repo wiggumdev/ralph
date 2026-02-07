@@ -12,7 +12,6 @@ import {
 import {
   queuePermission,
   resolvePermission,
-  trackPermission,
 } from "./actions/permission-actions";
 import { adapterSource } from "./actors/adapter-source";
 import type { LoopContext, LoopEvent, LoopInput } from "./types";
@@ -33,7 +32,6 @@ function createInitialContext(input: LoopInput): LoopContext {
     accumulatedThinkingItemId: null,
     pendingPermissions: new Map(),
     currentPermissionId: null,
-    trackedPermissions: new Map(),
     activeAgentStack: [],
     itemIdCounter: 0,
     adapter: input.adapter,
@@ -43,7 +41,6 @@ function createInitialContext(input: LoopInput): LoopContext {
     totalCost: 0,
     toolCallCount: 0,
     prdItems: [],
-    permissionSummary: [],
   };
 }
 
@@ -267,12 +264,6 @@ export const sessionMachine = setup({
         PERMISSION_REQUEST: {
           actions: assign(({ context, event }) =>
             queuePermission(context, event.request, event.resolve)
-          ),
-        },
-
-        PERMISSION_TRACKED: {
-          actions: assign(({ context, event }) =>
-            trackPermission(context, event.formattedName, event.status)
           ),
         },
 

@@ -20,7 +20,7 @@ function createMockAdapter(): AcpAdapter {
 }
 
 function createDefaultOptions(
-  overrides: Partial<LoopOptions> = {}
+  overrides: Partial<LoopOptions> = {},
 ): LoopOptions {
   return {
     prompt: "test prompt",
@@ -100,121 +100,6 @@ describe("tui machine initial state", () => {
   });
 });
 
-describe("tui machine keyboard routing", () => {
-  test("number keys switch tabs", () => {
-    const actor = createActor(tuiMachine, {
-      input: {
-        adapter: createMockAdapter(),
-        options: createDefaultOptions(),
-      },
-    });
-    actor.start();
-
-    actor.send({ type: "KEY", key: "2" });
-    expect(actor.getSnapshot().context.currentTab).toBe("learning");
-
-    actor.send({ type: "KEY", key: "3" });
-    expect(actor.getSnapshot().context.currentTab).toBe("backlog");
-
-    actor.send({ type: "KEY", key: "4" });
-    expect(actor.getSnapshot().context.currentTab).toBe("permissions");
-
-    actor.send({ type: "KEY", key: "1" });
-    expect(actor.getSnapshot().context.currentTab).toBe("loop");
-
-    actor.stop();
-  });
-
-  test("tab key cycles tabs", () => {
-    const actor = createActor(tuiMachine, {
-      input: {
-        adapter: createMockAdapter(),
-        options: createDefaultOptions(),
-      },
-    });
-    actor.start();
-
-    expect(actor.getSnapshot().context.currentTab).toBe("loop");
-    actor.send({ type: "KEY", key: "tab" });
-    expect(actor.getSnapshot().context.currentTab).toBe("learning");
-    actor.send({ type: "KEY", key: "tab" });
-    expect(actor.getSnapshot().context.currentTab).toBe("backlog");
-    actor.send({ type: "KEY", key: "tab" });
-    expect(actor.getSnapshot().context.currentTab).toBe("permissions");
-    actor.send({ type: "KEY", key: "tab" });
-    expect(actor.getSnapshot().context.currentTab).toBe("loop");
-
-    actor.stop();
-  });
-
-  test("? key shows help", () => {
-    const actor = createActor(tuiMachine, {
-      input: {
-        adapter: createMockAdapter(),
-        options: createDefaultOptions(),
-      },
-    });
-    actor.start();
-
-    actor.send({ type: "KEY", key: "?" });
-    expect(actor.getSnapshot().context.helpVisible).toBe(true);
-
-    actor.stop();
-  });
-
-  test("any key hides help when visible", () => {
-    const actor = createActor(tuiMachine, {
-      input: {
-        adapter: createMockAdapter(),
-        options: createDefaultOptions(),
-      },
-    });
-    actor.start();
-
-    actor.send({ type: "KEY", key: "?" });
-    expect(actor.getSnapshot().context.helpVisible).toBe(true);
-
-    actor.send({ type: "KEY", key: "x" });
-    expect(actor.getSnapshot().context.helpVisible).toBe(false);
-
-    actor.stop();
-  });
-
-  test("e key toggles expand", () => {
-    const actor = createActor(tuiMachine, {
-      input: {
-        adapter: createMockAdapter(),
-        options: createDefaultOptions(),
-      },
-    });
-    actor.start();
-
-    expect(actor.getSnapshot().context.expanded).toBe(true);
-    actor.send({ type: "KEY", key: "e" });
-    expect(actor.getSnapshot().context.expanded).toBe(false);
-    actor.send({ type: "KEY", key: "e" });
-    expect(actor.getSnapshot().context.expanded).toBe(true);
-
-    actor.stop();
-  });
-
-  test("space key toggles expand", () => {
-    const actor = createActor(tuiMachine, {
-      input: {
-        adapter: createMockAdapter(),
-        options: createDefaultOptions(),
-      },
-    });
-    actor.start();
-
-    expect(actor.getSnapshot().context.expanded).toBe(true);
-    actor.send({ type: "KEY", key: "space" });
-    expect(actor.getSnapshot().context.expanded).toBe(false);
-
-    actor.stop();
-  });
-});
-
 describe("tui machine direct events", () => {
   test("SET_TAB changes tab", () => {
     const actor = createActor(tuiMachine, {
@@ -225,8 +110,8 @@ describe("tui machine direct events", () => {
     });
     actor.start();
 
-    actor.send({ type: "SET_TAB", tab: "permissions" });
-    expect(actor.getSnapshot().context.currentTab).toBe("permissions");
+    actor.send({ type: "SET_TAB", tab: "backlog" });
+    expect(actor.getSnapshot().context.currentTab).toBe("backlog");
 
     actor.stop();
   });
@@ -324,12 +209,7 @@ describe("tui machine state coverage", () => {
       options: createDefaultOptions(),
     },
     events: [
-      { type: "KEY", key: "1" },
-      { type: "KEY", key: "2" },
-      { type: "KEY", key: "tab" },
-      { type: "KEY", key: "?" },
-      { type: "KEY", key: "e" },
-      { type: "SET_TAB", tab: "permissions" } as const,
+      { type: "SET_TAB", tab: "backlog" } as const,
       { type: "TOGGLE_HELP" },
       { type: "TOGGLE_EXPAND" },
       { type: "EXIT" },

@@ -28,11 +28,6 @@ export type AdapterSourceEvent =
       type: "PERMISSION_REQUEST";
       request: PermissionRequest;
       resolve: (response: PermissionResponse) => void;
-    }
-  | {
-      type: "PERMISSION_TRACKED";
-      formattedName: string;
-      status: "allowed" | "denied";
     };
 
 /**
@@ -67,13 +62,6 @@ export const adapterSource = fromCallback<
       new Promise<PermissionResponse>((resolve) => {
         sendBack({ type: "PERMISSION_REQUEST", request: req, resolve });
       }),
-    onPermissionTracked: (name: string, status: "allowed" | "denied") => {
-      sendBack({
-        type: "PERMISSION_TRACKED",
-        formattedName: name,
-        status,
-      });
-    },
   };
 
   log.debug("adapter_run_calling", { prompt: input.prompt.slice(0, 80) });
