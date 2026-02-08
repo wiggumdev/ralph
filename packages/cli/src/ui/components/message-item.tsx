@@ -18,6 +18,7 @@ import { ThinkingBlock } from "./blocks/thinking-block";
 
 export interface MessageItemProps {
   message: Message;
+  expanded?: boolean;
 }
 
 export function MessageItem(props: MessageItemProps) {

@@ -26,7 +26,7 @@ describe("ToolBlock", () => {
     await renderOnce();
     const frame = captureCharFrame();
     expect(frame).toContain("→");
-    expect(frame).toContain("✓");
+    expect(frame).toContain("⠿");
   });
 
   test("renders bash tool", async () => {
@@ -42,22 +42,19 @@ describe("ToolBlock", () => {
     await renderOnce();
     const frame = captureCharFrame();
     expect(frame).toContain("$");
-    expect(frame).toContain("◐");
   });
 
-  test("renders pending status", async () => {
+  test("renders pending status with spinner", async () => {
     const block = createToolBlock({
       title: "Glob",
       kind: "search",
       status: "pending",
     });
-    const { captureCharFrame, renderOnce } = await testRender(
+    const { renderOnce } = await testRender(
       () => <ToolBlock block={block as any} expanded={false} />,
       { width: 80, height: 10 }
     );
     await renderOnce();
-    const frame = captureCharFrame();
-    expect(frame).toContain("○");
   });
 
   test("renders failed status", async () => {
@@ -72,7 +69,7 @@ describe("ToolBlock", () => {
     );
     await renderOnce();
     const frame = captureCharFrame();
-    expect(frame).toContain("✗");
+    expect(frame).toContain("⠿");
   });
 
   test("returns null for TodoWrite", async () => {

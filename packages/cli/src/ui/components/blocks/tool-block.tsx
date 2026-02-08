@@ -1,5 +1,6 @@
 import { Show } from "solid-js";
 import type { ToolBlock as ToolBlockType } from "#parsers/message-types";
+import "opentui-spinner/solid";
 import { CodeResultBlock } from "#ui/components/blocks/code-result-block";
 import { defaultSyntaxStyle } from "#ui/styles/syntax-styles";
 import { generateUnifiedDiff } from "#utils/diff-formatter";
@@ -39,20 +40,10 @@ export function ToolBlock(props: ToolBlockProps) {
   const icon = () => getToolIcon(props.block.title, props.block.kind);
   const iconColor = () => getToolColor(props.block.title, props.block.kind);
 
-  const statusIndicator = () => {
-    switch (props.block.status) {
-      case "pending":
-        return "\u25cb";
-      case "in_progress":
-        return "\u25d0";
-      case "completed":
-        return "\u2713";
-      case "failed":
-        return "\u2717";
-      default:
-        return "";
-    }
-  };
+  const isActive = () =>
+    props.block.status === "pending" || props.block.status === "in_progress";
+
+  const statusIndicator = () => "⠿";
 
   const statusColor = () => {
     switch (props.block.status) {
@@ -112,14 +103,25 @@ export function ToolBlock(props: ToolBlockProps) {
 
   return (
     <box flexDirection="column">
-      <text>
-        <span style={{ fg: statusColor() }}>{statusIndicator()} </span>
-        <span style={{ fg: iconColor() }}>{icon()} </span>
-        <strong>{toolParts().name}</strong>
-        <Show when={toolParts().param}>
-          <span style={{ fg: "#808080" }}>({toolParts().param})</span>
+      <box alignItems="center" flexDirection="row">
+        <Show
+          fallback={
+            <text>
+              <span style={{ fg: statusColor() }}>{statusIndicator()} </span>
+            </text>
+          }
+          when={isActive()}
+        >
+          <spinner color={statusColor()} name="dots" />
         </Show>
-      </text>
+        <text>
+          <span style={{ fg: iconColor() }}>{icon()} </span>
+          <strong>{toolParts().name}</strong>
+          <Show when={toolParts().param}>
+            <span style={{ fg: "#808080" }}>({toolParts().param})</span>
+          </Show>
+        </text>
+      </box>
 
       <Show when={isEdit() && unifiedDiff()}>
         <box style={{ marginLeft: 2 }}>

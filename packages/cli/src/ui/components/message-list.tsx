@@ -1,4 +1,4 @@
-import { For, Match, Switch } from "solid-js";
+import { createMemo, For, Match, Switch } from "solid-js";
 import type { RichMessage } from "#parsers/message-types";
 import {
   isMessage,
@@ -17,10 +17,20 @@ export interface MessageListProps {
 }
 
 export function MessageList(props: MessageListProps) {
+  const lastTextDeltaIndex = createMemo(() => {
+    let last = -1;
+    for (let i = 0; i < props.messages.length; i++) {
+      if (isTextDelta(props.messages[i]!)) {
+        last = i;
+      }
+    }
+    return last;
+  });
+
   return (
     <box style={{ marginTop: 1, flexGrow: 1 }}>
       <For each={props.messages}>
-        {(msg) => (
+        {(msg, index) => (
           <box>
             <Switch>
               <Match when={isMessage(msg)}>
@@ -38,6 +48,7 @@ export function MessageList(props: MessageListProps) {
               </Match>
               <Match when={isTextDelta(msg)}>
                 <TextDeltaBlock
+                  active={index() === lastTextDeltaIndex()}
                   message={msg as import("#parsers/message-types").TextDelta}
                 />
               </Match>

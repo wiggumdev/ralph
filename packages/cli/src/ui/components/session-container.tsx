@@ -69,6 +69,17 @@ export function SessionContainer(props: SessionContainerProps) {
     return last;
   });
 
+  const lastTextDeltaIndex = createMemo(() => {
+    let last = -1;
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      if (it && isTextDeltaItem(it)) {
+        last = i;
+      }
+    }
+    return last;
+  });
+
   const rowColor = () => (props.selected ? "#ffffff" : "#00aaff");
 
   return (
@@ -121,7 +132,10 @@ export function SessionContainer(props: SessionContainerProps) {
                     <ResultMessage message={item.data as ResultMessageType} />
                   </Match>
                   <Match when={isTextDeltaItem(item)}>
-                    <TextDeltaBlock message={item.data as TextDelta} />
+                    <TextDeltaBlock
+                      active={index() === lastTextDeltaIndex()}
+                      message={item.data as TextDelta}
+                    />
                   </Match>
                   <Match when={isThinkingDeltaItem(item)}>
                     <ThinkingBlock

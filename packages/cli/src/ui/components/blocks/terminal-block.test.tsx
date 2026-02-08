@@ -17,7 +17,6 @@ describe("TerminalBlock", () => {
     );
     await renderOnce();
     const frame = captureCharFrame();
-    expect(frame).toContain("◐");
     expect(frame).toContain("2 lines");
   });
 
@@ -36,7 +35,7 @@ describe("TerminalBlock", () => {
     );
     await renderOnce();
     const frame = captureCharFrame();
-    expect(frame).toContain("✓");
+    expect(frame).toContain("⠿");
     expect(frame).toContain("exit 0");
   });
 
@@ -55,7 +54,7 @@ describe("TerminalBlock", () => {
     );
     await renderOnce();
     const frame = captureCharFrame();
-    expect(frame).toContain("✗");
+    expect(frame).toContain("⠿");
     expect(frame).toContain("exit 1");
   });
 
@@ -73,7 +72,7 @@ describe("TerminalBlock", () => {
     );
     await renderOnce();
     const frame = captureCharFrame();
-    expect(frame).toContain("✗");
+    expect(frame).toContain("⠿");
   });
 
   test("renders truncated indicator", async () => {

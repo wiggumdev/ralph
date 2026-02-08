@@ -58,21 +58,21 @@ describe("AgentBlock", () => {
   });
 
   test("renders status indicators", async () => {
-    const pending = createAgentBlock({ status: "pending" });
+    const completed = createAgentBlock({ status: "completed" });
     const { captureCharFrame: frame1, renderOnce: r1 } = await testRender(
-      () => <AgentBlock block={pending as any} expanded={false} />,
+      () => <AgentBlock block={completed as any} expanded={false} />,
       { width: 80, height: 10 }
     );
     await r1();
-    expect(frame1()).toContain("○");
+    expect(frame1()).toContain("⠿");
 
-    const running = createAgentBlock({ status: "in_progress" });
+    const failed = createAgentBlock({ status: "failed" });
     const { captureCharFrame: frame2, renderOnce: r2 } = await testRender(
-      () => <AgentBlock block={running as any} expanded={false} />,
+      () => <AgentBlock block={failed as any} expanded={false} />,
       { width: 80, height: 10 }
     );
     await r2();
-    expect(frame2()).toContain("◐");
+    expect(frame2()).toContain("⠿");
   });
 
   test("shows tool count in stats", async () => {

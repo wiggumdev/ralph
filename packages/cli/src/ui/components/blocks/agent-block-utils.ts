@@ -6,13 +6,13 @@ export const COLLAPSED_PREVIEW_LENGTH = 40;
 export function getStatusIndicator(status: ToolCallStatus): string {
   switch (status) {
     case "pending":
-      return "○";
+      return "⠿";
     case "in_progress":
-      return "◐";
+      return "⠿";
     case "completed":
-      return "✓";
+      return "⠿";
     case "failed":
-      return "✗";
+      return "⠿";
     default:
       return "";
   }

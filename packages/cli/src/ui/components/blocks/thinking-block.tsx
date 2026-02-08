@@ -4,6 +4,7 @@ import type {
   ThinkingBlock as ThinkingBlockType,
   ThinkingDelta,
 } from "#parsers/message-types";
+import "opentui-spinner/solid";
 
 export interface ThinkingBlockProps {
   block: ThinkingBlockType | ThinkingDelta;
@@ -34,14 +35,19 @@ export function ThinkingBlock(props: ThinkingBlockProps) {
 
   return (
     <box flexDirection="column" style={{ marginBottom: 1 }}>
-      <text>
-        <span style={{ fg: PURPLE }}>
-          {isExpanded() ? "\u25bc" : "\u25b6"} <i>Thinking</i>
-        </span>
-        <Show when={!isExpanded()}>
-          <span style={{ fg: "#666666" }}> {preview()}</span>
+      <box alignItems="center" flexDirection="row">
+        <Show when={props.active}>
+          <spinner color={PURPLE} name="dots" />
         </Show>
-      </text>
+        <text>
+          <span style={{ fg: PURPLE }}>
+            {isExpanded() ? "\u25bc" : "\u25b6"} <i>Thinking</i>
+          </span>
+          <Show when={!isExpanded()}>
+            <span style={{ fg: "#666666" }}> {preview()}</span>
+          </Show>
+        </text>
+      </box>
       <Show when={isExpanded()}>
         <box style={{ paddingLeft: 2, marginTop: 0 }}>
           <text

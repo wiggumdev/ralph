@@ -8,17 +8,17 @@ import {
 } from "./agent-block-utils";
 
 describe("getStatusIndicator", () => {
-  test("pending returns ○", () => {
-    expect(getStatusIndicator("pending")).toBe("○");
+  test("pending returns ⠿", () => {
+    expect(getStatusIndicator("pending")).toBe("⠿");
   });
-  test("in_progress returns ◐", () => {
-    expect(getStatusIndicator("in_progress")).toBe("◐");
+  test("in_progress returns ⠿", () => {
+    expect(getStatusIndicator("in_progress")).toBe("⠿");
   });
-  test("completed returns ✓", () => {
-    expect(getStatusIndicator("completed")).toBe("✓");
+  test("completed returns ⠿", () => {
+    expect(getStatusIndicator("completed")).toBe("⠿");
   });
-  test("failed returns ✗", () => {
-    expect(getStatusIndicator("failed")).toBe("✗");
+  test("failed returns ⠿", () => {
+    expect(getStatusIndicator("failed")).toBe("⠿");
   });
   test("unknown returns empty string", () => {
     expect(getStatusIndicator("unknown" as any)).toBe("");

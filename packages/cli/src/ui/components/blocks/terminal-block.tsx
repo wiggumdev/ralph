@@ -1,5 +1,6 @@
 import { Show } from "solid-js";
 import type { TerminalBlock as TerminalBlockType } from "#parsers/message-types";
+import "opentui-spinner/solid";
 import { defaultSyntaxStyle } from "#ui/styles/syntax-styles";
 
 export interface TerminalBlockProps {
@@ -8,18 +9,7 @@ export interface TerminalBlockProps {
 }
 
 export function TerminalBlock(props: TerminalBlockProps) {
-  const statusIcon = () => {
-    switch (props.block.status) {
-      case "running":
-        return "◐";
-      case "completed":
-        return props.block.exitCode === 0 ? "✓" : "✗";
-      case "failed":
-        return "✗";
-      default:
-        return "○";
-    }
-  };
+  const isRunning = () => props.block.status === "running";
 
   const statusColor = () => {
     if (props.block.status === "running") {
@@ -62,10 +52,21 @@ export function TerminalBlock(props: TerminalBlockProps) {
   return (
     <box flexDirection="column">
       <Show when={props.block.output || props.block.status !== "running"}>
-        <text>
-          <span style={{ fg: statusColor() }}>{statusIcon()}</span>
-          <span style={{ fg: "#666666" }}> {summary()}</span>
-        </text>
+        <box alignItems="center" flexDirection="row">
+          <Show
+            fallback={
+              <text>
+                <span style={{ fg: statusColor() }}>⠿</span>
+              </text>
+            }
+            when={isRunning()}
+          >
+            <spinner color={statusColor()} name="dots" />
+          </Show>
+          <text>
+            <span style={{ fg: "#666666" }}> {summary()}</span>
+          </text>
+        </box>
       </Show>
       <Show when={props.showOutput && props.block.output}>
         <box style={{ marginLeft: 2, marginTop: 1 }}>

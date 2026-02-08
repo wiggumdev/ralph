@@ -1,3 +1,4 @@
+import "opentui-spinner/solid";
 import { render, useKeyboard, useRenderer } from "@opentui/solid";
 import {
   createEffect,

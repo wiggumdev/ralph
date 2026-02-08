@@ -80,6 +80,7 @@
     "@xstate/solid": "^2.0.0",
     "babel-preset-solid": "1.9.10",
     "diff": "^8.0.3",
+    "opentui-spinner": "^0.0.6",
     "partial-json": "^0.1.7",
     "smol-toml": "^1.6.0",
     "solid-js": "1.9.11",

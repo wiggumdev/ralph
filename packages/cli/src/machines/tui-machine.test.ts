@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { getShortestPaths } from "@xstate/graph";
 import { createActor, setup } from "xstate";
 import type { AcpAdapter } from "#adapters/acp";
+import type { sessionMachine } from "./session-machine";
 import { tuiMachine } from "./tui-machine";
 import type { LoopContext, LoopEvent, LoopInput, LoopOptions } from "./types";
 
@@ -36,6 +37,7 @@ const stubLoopMachine = setup({
     input: {} as LoopInput,
   },
 }).createMachine({
+  context: {} as LoopContext,
   initial: "idle",
   states: { idle: {} },
 });
@@ -199,7 +201,7 @@ describe("tui machine input options", () => {
 describe("tui machine state coverage", () => {
   const testMachine = tuiMachine.provide({
     actors: {
-      sessionMachine: stubLoopMachine,
+      sessionMachine: stubLoopMachine as unknown as typeof sessionMachine,
     },
   });
 
