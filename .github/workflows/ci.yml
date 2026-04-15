@@ -57,7 +57,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Run tests
-        run: bun test
+        run: bun run test
 
   build:
     name: Build (${{ matrix.os }})
