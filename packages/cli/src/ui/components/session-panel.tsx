@@ -1,9 +1,5 @@
 import { For, Show } from "solid-js";
-
-export interface TodoItem {
-  content: string;
-  status: "pending" | "in_progress" | "completed";
-}
+import type { TodoItem } from "#parsers/message-types";
 
 export interface SessionPanelProps {
   iteration: number;

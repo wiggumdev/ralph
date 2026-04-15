@@ -2,9 +2,8 @@ import cloudflare from "@astrojs/cloudflare"
 import starlight from "@astrojs/starlight";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "astro/config";
-import config from "./config.mjs"
-
 import d2 from "astro-d2";
+import config from "./config.mjs"
 
 export default defineConfig({
   site: config.url,

@@ -1,0 +1,65 @@
+import { useKeyboard } from "@opentui/solid";
+import { createSignal, Show } from "solid-js";
+import type {
+  ThinkingBlock as ThinkingBlockType,
+  ThinkingDelta,
+} from "#parsers/message-types";
+import "opentui-spinner/solid";
+
+export interface ThinkingBlockProps {
+  block: ThinkingBlockType | ThinkingDelta;
+  active?: boolean;
+}
+
+const PURPLE = "#9d7cd8";
+const COLLAPSED_PREVIEW_LENGTH = 60;
+
+export function ThinkingBlock(props: ThinkingBlockProps) {
+  const [expanded, setExpanded] = createSignal(false);
+
+  useKeyboard((key) => {
+    if (props.active && (key.name === "e" || key.name === "space")) {
+      setExpanded((v) => !v);
+    }
+  });
+
+  const text = () => props.block.text;
+  const isExpanded = () => expanded();
+  const preview = () => {
+    const t = text();
+    if (t.length <= COLLAPSED_PREVIEW_LENGTH) {
+      return t;
+    }
+    return `${t.slice(0, COLLAPSED_PREVIEW_LENGTH)}...`;
+  };
+
+  return (
+    <box flexDirection="column" style={{ marginBottom: 1 }}>
+      <box alignItems="center" flexDirection="row">
+        <Show when={props.active}>
+          <spinner color={PURPLE} name="dots" />
+        </Show>
+        <text>
+          <span style={{ fg: PURPLE }}>
+            {isExpanded() ? "\u25bc" : "\u25b6"} <i>Thinking</i>
+          </span>
+          <Show when={!isExpanded()}>
+            <span style={{ fg: "#666666" }}> {preview()}</span>
+          </Show>
+        </text>
+      </box>
+      <Show when={isExpanded()}>
+        <box style={{ paddingLeft: 2, marginTop: 0 }}>
+          <text
+            selectable
+            selectionBg="#264F78"
+            selectionFg="#FFFFFF"
+            style={{ fg: "#333333" }}
+          >
+            <i>{text()}</i>
+          </text>
+        </box>
+      </Show>
+    </box>
+  );
+}

@@ -1,23 +1,16 @@
-import type { OutputFormat } from "#parsers";
-import { BaseAdapter } from "./base-adapter";
-import type { AdapterOptions } from "./types";
+import { AcpAdapter, type ResumeCommand } from "./acp";
 
-export class GeminiAdapter extends BaseAdapter {
+/**
+ * Gemini ACP adapter.
+ * Uses `gemini --experimental-acp` command.
+ */
+
+export class GeminiAcpAdapter extends AcpAdapter {
   readonly name = "gemini";
-  readonly supportedFormats: OutputFormat[] = ["stream-json", "text"];
+  readonly command = "gemini";
+  readonly args = ["--experimental-acp"];
 
-  buildArgs(prompt: string, options: AdapterOptions): string[] {
-    const args = ["gemini", "--approval-mode", "yolo"];
-
-    if (options.outputFormat === "stream-json") {
-      args.push("--output-format", "stream-json");
-    }
-
-    if (options.verbose) {
-      args.push("--debug");
-    }
-
-    args.push("-p", prompt);
-    return args;
+  getResumeCommand(_sessionId: string): ResumeCommand | null {
+    return null; // Gemini doesn't support session resume
   }
 }

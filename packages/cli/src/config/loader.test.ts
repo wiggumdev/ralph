@@ -40,10 +40,12 @@ describe("Config Loader", () => {
       const config = {
         adapter: "claude" as const,
         plansDir: ".plans",
-        maxIterations: 10,
-        verbose: false,
+        maxIterations: undefined,
+        debug: false,
         tui: true,
         showUsage: false,
+        yolo: false,
+        transportLog: false,
         hooks: {},
       };
 
@@ -60,10 +62,12 @@ describe("Config Loader", () => {
       const config = {
         adapter: "claude" as const,
         plansDir: "custom-plans",
-        maxIterations: 10,
-        verbose: false,
+        maxIterations: undefined,
+        debug: false,
         tui: true,
         showUsage: false,
+        yolo: false,
+        transportLog: false,
         hooks: {},
       };
 
@@ -82,10 +86,12 @@ describe("Config Loader", () => {
       const config = {
         adapter: "claude" as const,
         plansDir: ".plans",
-        maxIterations: 10,
-        verbose: false,
+        maxIterations: undefined,
+        debug: false,
         tui: true,
         showUsage: false,
+        yolo: false,
+        transportLog: false,
         hooks: {},
       };
 
@@ -104,10 +110,12 @@ describe("Config Loader", () => {
       const config = {
         adapter: "claude" as const,
         plansDir: ".plans",
-        maxIterations: 10,
-        verbose: false,
+        maxIterations: undefined,
+        debug: false,
         tui: true,
         showUsage: false,
+        yolo: false,
+        transportLog: false,
         hooks: {},
       };
 
@@ -126,10 +134,12 @@ describe("Config Loader", () => {
       const config = {
         adapter: "claude" as const,
         plansDir: ".plans",
-        maxIterations: 10,
-        verbose: false,
+        maxIterations: undefined,
+        debug: false,
         tui: true,
         showUsage: false,
+        yolo: false,
+        transportLog: false,
         hooks: {},
       };
 
@@ -174,7 +184,7 @@ maxIterations = 5
     expect(config.maxIterations).toBe(5);
     // Defaults should remain for non-overridden values
     expect(config.plansDir).toBe(".plans");
-    expect(config.verbose).toBe(false);
+    expect(config.debug).toBe(false);
     expect(config.tui).toBe(true);
   });
 
@@ -190,7 +200,7 @@ maxIterations = 5
       join(ralphDir, "config.toml"),
       `
 maxIterations = 5
-verbose = false
+debug = false
 `
     );
 
@@ -199,12 +209,12 @@ verbose = false
       cwd: tempDir,
       overrides: {
         maxIterations: 20,
-        verbose: true,
+        debug: true,
       },
     });
 
     expect(config.maxIterations).toBe(20);
-    expect(config.verbose).toBe(true);
+    expect(config.debug).toBe(true);
   });
 
   /**
@@ -242,8 +252,8 @@ maxIterations = 15
 
     expect(config.adapter).toBe("claude");
     expect(config.plansDir).toBe(".plans");
-    expect(config.maxIterations).toBe(10);
-    expect(config.verbose).toBe(false);
+    expect(config.maxIterations).toBeUndefined();
+    expect(config.debug).toBe(false);
     expect(config.tui).toBe(true);
   });
 

@@ -1,7 +1,7 @@
 {
   "name": "ralph",
   "description": "A plugin to help with Ralph's tasks",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": {
     "name": "Alistair Stead"
   }

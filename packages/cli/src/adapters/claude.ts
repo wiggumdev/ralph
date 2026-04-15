@@ -1,23 +1,27 @@
-import type { OutputFormat } from "#parsers";
-import { BaseAdapter } from "./base-adapter";
-import type { AdapterOptions } from "./types";
+import { AcpAdapter, type ResumeCommand } from "./acp";
 
-export class ClaudeAdapter extends BaseAdapter {
+/**
+ * Claude Code ACP adapter.
+ * Uses @zed-industries/claude-code-acp for communication.
+ */
+
+export class ClaudeAcpAdapter extends AcpAdapter {
   readonly name = "claude";
-  readonly supportedFormats: OutputFormat[] = ["stream-json", "text"];
+  readonly command = "claude-code-acp";
+  readonly args: string[] = [];
 
-  buildArgs(prompt: string, options: AdapterOptions): string[] {
-    const args = ["claude", "--permission-mode", "acceptEdits"];
+  getResumeCommand(sessionId: string): ResumeCommand {
+    return { command: "claude", args: ["--resume", sessionId] };
+  }
 
-    if (options.outputFormat === "stream-json") {
-      args.push("--output-format", "stream-json", "--verbose");
-    }
+  protected override getPreferredModeId(): string | null {
+    return "acceptEdits";
+  }
 
-    if (options.verbose) {
-      args.push("--debug");
-    }
-
-    args.push("-p", prompt);
-    return args;
+  override extractToolName(
+    _meta: Record<string, unknown> | undefined
+  ): string | null {
+    const claudeCode = _meta?.claudeCode as { toolName?: string } | undefined;
+    return claudeCode?.toolName ?? null;
   }
 }

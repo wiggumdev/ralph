@@ -32,6 +32,5 @@ await yargs(hideBin(process.argv))
   .strict()
   .help("help", "Show help")
   .alias("h", "help")
-  .version(pkg.version)
-  .alias("v", "version")
+  .version("version", "Show version", pkg.version)
   .parse();

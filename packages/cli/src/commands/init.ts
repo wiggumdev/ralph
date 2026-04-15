@@ -141,8 +141,7 @@ export const initCommand: CommandModule<object, InitArgs> = {
     const configContent = `# Ralph configuration
 adapter = "${adapter}"
 plansDir = "${plansDir}"
-maxIterations = 10
-verbose = false
+debug = false
 tui = true
 `;
     writeFileSync(configPath, configContent);

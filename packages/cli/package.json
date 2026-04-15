@@ -38,7 +38,8 @@
   "scripts": {
     "build": "bun run script/build.ts",
     "build:single": "bun run script/build.ts --single",
-    "dev": "bun run --watch src/index.ts",
+    "dev": "watchexec -r -e ts,tsx -w src -- bun src/dev.ts",
+    "start": "bun src/index.ts",
     "install-bin": "bun run script/install.ts",
     "unlink": "bun run script/unlink.ts",
     "typecheck": "tsc --noEmit",
@@ -50,13 +51,19 @@
   },
   "imports": {
     "#commands/*": "./src/commands/*.ts",
+    "#machines/*": "./src/machines/*.ts",
+    "#providers/*": "./src/providers/*.ts",
     "#adapters/*": "./src/adapters/*.ts",
     "#config/*": "./src/config/*.ts",
     "#schema/*": "./src/schema/*.ts",
     "#hooks": "./src/hooks/index.ts",
     "#hooks/*": "./src/hooks/*.ts",
     "#ui/*": "./src/ui/*.tsx",
+    "#ui/styles/*": "./src/ui/styles/*.ts",
+    "#ui/test-harness/harness-app": "./src/ui/test-harness/harness-app.tsx",
+    "#ui/test-harness/*": "./src/ui/test-harness/*.ts",
     "#ui/components/*": "./src/ui/components/*.tsx",
+    "#ui/components/loop-tab": "./src/ui/components/loop-tab/index.tsx",
     "#ui/components/blocks/*": "./src/ui/components/blocks/*.tsx",
     "#utils/*": "./src/utils/*.ts",
     "#parsers": "./src/parsers/index.ts",
@@ -65,23 +72,28 @@
     "#log": "./src/log.ts"
   },
   "dependencies": {
-    "@babel/core": "^7.28.5",
+    "@agentclientprotocol/sdk": "^0.14.1",
+    "@babel/core": "^7.29.0",
     "@babel/preset-typescript": "^7.28.5",
-    "@opentui/core": "^0.1.72",
-    "@opentui/solid": "^0.1.72",
+    "@opentui/core": "^0.1.77",
+    "@opentui/solid": "^0.1.77",
+    "@xstate/solid": "^2.0.0",
     "babel-preset-solid": "1.9.10",
-    "diff": "^8.0.2",
+    "diff": "^8.0.3",
+    "opentui-spinner": "^0.0.6",
     "partial-json": "^0.1.7",
     "smol-toml": "^1.6.0",
-    "solid-js": "1.9.10",
+    "solid-js": "1.9.11",
     "xdg-basedir": "^5.1.0",
+    "xstate": "^5.26.0",
     "yargs": "^18.0.0",
-    "zod": "^4.3.5"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@types/bun": "latest",
+    "@types/bun": "1.3.8",
     "@types/diff": "^8.0.0",
-    "@types/yargs": "^17.0.35"
+    "@types/yargs": "^17.0.35",
+    "@xstate/graph": "^3.0.4"
   },
   "peerDependencies": {
     "typescript": "^5"

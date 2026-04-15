@@ -64,6 +64,28 @@ Initial request: $ARGUMENTS
 3. **Present all questions to the user in a clear, organized list**
 4. **Wait for answers before proceeding to architecture design**
 
+Format Questions Like This:
+```
+1. What is the primary goal of this feature?
+   A. Improve user onboarding experience
+   B. Increase user retention
+   C. Reduce support burden
+   D. Other: [please specify]
+
+2. Who is the target user?
+   A. New users only
+   B. Existing users only
+   C. All users
+   D. Admin users only
+
+3. What is the scope?
+   A. Minimal viable version
+   B. Full-featured implementation
+   C. Just the backend/API
+   D. Just the UI
+```
+This lets users respond with "1A, 2C, 3B" for quick iteration.
+
 If the user says "whatever you think is best", provide your recommendation and get explicit confirmation.
 
 ---
@@ -91,6 +113,12 @@ If the user says "whatever you think is best", provide your recommendation and g
 **Important:** Acceptance criteria must be verifiable, not vague. "Works correctly" is bad. "Button shows confirmation dialog before deleting" is good.
 **For any story with UI changes:** Always include "Verify in browser using dev-browser skill" as acceptance criteria. This ensures visual verification of frontend work.
 **For any story that includes domain logic:** Always include "Verify with unit tests" as acceptance criteria.
+
+### Tracer Bullets
+
+When building features, build a tiny, end-to-end slice of the feature first, seek feedback, then expand out from there.
+
+Tracer bullets comes from the Pragmatic Programmer. When building systems, you want to write code that gets you feedback as quickly as possible. Tracer bullets are small slices of functionality that go through all layers of the system, allowing you to test and validate your approach early. This helps in identifying potential issues and ensures that the overall architecture is sound before investing significant time in development.
 
 ### Writing for Junior Developers
 
@@ -175,14 +203,6 @@ Generate the PRD json based on the following json schema:
         "type": "string",
         "description": "Testing guidance: test types needed (unit/integration/e2e), what to mock, edge cases to cover."
       },
-      "suggestedFiles": {
-        "type": "array",
-        "description": "Paths to files likely needing changes or examination. Glob patterns allowed (e.g., 'src/auth/**/*.ts').",
-        "items": {
-          "type": "string",
-          "minLength": 1
-        }
-      },
       "outOfScope": {
         "type": "array",
         "description": "Explicit exclusions to prevent over-engineering (e.g., 'No OAuth support yet', 'Skip mobile responsive').",
@@ -210,6 +230,7 @@ Before writing prd.json, verify:
 - [ ] Asked clarifying questions
 - [ ] Incorporated user's answers
 - [ ] PRD item is completable in one iteration (small enough)
+- [ ] For new features create a **Tracer Bullet** first then build a **Minimum Viable Product** (MVP)
 - [ ] UI stories have "Verify in browser using dev-browser skill" as criterion
 - [ ] Acceptance criteria are verifiable (not vague)
 - [ ] Saved to `.plans/prd.json`

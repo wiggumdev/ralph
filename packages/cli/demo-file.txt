@@ -1,0 +1,3 @@
+This is a demonstration file created by the Write tool.
+It contains multiple lines to show the Write capability.
+Line 3: Hello World! (Edited by the Edit tool)

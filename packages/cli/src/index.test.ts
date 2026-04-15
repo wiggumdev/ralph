@@ -38,24 +38,6 @@ describe("CLI version flag", () => {
   });
 
   /**
-   * Tests that -v shorthand flag works.
-   * Should have same behavior as --version.
-   */
-  test("ralph -v displays version", async () => {
-    const proc = spawn(["bun", "run", "--bun", CLI_PATH, "-v"], {
-      stdout: "pipe",
-      stderr: "pipe",
-      cwd: CLI_DIR,
-    });
-
-    const output = await new Response(proc.stdout).text();
-    const exitCode = await proc.exited;
-
-    expect(exitCode).toBe(0);
-    expect(output.trim()).toMatch(SEMVER_REGEX);
-  });
-
-  /**
    * Tests that version matches package.json.
    * Version should come from package.json.
    */

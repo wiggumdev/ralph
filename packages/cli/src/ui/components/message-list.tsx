@@ -1,12 +1,12 @@
-import { For, Match, Switch } from "solid-js";
+import { createMemo, For, Match, Switch } from "solid-js";
 import type { RichMessage } from "#parsers/message-types";
 import {
   isMessage,
-  isPartialToolInput,
   isResultMessage,
+  isSystemMessage,
   isTextDelta,
 } from "#parsers/message-types";
-import { PartialToolBlock } from "./blocks/partial-tool-block";
+import { SystemMessageBlock } from "./blocks/system-message-block";
 import { TextDeltaBlock } from "./blocks/text-delta-block";
 import { MessageItem } from "./message-item";
 import { ResultMessage } from "./result-message";
@@ -17,14 +17,20 @@ export interface MessageListProps {
 }
 
 export function MessageList(props: MessageListProps) {
+  const lastTextDeltaIndex = createMemo(() => {
+    let last = -1;
+    for (let i = 0; i < props.messages.length; i++) {
+      if (isTextDelta(props.messages[i]!)) {
+        last = i;
+      }
+    }
+    return last;
+  });
+
   return (
-    <scrollbox
-      stickyScroll
-      stickyStart="bottom"
-      style={{ marginTop: 1, flexGrow: 1 }}
-    >
+    <box style={{ marginTop: 1, flexGrow: 1 }}>
       <For each={props.messages}>
-        {(msg) => (
+        {(msg, index) => (
           <box>
             <Switch>
               <Match when={isMessage(msg)}>
@@ -40,22 +46,23 @@ export function MessageList(props: MessageListProps) {
                   }
                 />
               </Match>
-              <Match when={isPartialToolInput(msg)}>
-                <PartialToolBlock
-                  message={
-                    msg as import("#parsers/message-types").PartialToolInput
-                  }
-                />
-              </Match>
               <Match when={isTextDelta(msg)}>
                 <TextDeltaBlock
+                  active={index() === lastTextDeltaIndex()}
                   message={msg as import("#parsers/message-types").TextDelta}
+                />
+              </Match>
+              <Match when={isSystemMessage(msg)}>
+                <SystemMessageBlock
+                  message={
+                    msg as import("#parsers/message-types").SystemMessage
+                  }
                 />
               </Match>
             </Switch>
           </box>
         )}
       </For>
-    </scrollbox>
+    </box>
   );
 }

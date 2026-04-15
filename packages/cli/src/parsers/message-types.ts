@@ -1,5 +1,28 @@
 // Claude SDK-aligned message schema for stream-json output
-export type MessageRole = "user" | "assistant" | "system";
+import type {
+  Diff,
+  Role,
+  AvailableCommand as SdkAvailableCommand,
+  PlanEntry as SdkPlanEntry,
+  ToolCallLocation,
+  ToolCallStatus,
+  ToolKind,
+} from "@agentclientprotocol/sdk";
+
+// Re-export SDK types for consumers
+export type {
+  AvailableCommand,
+  PlanEntry,
+  PlanEntryPriority,
+  PlanEntryStatus,
+} from "@agentclientprotocol/sdk";
+
+// Local aliases for internal use
+type AvailableCommand = SdkAvailableCommand;
+type PlanEntry = SdkPlanEntry;
+
+// SDK's Role type suffices - "system" was defined but never used
+export type MessageRole = Role;
 
 export interface BaseContentBlock {
   type: string;
@@ -10,11 +33,35 @@ export interface TextBlock extends BaseContentBlock {
   text: string;
 }
 
+// Content types for ToolBlock
+export type ToolCallContent =
+  | { type: "content"; content: ContentBlock }
+  | { type: "diff"; path: string; oldText?: string; newText: string }
+  | { type: "terminal"; terminalId: string };
+
+// Unified ToolBlock aligned with ACP schema
+export interface ToolBlock {
+  type: "tool";
+  toolCallId: string;
+  title: string;
+  resolvedName?: string;
+  kind?: ToolKind;
+  status: ToolCallStatus;
+  locations?: ToolCallLocation[];
+  rawInput?: Record<string, unknown>;
+  rawOutput?: unknown;
+  content?: ToolCallContent[];
+}
+
 export interface ToolUseBlock extends BaseContentBlock {
   type: "tool_use";
   id: string;
   name: string;
   input: Record<string, unknown>;
+  resolvedName?: string;
+  kind?: ToolKind;
+  status?: ToolCallStatus;
+  locations?: ToolCallLocation[];
 }
 
 export interface ToolResultBlock extends BaseContentBlock {
@@ -24,7 +71,76 @@ export interface ToolResultBlock extends BaseContentBlock {
   is_error?: boolean;
 }
 
-export type ContentBlock = TextBlock | ToolUseBlock | ToolResultBlock;
+export interface ImageBlock extends BaseContentBlock {
+  type: "image";
+  data: string;
+  mimeType: string;
+  uri?: string;
+}
+
+export interface AudioBlock extends BaseContentBlock {
+  type: "audio";
+  data: string;
+  mimeType: string;
+}
+
+export interface ResourceLinkBlock extends BaseContentBlock {
+  type: "resource_link";
+  name: string;
+  uri: string;
+  description?: string;
+  mimeType?: string;
+  size?: number;
+  title?: string;
+}
+
+export interface TextResourceContent {
+  type: "text";
+  uri: string;
+  text: string;
+  mimeType?: string;
+}
+
+export interface BlobResourceContent {
+  type: "blob";
+  uri: string;
+  blob: string;
+  mimeType?: string;
+}
+
+export interface EmbeddedResourceBlock extends BaseContentBlock {
+  type: "resource";
+  resource: TextResourceContent | BlobResourceContent;
+}
+
+export type TerminalStatus = "running" | "completed" | "failed";
+
+export interface TerminalBlock extends BaseContentBlock {
+  type: "terminal";
+  terminalId: string;
+  output: string;
+  truncated: boolean;
+  status: TerminalStatus;
+  exitCode?: number | null;
+  signal?: string | null;
+}
+
+// Extends SDK's Diff type with discriminator for union matching
+export interface DiffBlock extends Diff {
+  type: "diff";
+}
+
+export type ContentBlock =
+  | TextBlock
+  | ThinkingBlock
+  | ToolUseBlock
+  | ToolResultBlock
+  | ImageBlock
+  | AudioBlock
+  | ResourceLinkBlock
+  | EmbeddedResourceBlock
+  | TerminalBlock
+  | DiffBlock;
 
 export interface Message {
   type: "message";
@@ -57,28 +173,132 @@ export interface ResultMessage {
   timestamp: number;
 }
 
-export interface PartialToolInput {
-  type: "partial_tool_input";
-  index: number;
-  toolName?: string;
-  partialInput: Record<string, unknown>;
-  timestamp: number;
-}
-
 export interface TextDelta {
   type: "text_delta";
   text: string;
   timestamp: number;
 }
 
+export interface ThinkingDelta {
+  type: "thinking_delta";
+  text: string;
+  timestamp: number;
+}
+
+export interface ThinkingBlock extends BaseContentBlock {
+  type: "thinking";
+  text: string;
+}
+
+export interface PlanMessage {
+  type: "plan";
+  entries: PlanEntry[];
+  timestamp: number;
+}
+
+export interface AgentBlock {
+  type: "agent";
+  toolCallId: string;
+  title: string;
+  status: ToolCallStatus;
+  items: SessionItem[]; // Nested items within agent
+  startTime: number;
+  endTime?: number;
+  collapsed: boolean;
+}
+
+// Session item - discriminated union for ordered rendering
+export type SessionItem =
+  | { type: "message"; id: string; data: Message }
+  | { type: "tool"; id: string; data: ToolBlock }
+  | { type: "agent"; id: string; data: AgentBlock }
+  | { type: "text_delta"; id: string; data: TextDelta }
+  | { type: "thinking_delta"; id: string; data: ThinkingDelta }
+  | { type: "system"; id: string; data: SystemMessage }
+  | { type: "result"; id: string; data: ResultMessage }
+  | { type: "plan"; id: string; data: PlanMessage };
+
+// Rich message types for incoming message stream (adapter input)
 export type RichMessage =
   | Message
   | SystemMessage
   | ResultMessage
-  | PartialToolInput
-  | TextDelta;
+  | TextDelta
+  | ThinkingDelta
+  | PlanMessage;
 
-// Type guards
+export type SessionStatus =
+  | "running"
+  | "complete"
+  | "error"
+  | "paused"
+  | "stopped";
+
+export type SessionActivity =
+  | "idle"
+  | "thinking"
+  | "responding"
+  | "tool_executing"
+  | "waiting";
+
+// Session state types
+export interface AgentInfo {
+  name: string;
+  version: string;
+}
+
+export interface SessionUsage {
+  inputTokens: number;
+  outputTokens: number;
+  cost: number;
+  toolCallCount: number;
+}
+
+// Simplified MCP server display info for UI state (SDK's McpServer is full config union)
+export interface McpServerDisplayInfo {
+  type: "http" | "sse" | "stdio";
+  name?: string;
+}
+
+export interface TodoItem {
+  content: string;
+  status: "pending" | "in_progress" | "completed";
+}
+
+export interface SessionState {
+  // Identity
+  id: string;
+  iteration: number;
+  cwd: string;
+
+  // Agent info (from InitializeResponse)
+  agentInfo?: AgentInfo;
+  agentCapabilities?: Record<string, unknown>;
+
+  // Session config
+  mcpServers: McpServerDisplayInfo[];
+  currentMode?: string;
+  availableCommands: AvailableCommand[];
+
+  // Single ordered collection of items
+  items: SessionItem[];
+
+  // Usage tracking per session
+  usage: SessionUsage;
+
+  // Session-specific todos/plan
+  todos: TodoItem[];
+  plan?: PlanEntry[];
+
+  // Lifecycle
+  startTime: number;
+  endTime?: number;
+  collapsed: boolean;
+  status: SessionStatus;
+  activity: SessionActivity;
+}
+
+// Type guards for RichMessage (incoming messages)
 export function isMessage(msg: RichMessage): msg is Message {
   return msg.type === "message";
 }
@@ -91,6 +311,19 @@ export function isResultMessage(msg: RichMessage): msg is ResultMessage {
   return msg.type === "result";
 }
 
+export function isTextDelta(msg: RichMessage): msg is TextDelta {
+  return msg.type === "text_delta";
+}
+
+export function isThinkingDelta(msg: RichMessage): msg is ThinkingDelta {
+  return msg.type === "thinking_delta";
+}
+
+export function isPlanMessage(msg: RichMessage): msg is PlanMessage {
+  return msg.type === "plan";
+}
+
+// Type guards for ContentBlock
 export function isTextBlock(block: ContentBlock): block is TextBlock {
   return block.type === "text";
 }
@@ -105,10 +338,123 @@ export function isToolResultBlock(
   return block.type === "tool_result";
 }
 
-export function isPartialToolInput(msg: RichMessage): msg is PartialToolInput {
-  return msg.type === "partial_tool_input";
+export function isToolBlock(block: ToolBlock | unknown): block is ToolBlock {
+  return (
+    typeof block === "object" &&
+    block !== null &&
+    (block as ToolBlock).type === "tool"
+  );
 }
 
-export function isTextDelta(msg: RichMessage): msg is TextDelta {
-  return msg.type === "text_delta";
+export function isThinkingBlock(block: ContentBlock): block is ThinkingBlock {
+  return block.type === "thinking";
+}
+
+export function isImageBlock(block: ContentBlock): block is ImageBlock {
+  return block.type === "image";
+}
+
+export function isAudioBlock(block: ContentBlock): block is AudioBlock {
+  return block.type === "audio";
+}
+
+export function isResourceLinkBlock(
+  block: ContentBlock
+): block is ResourceLinkBlock {
+  return block.type === "resource_link";
+}
+
+export function isEmbeddedResourceBlock(
+  block: ContentBlock
+): block is EmbeddedResourceBlock {
+  return block.type === "resource";
+}
+
+export function isTerminalBlock(block: ContentBlock): block is TerminalBlock {
+  return block.type === "terminal";
+}
+
+export function isDiffBlock(block: ContentBlock): block is DiffBlock {
+  return block.type === "diff";
+}
+
+// Type guards for SessionItem
+export function isMessageItem(
+  item: SessionItem
+): item is { type: "message"; id: string; data: Message } {
+  return item.type === "message";
+}
+
+export function isToolItem(
+  item: SessionItem
+): item is { type: "tool"; id: string; data: ToolBlock } {
+  return item.type === "tool";
+}
+
+export function isAgentItem(
+  item: SessionItem
+): item is { type: "agent"; id: string; data: AgentBlock } {
+  return item.type === "agent";
+}
+
+export function isTextDeltaItem(
+  item: SessionItem
+): item is { type: "text_delta"; id: string; data: TextDelta } {
+  return item.type === "text_delta";
+}
+
+export function isThinkingDeltaItem(
+  item: SessionItem
+): item is { type: "thinking_delta"; id: string; data: ThinkingDelta } {
+  return item.type === "thinking_delta";
+}
+
+export function isSystemItem(
+  item: SessionItem
+): item is { type: "system"; id: string; data: SystemMessage } {
+  return item.type === "system";
+}
+
+export function isResultItem(
+  item: SessionItem
+): item is { type: "result"; id: string; data: ResultMessage } {
+  return item.type === "result";
+}
+
+export function isPlanItem(
+  item: SessionItem
+): item is { type: "plan"; id: string; data: PlanMessage } {
+  return item.type === "plan";
+}
+
+// Helper functions for finding/updating items
+export function findItemById(
+  items: SessionItem[],
+  id: string
+): SessionItem | undefined {
+  return items.find((item) => item.id === id);
+}
+
+export function findToolById(
+  items: SessionItem[],
+  toolCallId: string
+): ToolBlock | undefined {
+  const item = items.find((i) => i.type === "tool" && i.id === toolCallId);
+  return item?.type === "tool" ? item.data : undefined;
+}
+
+export function findAgentById(
+  items: SessionItem[],
+  toolCallId: string
+): AgentBlock | undefined {
+  const item = items.find((i) => i.type === "agent" && i.id === toolCallId);
+  return item?.type === "agent" ? item.data : undefined;
+}
+
+export function updateItemById(
+  items: SessionItem[],
+  id: string,
+  updater: (item: SessionItem) => SessionItem
+): SessionItem[] {
+  return items.map((item) => (item.id === id ? updater(item) : item));
 }
