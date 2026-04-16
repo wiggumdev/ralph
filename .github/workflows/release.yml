@@ -5,9 +5,6 @@ on:
     workflows: ["CI"]
     types: [completed]
     branches: [main]
-  push:
-    tags:
-      - "v*"
   workflow_dispatch:
     inputs:
       release_type:
@@ -39,7 +36,7 @@ jobs:
   # ─── Phase 1: Auto-version ────────────────────────────────────────────────────
   # Runs on workflow_run (CI passed on main) or workflow_dispatch.
   # Determines semver bump from conventional commits, updates package.json,
-  # commits [skip ci], and pushes a tag — which triggers Phase 2.
+  # commits [skip ci], and pushes a tag — Phase 2 chains directly from here.
 
   determine-release:
     name: Determine Release Version
@@ -186,13 +183,13 @@ jobs:
           echo "No changes pushed."
 
   # ─── Phase 2: Build & Publish ─────────────────────────────────────────────────
-  # Triggered only by a tag push (v*). The tag is created by bump-and-tag above
-  # (automated) or manually by a developer.
+  # Runs in the same workflow run after bump-and-tag pushes the version tag.
 
   build:
     name: Build & Package
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: [determine-release, bump-and-tag]
+    if: needs.determine-release.outputs.should-release == 'true' && inputs.dry_run != true
     outputs:
       version: ${{ steps.version.outputs.version }}
       is_prerelease: ${{ steps.version.outputs.is_prerelease }}
@@ -200,12 +197,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: refs/tags/v${{ needs.determine-release.outputs.new-version }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Determine version
         id: version
         run: |
-          VERSION="${GITHUB_REF#refs/tags/v}"
+          VERSION="${{ needs.determine-release.outputs.new-version }}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           if [[ "$VERSION" == *"-"* ]]; then
             echo "is_prerelease=true" >> $GITHUB_OUTPUT
