@@ -125,7 +125,7 @@ for (const item of targets) {
   console.log(`building ${name}`);
   await $`mkdir -p dist/${dirName}/bin`;
 
-  await Bun.build({
+  const result = await Bun.build({
     target: "bun",
     tsconfig: "./tsconfig.json",
     plugins: [solidPlugin],
@@ -141,6 +141,14 @@ for (const item of targets) {
     },
     entrypoints: ["./src/index.ts"],
   });
+
+  if (!result.success) {
+    console.error(`Build failed for ${name}:`);
+    for (const log of result.logs) {
+      console.error(log);
+    }
+    process.exit(1);
+  }
 
   // Generate platform-specific package.json for npm publishing
   const platformPkg = {
