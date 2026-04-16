@@ -122,6 +122,12 @@ export default defineConfig({
           { label: "FAQ", slug: "reference/faq" },
         ],
       },
+      {
+        label: "What's New",
+        items: [
+          { label: "ACP Support", slug: "announcements/acp" },
+        ],
+      },
     ],
     components: {
       Hero: "./src/components/Hero.astro",

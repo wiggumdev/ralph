@@ -117,4 +117,4 @@ Each hook receives context via environment variables.
 - Hook failures (non-zero exit) are logged but don't stop Ralph
 - Hooks inherit the parent process environment
 - Commands run via `sh -c` in the configured working directory
-- Use `verbose: true` in config to see hook execution logs
+- Use `debug = true` in config to see hook execution logs

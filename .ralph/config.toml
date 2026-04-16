@@ -2,5 +2,5 @@
 adapter = "claude"
 plansDir = ".plans"
 maxIterations = 10
-verbose = true
+debug = true
 tui = true

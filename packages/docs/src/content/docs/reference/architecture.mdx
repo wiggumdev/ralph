@@ -223,11 +223,13 @@ project/
 interface Config {
   adapter: 'claude' | 'opencode' | 'gemini';
   plansDir: string;
-  maxIterations: number;
-  verbose: boolean;
+  maxIterations?: number;
+  debug: boolean;
   tui: boolean;
   showUsage: boolean;
-  hooks: {
+  yolo: boolean;
+  transportLog: boolean;
+  hooks?: {
     ralph_start?: string;
     ralph_loop_start?: string;
     ralph_loop_end?: string;

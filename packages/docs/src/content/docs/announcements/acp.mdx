@@ -1,0 +1,58 @@
+---
+title: ACP Support
+description: Ralph now uses the Agent Client Protocol (ACP) for all agent communication, bringing interactive permissions, session continuity, and broader agent support.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Ralph's agent communication layer has been rebuilt around the **Agent Client Protocol (ACP)** — a standard JSON-RPC protocol over stdio. All adapters now speak the same protocol, which makes the integration more reliable and opens the door to supporting more agents.
+
+---
+
+## Expanded agent support
+
+Three adapters are available, all using ACP:
+
+| Adapter | Command |
+|---------|---------|
+| Claude Code | `claude-code-acp` |
+| OpenCode | `opencode acp` |
+| Gemini (experimental) | `gemini --experimental-acp` |
+
+Because adapters share a common protocol, adding support for new agents is now straightforward.
+
+---
+
+## Interactive permission handling
+
+Agents now request permission for specific tool calls at runtime. A modal appears in the TUI showing the tool name, the kind of access requested, and numbered options to allow or deny.
+
+Permissions work in three ways:
+
+- **Interactive** — press a number key to allow or deny each request
+- **Cached** — `allow_always` selections are remembered for the rest of the session
+- **Unattended** — run with `--yolo` to auto-approve all requests without prompting
+
+```bash
+ralph run --yolo   # auto-approve all permissions
+```
+
+---
+
+## Session continuity
+
+Each run now has a session ID. If a run is interrupted, Claude Code and OpenCode sessions can be resumed — either by ralph itself on the next iteration, or by opening the session directly in the native CLI tool from the TUI.
+
+---
+
+## New flags
+
+Three new flags were added alongside this change:
+
+| Flag | Description |
+|------|-------------|
+| `--debug` / `-d` | Write a `ralph-debug-<timestamp>.log` file |
+| `--yolo` / `-y` | Auto-approve all permission requests |
+| `--transport-log` / `-t` | Write raw ACP protocol messages to a log file |
+
+All three can also be set persistently in `.ralph/config.toml`. See the [CLI reference](/usage/cli/) and [configuration](/usage/configuration/) for details.
