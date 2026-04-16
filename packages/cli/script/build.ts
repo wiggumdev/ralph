@@ -129,7 +129,7 @@ for (const item of targets) {
   const result = await Bun.build({
     tsconfig: "./tsconfig.json",
     plugins: [solidPlugin],
-    sourcemap: "external",
+    sourcemap: "none",
     compile: {
       autoloadBunfig: false,
       autoloadDotenv: false,
