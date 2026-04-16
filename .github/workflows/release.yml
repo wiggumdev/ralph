@@ -1,51 +1,212 @@
 name: Release
 
 on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
   push:
     tags:
       - "v*"
   workflow_dispatch:
     inputs:
-      version:
-        description: "Version to release (e.g., 1.0.0 or 1.0.0-preview.1)"
+      release_type:
+        description: "Release type (auto, patch, minor, major)"
         required: true
-        type: string
+        default: "auto"
+        type: choice
+        options:
+          - auto
+          - patch
+          - minor
+          - major
       dry_run:
-        description: "Dry run (don't actually publish)"
+        description: "Dry run (don't push tag or publish)"
         required: false
         type: boolean
         default: false
 
-permissions:
-  contents: write
-  packages: write
-  id-token: write
+permissions: write-all
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   BUN_VERSION: "1.2.17"
 
 jobs:
+  # ─── Phase 1: Auto-version ────────────────────────────────────────────────────
+  # Runs on workflow_run (CI passed on main) or workflow_dispatch.
+  # Determines semver bump from conventional commits, updates package.json,
+  # commits [skip ci], and pushes a tag — which triggers Phase 2.
+
+  determine-release:
+    name: Determine Release Version
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      github.event_name == 'workflow_dispatch'
+    outputs:
+      should-release: ${{ steps.release-check.outputs.should-release }}
+      release-type: ${{ steps.release-check.outputs.release-type }}
+      new-version: ${{ steps.release-check.outputs.new-version }}
+      current-version: ${{ steps.release-check.outputs.current-version }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine release
+        id: release-check
+        run: |
+          CURRENT_VERSION=$(node -p "require('./packages/cli/package.json').version")
+          echo "current-version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $CURRENT_VERSION"
+
+          # Skip if HEAD is already a release commit
+          HEAD_MSG=$(git log -1 --pretty=format:"%s")
+          echo "HEAD commit: $HEAD_MSG"
+          if echo "$HEAD_MSG" | grep -qE "\[skip ci\]|^chore\(release\):"; then
+            echo "should-release=false" >> $GITHUB_OUTPUT
+            echo "HEAD is already a release commit, skipping"
+            exit 0
+          fi
+
+          # Find last version tag
+          LAST_TAG=$(git tag --sort=-version:refname | grep -E "^v[0-9]" | head -1)
+          echo "Last tag: '$LAST_TAG'"
+
+          if [ -z "$LAST_TAG" ]; then
+            COMMITS_SINCE_LAST=$(git rev-list --count HEAD)
+          else
+            COMMITS_SINCE_LAST=$(git rev-list --count "${LAST_TAG}..HEAD")
+          fi
+          echo "Commits since last release: $COMMITS_SINCE_LAST"
+
+          if [ "$COMMITS_SINCE_LAST" -eq 0 ] && [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            echo "should-release=false" >> $GITHUB_OUTPUT
+            echo "No new commits since last release"
+            exit 0
+          fi
+
+          # Determine release type from conventional commits or dispatch input
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.release_type }}" != "auto" ]; then
+            RELEASE_TYPE="${{ inputs.release_type }}"
+          else
+            if [ -z "$LAST_TAG" ]; then
+              COMMITS_TO_CHECK=$(git log --pretty=format:"%s" HEAD)
+            else
+              COMMITS_TO_CHECK=$(git log --pretty=format:"%s" "${LAST_TAG}..HEAD")
+            fi
+            echo "Commits to analyze:"
+            echo "$COMMITS_TO_CHECK"
+
+            if echo "$COMMITS_TO_CHECK" | grep -qE "^[a-zA-Z]+(\(.+\))?!:" || echo "$COMMITS_TO_CHECK" | grep -qE "BREAKING CHANGE"; then
+              RELEASE_TYPE="major"
+            elif echo "$COMMITS_TO_CHECK" | grep -qE "^feat(\(.+\))?:"; then
+              RELEASE_TYPE="minor"
+            else
+              RELEASE_TYPE="patch"
+            fi
+          fi
+          echo "Release type: $RELEASE_TYPE"
+
+          # Calculate new version (strip any prerelease suffix before bumping)
+          BASE_VERSION=$(echo "$CURRENT_VERSION" | sed 's/-.*//')
+          IFS='.' read -ra PARTS <<< "$BASE_VERSION"
+          MAJOR=${PARTS[0]}
+          MINOR=${PARTS[1]}
+          PATCH=${PARTS[2]}
+
+          case $RELEASE_TYPE in
+            major) NEW_VERSION="$((MAJOR + 1)).0.0" ;;
+            minor) NEW_VERSION="${MAJOR}.$((MINOR + 1)).0" ;;
+            patch) NEW_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))" ;;
+          esac
+
+          echo "should-release=true" >> $GITHUB_OUTPUT
+          echo "release-type=$RELEASE_TYPE" >> $GITHUB_OUTPUT
+          echo "new-version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "Determined: $RELEASE_TYPE ($CURRENT_VERSION → $NEW_VERSION)"
+
+  bump-and-tag:
+    name: Bump Version & Push Tag
+    runs-on: ubuntu-latest
+    needs: determine-release
+    if: needs.determine-release.outputs.should-release == 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Setup git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version
+        run: |
+          RELEASE_TYPE="${{ needs.determine-release.outputs.release-type }}"
+          NEW_VERSION="${{ needs.determine-release.outputs.new-version }}"
+          echo "Bumping version ($RELEASE_TYPE) → $NEW_VERSION"
+          bun run --cwd packages/cli script/version.ts "$NEW_VERSION"
+
+      - name: Commit, tag, and push
+        if: ${{ !inputs.dry_run }}
+        run: |
+          NEW_VERSION="${{ needs.determine-release.outputs.new-version }}"
+          git add packages/cli/package.json
+          git commit -m "chore(release): v${NEW_VERSION} [skip ci]"
+          git tag -fa "v${NEW_VERSION}" -m "Release v${NEW_VERSION}"
+          git push --force origin main "v${NEW_VERSION}"
+          echo "Pushed v${NEW_VERSION}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Dry run summary
+        if: ${{ inputs.dry_run }}
+        run: |
+          echo "=== DRY RUN ==="
+          echo "Would release: ${{ needs.determine-release.outputs.release-type }} → v${{ needs.determine-release.outputs.new-version }}"
+          echo "No changes pushed."
+
+  # ─── Phase 2: Build & Publish ─────────────────────────────────────────────────
+  # Triggered only by a tag push (v*). The tag is created by bump-and-tag above
+  # (automated) or manually by a developer.
+
   build:
     name: Build & Package
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     outputs:
       version: ${{ steps.version.outputs.version }}
       is_prerelease: ${{ steps.version.outputs.is_prerelease }}
+
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Determine version
         id: version
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            VERSION="${{ inputs.version }}"
-          else
-            # Extract version from tag (v1.0.0 -> 1.0.0)
-            VERSION="${GITHUB_REF#refs/tags/v}"
-          fi
+          VERSION="${GITHUB_REF#refs/tags/v}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-          # Check if prerelease
           if [[ "$VERSION" == *"-"* ]]; then
             echo "is_prerelease=true" >> $GITHUB_OUTPUT
           else
@@ -88,7 +249,6 @@ jobs:
           path: packages/cli/staging/npm/
           retention-days: 7
 
-  # Smoke test on native platforms
   smoke-test:
     name: Smoke Test (${{ matrix.os }})
     needs: build
@@ -134,7 +294,6 @@ jobs:
     name: Publish to npm
     needs: [build, smoke-test]
     runs-on: ubuntu-latest
-    if: ${{ !inputs.dry_run }}
     permissions:
       contents: read
       id-token: write
@@ -169,14 +328,18 @@ jobs:
               npm publish "$pkg" --access public --tag "$TAG" --provenance
             fi
           done
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   publish-docker:
     name: Publish Docker Image
     needs: [build, smoke-test]
     runs-on: ubuntu-latest
-    if: ${{ !inputs.dry_run }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true
 
       - uses: actions/download-artifact@v4
         with:
@@ -230,7 +393,6 @@ jobs:
     name: Verify npm (${{ matrix.name }})
     needs: [publish-npm]
     runs-on: ubuntu-latest
-    if: ${{ !inputs.dry_run }}
     strategy:
       fail-fast: false
       matrix:
@@ -260,24 +422,30 @@ jobs:
     name: Create GitHub Release
     needs: [build, smoke-test, publish-npm, verify-npm]
     runs-on: ubuntu-latest
-    if: ${{ !inputs.dry_run }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/download-artifact@v4
         with:
           name: release-archives
           path: archives
 
-      - name: Create release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ needs.build.outputs.version }}
-          name: v${{ needs.build.outputs.version }}
-          prerelease: ${{ needs.build.outputs.is_prerelease == 'true' }}
-          generate_release_notes: true
-          files: |
-            archives/*.tar.gz
+      - name: Create GitHub release
+        run: |
+          VERSION="${{ needs.build.outputs.version }}"
+          PRERELEASE_FLAG=""
+          if [ "${{ needs.build.outputs.is_prerelease }}" = "true" ]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+          gh release delete "v${VERSION}" --yes 2>/dev/null || true
+          gh release create "v${VERSION}" \
+            --title "v${VERSION}" \
+            --generate-notes \
+            $PRERELEASE_FLAG \
+            archives/*.tar.gz \
             archives/*.zip
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
