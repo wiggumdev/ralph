@@ -29,14 +29,20 @@ plansDir = ".plans"
 # Maximum iterations before stopping
 maxIterations = 10
 
-# Enable verbose output
-verbose = false
+# Enable debug logging to file
+debug = false
 
 # Enable Terminal UI
 tui = true
 
 # Show token usage info
 showUsage = false
+
+# Auto-approve all permission requests
+yolo = false
+
+# Enable raw ACP transport logging to file
+transportLog = false
 
 # Lifecycle hooks (shell commands)
 [hooks]
@@ -83,13 +89,13 @@ Safety limit on loop iterations. ralph stops when this limit is reached, even if
 Always keep a reasonable `maxIterations` value to prevent runaway API costs.
 </Aside>
 
-### Verbose Mode
+### Debug Mode
 
 ```toml
-verbose = false
+debug = false
 ```
 
-Enable detailed output for debugging.
+Enable debug logging. When `true`, ralph writes a timestamped `ralph-debug-<timestamp>.log` file in the working directory.
 
 ### Terminal UI
 

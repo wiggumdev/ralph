@@ -173,7 +173,7 @@ git commit -m "ralph: iteration $RALPH_LOOP_ITERATION" --allow-empty || true
 
 - Hook failures (non-zero exit code) are logged but **don't stop Ralph**
 - Use `|| true` to suppress expected failures
-- Enable `verbose = true` in config to see hook execution logs
+- Enable `debug = true` in config to see hook execution logs
 
 <Aside type="caution" title="Long-Running Hooks">
 Hooks block the loop. Avoid long-running commands in `ralph_loop_start` or `ralph_loop_end` as they run every iteration.
@@ -181,16 +181,16 @@ Hooks block the loop. Avoid long-running commands in `ralph_loop_start` or `ralp
 
 ### Debugging
 
-Enable verbose mode to see hook execution:
+Enable debug mode to see hook execution:
 
 ```toml
-verbose = true
+debug = true
 ```
 
 Or via CLI:
 
 ```bash
-ralph run --verbose
+ralph run --debug
 ```
 
 ---

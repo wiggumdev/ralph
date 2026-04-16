@@ -26,11 +26,10 @@ ralph run [options]
 | `--max-iterations` | `-n` | number | Maximum loop iterations (default from config) |
 | `--once` | `-o` | boolean | Run single iteration (no loop) |
 | `--prompt` | `-p` | string | Prompt text or path to prompt file |
-| `--cwd` | `-c` | string | Working directory |
-| `--verbose` | `-v` | boolean | Enable verbose output |
-| `--no-tui` | - | boolean | Disable TUI (plain text output) |
-| `--output-format` | `-f` | string | Output format: `stream-json`, `opencode-json`, `text` |
-| `--log-file` | `-l` | string | Write raw stream-json output to file |
+| `--cwd` | `-c` | string | Working directory (default: current directory) |
+| `--debug` | `-d` | boolean | Enable debug logging to file |
+| `--yolo` | `-y` | boolean | Auto-approve all permission requests |
+| `--transport-log` | `-t` | boolean | Enable raw ACP transport logging to file |
 
 **Examples:**
 
@@ -47,11 +46,14 @@ ralph run --once
 # Limit iterations
 ralph run --max-iterations 5
 
-# Verbose output for debugging
-ralph run -v
+# Enable debug logging to file
+ralph run --debug
 
-# Disable TUI for CI/plain output
-ralph run --no-tui
+# Auto-approve all permission requests (unattended use)
+ralph run --yolo
+
+# Log raw ACP transport messages
+ralph run --transport-log
 ```
 
 **Exit Reasons:**

@@ -53,11 +53,13 @@ npm i -g opencode-ai
 
 ### Supported Adapters
 
-| Adapter | Status |
-|---------|--------|
-| Claude Code | Complete |
-| OpenCode | Complete |
-| Gemini CLI | Under Development |
+| Adapter | Status | ACP Command |
+|---------|--------|-------------|
+| Claude Code | Complete | `claude-code-acp` |
+| OpenCode | Complete | `opencode acp` |
+| Gemini CLI | Under Development | `gemini --experimental-acp` |
+
+All adapters communicate via ACP (Agent Client Protocol).
 
 ## Quick Start
 
@@ -113,8 +115,10 @@ ralph uses TOML config at `.ralph/config.toml`:
 adapter = "claude"
 maxIterations = 20
 plansDir = ".plans"
-verbose = false
+debug = false
 tui = true
+yolo = false
+transportLog = false
 
 [hooks]
 ralph_start = ""
@@ -150,8 +154,9 @@ ralph check             # Validate prd.json schema
 ralph run --max-iterations 10   # Limit iterations
 ralph run --once                # Single iteration (no loop)
 ralph run --prompt TASK.md      # Use specific prompt file
-ralph run --no-tui              # Plain text output (for CI)
-ralph run --verbose             # Debug output
+ralph run --debug               # Write debug log to file
+ralph run --yolo                # Auto-approve all permissions
+ralph run --transport-log       # Log raw ACP transport messages
 ```
 
 ## Loop Prompt Example
