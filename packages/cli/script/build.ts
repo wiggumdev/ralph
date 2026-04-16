@@ -125,18 +125,20 @@ for (const item of targets) {
   console.log(`building ${name}`);
   await $`mkdir -p dist/${dirName}/bin`;
 
+  const binaryName = item.os === "win32" ? `${baseName}.exe` : baseName;
   const result = await Bun.build({
     target: "bun",
     tsconfig: "./tsconfig.json",
     plugins: [solidPlugin],
-    sourcemap: "external",
+    sourcemap: "none",
     compile: {
       autoloadBunfig: false,
       autoloadDotenv: false,
+      // @ts-expect-error (bun types aren't up to date)
       autoloadTsconfig: true,
       autoloadPackageJson: true,
       target: dirName.replace(baseName, "bun") as any,
-      outfile: `dist/${dirName}/bin/ralph`,
+      outfile: `dist/${dirName}/bin/${binaryName}`,
       windows: {},
     },
     entrypoints: ["./src/index.ts"],
