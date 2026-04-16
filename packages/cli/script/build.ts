@@ -127,7 +127,6 @@ for (const item of targets) {
 
   const binaryName = item.os === "win32" ? `${baseName}.exe` : baseName;
   const result = await Bun.build({
-    conditions: ["browser"],
     tsconfig: "./tsconfig.json",
     plugins: [solidPlugin],
     sourcemap: "external",
