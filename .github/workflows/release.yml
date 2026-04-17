@@ -318,14 +318,25 @@ jobs:
 
       - name: Publish packages
         run: |
-          sed -i '/_authToken=/d' "$NPM_CONFIG_USERCONFIG"
           TAG="${{ steps.npm_tag.outputs.tag }}"
           echo "Publishing with tag: $TAG"
+
+          ID_TOKEN=$(curl -sSf "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=npm:registry.npmjs.org" \
+            -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" | jq -r .value)
+
           for pkg in npm-packages/*.tgz; do
-            if [ -f "$pkg" ]; then
-              echo "Publishing $pkg..."
-              npm publish "./$pkg" --access public --tag "$TAG" --provenance
-            fi
+            [ -f "$pkg" ] || continue
+            pkg_name=$(tar -xzOf "$pkg" package/package.json | jq -r .name)
+            echo "Publishing $pkg_name ($pkg)..."
+
+            enc_name=$(printf '%s' "$pkg_name" | jq -sRr @uri)
+            npm_token=$(curl -sSf -X POST \
+              "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/${enc_name}" \
+              -H "Authorization: Bearer ${ID_TOKEN}" | jq -r .token)
+
+            echo "//registry.npmjs.org/:_authToken=${npm_token}" > "$NPM_CONFIG_USERCONFIG"
+
+            npm publish "./$pkg" --access public --tag "$TAG" --provenance
           done
 
   publish-docker:
