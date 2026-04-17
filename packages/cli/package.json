@@ -1,6 +1,6 @@
 {
   "name": "@wiggumdev/ralph",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "module": "src/index.ts",
   "type": "module",
   "private": false,
