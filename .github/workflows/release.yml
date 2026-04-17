@@ -330,9 +330,18 @@ jobs:
             echo "Publishing $pkg_name ($pkg)..."
 
             enc_name=$(printf '%s' "$pkg_name" | jq -sRr @uri)
-            npm_token=$(curl -sSf -X POST \
+            exchange_body=$(mktemp)
+            exchange_code=$(curl -sS -o "$exchange_body" -w '%{http_code}' -X POST \
               "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/${enc_name}" \
-              -H "Authorization: Bearer ${ID_TOKEN}" | jq -r .token)
+              -H "Authorization: Bearer ${ID_TOKEN}")
+            if [ "$exchange_code" != "200" ]; then
+              echo "OIDC exchange failed (HTTP $exchange_code) for $pkg_name:"
+              cat "$exchange_body"
+              echo ""
+              echo "Verify trusted publisher config at https://www.npmjs.com/package/${pkg_name}/access"
+              exit 1
+            fi
+            npm_token=$(jq -r .token < "$exchange_body")
 
             echo "//registry.npmjs.org/:_authToken=${npm_token}" > "$NPM_CONFIG_USERCONFIG"
 
