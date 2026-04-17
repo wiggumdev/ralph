@@ -317,7 +317,14 @@ jobs:
           fi
 
       - name: Publish packages
+        env:
+          NODE_AUTH_TOKEN: ""
         run: |
+          echo "=== diagnostic ==="
+          echo "npm: $(npm --version)"
+          echo "oidc-env: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && echo yes || echo no)"
+          cat "$NPM_CONFIG_USERCONFIG" 2>/dev/null | sed 's/_authToken=.*/_authToken=REDACTED/'
+          echo "=================="
           TAG="${{ steps.npm_tag.outputs.tag }}"
           echo "Publishing with tag: $TAG"
           for pkg in npm-packages/*.tgz; do
