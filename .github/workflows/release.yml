@@ -323,7 +323,7 @@ jobs:
           for pkg in npm-packages/*.tgz; do
             if [ -f "$pkg" ]; then
               echo "Publishing $pkg..."
-              npm publish "$pkg" --access public --tag "$TAG" --provenance
+              npm publish "./$pkg" --access public --tag "$TAG" --provenance
             fi
           done
 
