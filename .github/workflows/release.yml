@@ -30,7 +30,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  BUN_VERSION: "1.2.17"
+  BUN_VERSION: "1.3.7"
 
 jobs:
   # ─── Phase 1: Auto-version ────────────────────────────────────────────────────
