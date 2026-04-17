@@ -337,7 +337,7 @@ jobs:
             exchange_code=$(curl -sS -o "$exchange_body" -w '%{http_code}' -X POST \
               "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/${enc_name}" \
               -H "Authorization: Bearer ${ID_TOKEN}")
-            if [ "$exchange_code" != "200" ]; then
+            if [ "${exchange_code:0:1}" != "2" ]; then
               echo "OIDC exchange failed (HTTP $exchange_code) for $pkg_name:"
               cat "$exchange_body"
               echo ""
