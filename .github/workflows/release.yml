@@ -316,6 +316,9 @@ jobs:
             echo "tag=latest" >> $GITHUB_OUTPUT
           fi
 
+      # OIDC trusted publisher flow: each package needs a trusted publisher
+      # entry on npmjs.com pointing at wiggumdev/ralph + release.yml. We exchange
+      # the GitHub OIDC id_token for a scoped, short-lived npm token per package.
       - name: Publish packages
         run: |
           TAG="${{ steps.npm_tag.outputs.tag }}"
