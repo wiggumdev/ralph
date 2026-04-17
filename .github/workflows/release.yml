@@ -326,8 +326,6 @@ jobs:
               npm publish "$pkg" --access public --tag "$TAG" --provenance
             fi
           done
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   publish-docker:
     name: Publish Docker Image
