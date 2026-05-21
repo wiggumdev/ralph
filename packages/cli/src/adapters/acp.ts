@@ -77,6 +77,7 @@ export abstract class AcpAdapter {
   private currentOptions?: AcpAdapterOptions;
   private readonly permissionCache = new Map<string, string>();
   private readonly toolNameCache = new Map<string, string>();
+  private cleanupPromise?: Promise<void>;
 
   /**
    * Check if the adapter command is available.
@@ -101,6 +102,14 @@ export abstract class AcpAdapter {
   ): Promise<void> {
     this.handler = handler;
     this.currentOptions = options;
+
+    // Wait for any cleanup from a previous run to finish before spawning a
+    // new subprocess/connection. Without this, a late cleanup() from the
+    // prior iteration can null out this.connection mid-run, causing
+    // "undefined is not an object (evaluating 'this.connection.newSession')".
+    if (this.cleanupPromise) {
+      await this.cleanupPromise;
+    }
 
     try {
       // Spawn the ACP subprocess
@@ -375,6 +384,16 @@ export abstract class AcpAdapter {
   }
 
   private async cleanup(): Promise<void> {
+    if (this.cleanupPromise) {
+      return this.cleanupPromise;
+    }
+    this.cleanupPromise = this.doCleanup().finally(() => {
+      this.cleanupPromise = undefined;
+    });
+    return this.cleanupPromise;
+  }
+
+  private async doCleanup(): Promise<void> {
     if (this.process) {
       this.process.kill();
       await this.process.exited;
