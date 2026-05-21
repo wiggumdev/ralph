@@ -40,6 +40,18 @@ describe("AdapterType", () => {
   });
 
   /**
+   * Tests that 'copilot' is a valid adapter type.
+   * Copilot uses `copilot --acp` to speak the Agent Client Protocol.
+   */
+  test("accepts 'copilot' as valid adapter", () => {
+    const result = AdapterType.safeParse("copilot");
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toBe("copilot");
+    }
+  });
+
+  /**
    * Tests that unknown adapter types are rejected.
    * This prevents typos and invalid configurations from causing issues.
    */

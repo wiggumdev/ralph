@@ -26,6 +26,8 @@ const initSource = readFileSync(INIT_SOURCE_PATH, "utf-8");
 // Regex patterns for source code validation (defined at top level for performance)
 const CHOICE_3_PATTERN = /choice\s*===\s*["']3["']/;
 const RETURN_GEMINI_PATTERN = /return\s*["']gemini["']/;
+const CHOICE_4_PATTERN = /choice\s*===\s*["']4["']/;
+const RETURN_COPILOT_PATTERN = /return\s*["']copilot["']/;
 
 describe("init command", () => {
   describe("command metadata", () => {
@@ -90,16 +92,27 @@ describe("init command", () => {
       expect(initSource).toContain("3. gemini");
     });
 
-    test("selectAdapter lists all three adapters", () => {
+    test("selectAdapter includes copilot option", () => {
+      expect(initSource).toContain("copilot");
+      expect(initSource).toContain("4. copilot");
+    });
+
+    test("selectAdapter lists all four adapters", () => {
       expect(initSource).toContain("claude (Claude Code CLI)");
       expect(initSource).toContain("opencode (OpenCode CLI)");
       expect(initSource).toContain("gemini (Gemini CLI)");
+      expect(initSource).toContain("copilot (GitHub Copilot CLI)");
     });
 
     test("selectAdapter returns gemini for choice 3", () => {
       // Verify the choice mapping logic exists in source
       expect(initSource).toMatch(CHOICE_3_PATTERN);
       expect(initSource).toMatch(RETURN_GEMINI_PATTERN);
+    });
+
+    test("selectAdapter returns copilot for choice 4", () => {
+      expect(initSource).toMatch(CHOICE_4_PATTERN);
+      expect(initSource).toMatch(RETURN_COPILOT_PATTERN);
     });
   });
 });

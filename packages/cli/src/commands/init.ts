@@ -75,6 +75,7 @@ async function selectAdapter(): Promise<AdapterType> {
   console.log("  1. claude (Claude Code CLI)");
   console.log("  2. opencode (OpenCode CLI)");
   console.log("  3. gemini (Gemini CLI)");
+  console.log("  4. copilot (GitHub Copilot CLI)");
 
   const choice = await prompt("Choice", "1");
   if (choice === "2") {
@@ -82,6 +83,9 @@ async function selectAdapter(): Promise<AdapterType> {
   }
   if (choice === "3") {
     return "gemini";
+  }
+  if (choice === "4") {
+    return "copilot";
   }
   return "claude";
 }

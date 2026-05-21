@@ -33,10 +33,10 @@ ralph is designed to be simple, composable, and tool-agnostic. This document exp
 ┌─────────────────────────────────────────────────────────────────┐
 │                     AI Tool (External)                          │
 │                                                                  │
-│         ┌────────┐   ┌────────┐   ┌────────┐                   │
-│         │ Claude │   │OpenCode│   │ Gemini │                   │
-│         │  Code  │   │        │   │  (dev) │                   │
-│         └────────┘   └────────┘   └────────┘                   │
+│         ┌────────┐   ┌────────┐   ┌────────┐   ┌────────┐     │
+│         │ Claude │   │OpenCode│   │ Gemini │   │Copilot │     │
+│         │  Code  │   │        │   │  (dev) │   │        │     │
+│         └────────┘   └────────┘   └────────┘   └────────┘     │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -105,6 +105,7 @@ Each supported tool has an adapter:
 - `ClaudeAdapter` — for Claude Code
 - `OpenCodeAdapter` — for OpenCode
 - `GeminiAdapter` — for Gemini (under development)
+- `CopilotAdapter` — for GitHub Copilot CLI (`copilot --acp`)
 
 ### Completion Checker
 

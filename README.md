@@ -49,6 +49,9 @@ npm install -g @anthropic-ai/claude-code
 
 # Or OpenCode
 npm i -g opencode-ai
+
+# Or GitHub Copilot CLI
+npm install -g @github/copilot
 ```
 
 ### Supported Adapters
@@ -58,6 +61,7 @@ npm i -g opencode-ai
 | Claude Code | Complete | `claude-code-acp` |
 | OpenCode | Complete | `opencode acp` |
 | Gemini CLI | Under Development | `gemini --experimental-acp` |
+| GitHub Copilot CLI | Complete | `copilot --acp` |
 
 All adapters communicate via ACP (Agent Client Protocol).
 
