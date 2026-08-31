@@ -64,6 +64,13 @@ export abstract class AcpAdapter {
   abstract readonly args: string[];
 
   /**
+   * Binary names to accept when `command` is missing from PATH, in order of
+   * preference. Lets an adapter keep working for users who still have an
+   * older, renamed agent installed.
+   */
+  readonly fallbackCommands: readonly string[] = [];
+
+  /**
    * How to install the ACP binary this adapter spawns.
    * Shown when `command` is missing from PATH.
    */
@@ -86,13 +93,47 @@ export abstract class AcpAdapter {
   private readonly permissionCache = new Map<string, string>();
   private readonly toolNameCache = new Map<string, string>();
   private cleanupPromise?: Promise<void>;
+  private resolvedCommand?: string;
 
   /**
-   * Check if the adapter command is available.
+   * Check if the adapter command (or one of its fallbacks) is available.
    */
   async isAvailable(): Promise<boolean> {
+    return (await this.resolveCommand()) !== null;
+  }
+
+  /**
+   * Find the first candidate binary present on PATH, preferring `command`.
+   * Returns null when none of them are installed.
+   */
+  private async resolveCommand(): Promise<string | null> {
+    if (this.resolvedCommand) {
+      return this.resolvedCommand;
+    }
+
+    for (const candidate of [this.command, ...this.fallbackCommands]) {
+      if (await AcpAdapter.commandExists(candidate)) {
+        if (candidate !== this.command) {
+          log.warn("fallback_command", {
+            using: candidate,
+            preferred: this.command,
+            installHint: this.installHint,
+          });
+        }
+        this.resolvedCommand = candidate;
+        return candidate;
+      }
+    }
+
+    return null;
+  }
+
+  private static async commandExists(command: string): Promise<boolean> {
     try {
-      const which = spawn(["which", this.command], { stdout: "pipe" });
+      const which = spawn(["which", command], {
+        stdout: "pipe",
+        stderr: "pipe",
+      });
       await which.exited;
       return which.exitCode === 0;
     } catch {
@@ -120,8 +161,10 @@ export abstract class AcpAdapter {
     }
 
     try {
-      // Spawn the ACP subprocess
-      this.process = spawn([this.command, ...this.args], {
+      // Spawn the ACP subprocess, preferring the adapter's primary binary but
+      // accepting a fallback name when only an older agent is installed.
+      const command = (await this.resolveCommand()) ?? this.command;
+      this.process = spawn([command, ...this.args], {
         cwd: options.cwd,
         stdin: "pipe",
         stdout: "pipe",

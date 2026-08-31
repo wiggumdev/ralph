@@ -2,17 +2,21 @@ import { AcpAdapter, type ResumeCommand } from "./acp";
 
 /**
  * Claude Code ACP adapter.
- * Uses @zed-industries/claude-code-acp for communication.
+ * Uses @agentclientprotocol/claude-agent-acp for communication.
  */
 
 export class ClaudeAcpAdapter extends AcpAdapter {
   readonly name = "claude";
-  readonly command = "claude-code-acp";
+  readonly command = "claude-agent-acp";
   readonly args: string[] = [];
-  // Note: the unscoped `claude-code-acp` package on npm is a different
-  // project and installs a `cc-acp` binary, so name the scoped one.
+  // `claude-code-acp` is the binary from @zed-industries/claude-code-acp,
+  // which was renamed to @agentclientprotocol/claude-agent-acp and is now
+  // deprecated. Keep accepting it so existing installs keep working.
+  override readonly fallbackCommands = ["claude-code-acp"];
+  // Note: the unscoped `claude-code-acp` package on npm is an unrelated
+  // project that installs a `cc-acp` binary, so name the scoped one.
   override readonly installHint =
-    "npm install -g @zed-industries/claude-code-acp";
+    "npm install -g @agentclientprotocol/claude-agent-acp";
 
   getResumeCommand(sessionId: string): ResumeCommand {
     return { command: "claude", args: ["--resume", sessionId] };

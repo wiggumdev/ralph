@@ -59,16 +59,20 @@ ACP (Agent Client Protocol), so the ACP binary has to be on your `PATH`:
 
 | Adapter | ACP command | Install |
 |---------|-------------|---------|
-| Claude Code | `claude-code-acp` | `npm install -g @anthropic-ai/claude-code @zed-industries/claude-code-acp` |
+| Claude Code | `claude-agent-acp` | `npm install -g @anthropic-ai/claude-code @agentclientprotocol/claude-agent-acp` |
 | OpenCode | `opencode acp` | `npm install -g opencode-ai` |
 | Gemini CLI (experimental) | `gemini --experimental-acp` | `npm install -g @google/gemini-cli` |
 | GitHub Copilot CLI | `copilot --acp` | `npm install -g @github/copilot` |
 
 <Aside type="caution">
-For Claude Code, install the **scoped** `@zed-industries/claude-code-acp`
-package. The unscoped `claude-code-acp` package on npm is an unrelated project
-that installs a `cc-acp` binary; symlinking it to `claude-code-acp` produces an
-agent that does not implement the full protocol.
+`@agentclientprotocol/claude-agent-acp` is the maintained Claude Code agent. It
+supersedes `@zed-industries/claude-code-acp`, which is deprecated; ralph still
+falls back to that package's `claude-code-acp` binary if that is what you have
+installed, but new installs should use the maintained one.
+
+The **unscoped** `claude-code-acp` package on npm is an unrelated third-party
+project that installs a `cc-acp` binary. It is not supported — symlinking it to
+`claude-code-acp` produces an agent that does not implement the full protocol.
 </Aside>
 
 ## Configuration
@@ -157,7 +161,7 @@ export PATH="$PATH:$(npm config get prefix)/bin"
 ralph spawns the ACP binary, not the plain CLI, so check that one:
 
 ```bash
-which claude-code-acp  # or: which opencode, which gemini, which copilot
+which claude-agent-acp  # or: which opencode, which gemini, which copilot
 ```
 
 If it is missing, install the package listed in

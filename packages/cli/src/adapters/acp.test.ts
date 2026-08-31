@@ -151,6 +151,46 @@ describe("AcpAdapter session modes", () => {
   });
 });
 
+describe("AcpAdapter command resolution", () => {
+  class ResolvingAdapter extends AcpAdapter {
+    readonly name = "resolving";
+    readonly command: string;
+    readonly args: string[] = [];
+
+    constructor(command: string, fallbacks: string[]) {
+      super();
+      this.command = command;
+      this.fallbackCommands = fallbacks;
+    }
+
+    override readonly fallbackCommands: readonly string[];
+
+    getResumeCommand(): ResumeCommand | null {
+      return null;
+    }
+  }
+
+  test("reports available when the primary command exists", async () => {
+    const adapter = new ResolvingAdapter("sh", ["definitely-not-installed"]);
+
+    expect(await adapter.isAvailable()).toBe(true);
+  });
+
+  test("falls back to a renamed binary that is still installed", async () => {
+    const adapter = new ResolvingAdapter("definitely-not-installed", ["sh"]);
+
+    expect(await adapter.isAvailable()).toBe(true);
+  });
+
+  test("reports unavailable when no candidate is installed", async () => {
+    const adapter = new ResolvingAdapter("definitely-not-installed", [
+      "also-not-installed",
+    ]);
+
+    expect(await adapter.isAvailable()).toBe(false);
+  });
+});
+
 describe("AcpAdapter transport robustness", () => {
   test("ignores non-object JSON lines from the agent", async () => {
     const adapter = new FakeAcpAdapter({ noise: true });

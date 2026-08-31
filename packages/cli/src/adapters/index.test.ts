@@ -18,7 +18,9 @@ describe("getAdapter factory", () => {
 
       expect(adapter).toBeInstanceOf(ClaudeAcpAdapter);
       expect(adapter.name).toBe("claude");
-      expect(adapter.command).toBe("claude-code-acp");
+      expect(adapter.command).toBe("claude-agent-acp");
+      // The renamed, deprecated binary stays usable for existing installs.
+      expect(adapter.fallbackCommands).toEqual(["claude-code-acp"]);
     });
 
     test("returns OpenCodeAcpAdapter for 'opencode' type", () => {
