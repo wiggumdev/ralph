@@ -14,7 +14,7 @@ ralph is distributed as an npm package and works on macOS, Linux, and Windows (v
 Before installing ralph, ensure you have:
 
 - **Node.js 18+** — ralph uses modern JavaScript features
-- **An AI CLI tool** — Claude Code or OpenCode currently supported.
+- **An AI CLI tool** — Claude Code, OpenCode, Gemini CLI, or GitHub Copilot CLI currently supported.
 - **VCS** — For state persistence between iterations use git, jj or your preferred version control system.
 
 <Aside type="note">
@@ -142,7 +142,7 @@ export PATH="$PATH:$(npm config get prefix)/bin"
 Make sure your AI tool is installed and accessible:
 
 ```bash
-which claude  # or: which opencode
+which claude  # or: which opencode, which gemini, which copilot
 ```
 
 ### Permission errors

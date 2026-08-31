@@ -6,6 +6,7 @@
 
 import { describe, expect, test } from "bun:test";
 import { ClaudeAcpAdapter } from "./claude";
+import { CopilotAcpAdapter } from "./copilot";
 import { GeminiAcpAdapter } from "./gemini";
 import { getAdapter } from "./index";
 import { OpenCodeAcpAdapter } from "./opencode";
@@ -34,6 +35,15 @@ describe("getAdapter factory", () => {
       expect(adapter).toBeInstanceOf(GeminiAcpAdapter);
       expect(adapter.name).toBe("gemini");
       expect(adapter.command).toBe("gemini");
+    });
+
+    test("returns CopilotAcpAdapter for 'copilot' type", () => {
+      const adapter = getAdapter("copilot");
+
+      expect(adapter).toBeInstanceOf(CopilotAcpAdapter);
+      expect(adapter.name).toBe("copilot");
+      expect(adapter.command).toBe("copilot");
+      expect(adapter.args).toEqual(["--acp"]);
     });
   });
 
@@ -70,6 +80,27 @@ describe("getAdapter factory", () => {
       expect(typeof adapter.run).toBe("function");
       expect(typeof adapter.cancel).toBe("function");
     });
+
+    test("copilot adapter has required interface properties", () => {
+      const adapter = getAdapter("copilot");
+
+      expect(adapter).toHaveProperty("name");
+      expect(adapter).toHaveProperty("command");
+      expect(adapter).toHaveProperty("args");
+      expect(typeof adapter.isAvailable).toBe("function");
+      expect(typeof adapter.run).toBe("function");
+      expect(typeof adapter.cancel).toBe("function");
+    });
+
+    test("copilot adapter returns equals-form resume command", () => {
+      const adapter = getAdapter("copilot");
+      const resume = adapter.getResumeCommand("abc123");
+
+      expect(resume).toEqual({
+        command: "copilot",
+        args: ["--resume=abc123"],
+      });
+    });
   });
 
   describe("error handling", () => {
@@ -101,10 +132,14 @@ describe("getAdapter factory", () => {
       const claude = getAdapter("claude");
       const opencode = getAdapter("opencode");
       const gemini = getAdapter("gemini");
+      const copilot = getAdapter("copilot");
 
       expect(claude.constructor).not.toBe(opencode.constructor);
       expect(claude.constructor).not.toBe(gemini.constructor);
+      expect(claude.constructor).not.toBe(copilot.constructor);
+      expect(gemini.constructor).not.toBe(copilot.constructor);
       expect(claude.name).not.toBe(opencode.name);
+      expect(claude.name).not.toBe(copilot.name);
     });
   });
 });

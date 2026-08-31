@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const AdapterType = z.enum(["claude", "gemini", "opencode"]);
+export const AdapterType = z.enum(["claude", "gemini", "opencode", "copilot"]);
 export type AdapterType = z.infer<typeof AdapterType>;
 
 export const HooksSchema = z.object({

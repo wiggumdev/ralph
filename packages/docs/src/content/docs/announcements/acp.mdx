@@ -11,13 +11,14 @@ Ralph's agent communication layer has been rebuilt around the **Agent Client Pro
 
 ## Expanded agent support
 
-Three adapters are available, all using ACP:
+Four adapters are available, all using ACP:
 
 | Adapter | Command |
 |---------|---------|
 | Claude Code | `claude-code-acp` |
 | OpenCode | `opencode acp` |
 | Gemini (experimental) | `gemini --experimental-acp` |
+| GitHub Copilot CLI | `copilot --acp` |
 
 Because adapters share a common protocol, adding support for new agents is now straightforward.
 
@@ -41,7 +42,7 @@ ralph run --yolo   # auto-approve all permissions
 
 ## Session continuity
 
-Each run now has a session ID. If a run is interrupted, Claude Code and OpenCode sessions can be resumed — either by ralph itself on the next iteration, or by opening the session directly in the native CLI tool from the TUI.
+Each run now has a session ID. If a run is interrupted, Claude Code, OpenCode, and GitHub Copilot CLI sessions can be resumed — either by ralph itself on the next iteration, or by opening the session directly in the native CLI tool from the TUI.
 
 ---
 
