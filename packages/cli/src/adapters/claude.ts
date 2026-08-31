@@ -9,6 +9,10 @@ export class ClaudeAcpAdapter extends AcpAdapter {
   readonly name = "claude";
   readonly command = "claude-code-acp";
   readonly args: string[] = [];
+  // Note: the unscoped `claude-code-acp` package on npm is a different
+  // project and installs a `cc-acp` binary, so name the scoped one.
+  override readonly installHint =
+    "npm install -g @zed-industries/claude-code-acp";
 
   getResumeCommand(sessionId: string): ResumeCommand {
     return { command: "claude", args: ["--resume", sessionId] };

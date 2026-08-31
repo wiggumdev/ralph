@@ -17,6 +17,7 @@ export class CopilotAcpAdapter extends AcpAdapter {
   readonly name = "copilot";
   readonly command = "copilot";
   readonly args = ["--acp"];
+  override readonly installHint = "npm install -g @github/copilot";
 
   getResumeCommand(sessionId: string): ResumeCommand {
     return { command: "copilot", args: [`--resume=${sessionId}`] };

@@ -54,7 +54,22 @@ ralph --version
 
 ## Install an AI Tool
 
-ralph needs an AI CLI tool to orchestrate. Here are the supported options:
+ralph needs an AI CLI tool to orchestrate. Each adapter talks to its agent over
+ACP (Agent Client Protocol), so the ACP binary has to be on your `PATH`:
+
+| Adapter | ACP command | Install |
+|---------|-------------|---------|
+| Claude Code | `claude-code-acp` | `npm install -g @anthropic-ai/claude-code @zed-industries/claude-code-acp` |
+| OpenCode | `opencode acp` | `npm install -g opencode-ai` |
+| Gemini CLI (experimental) | `gemini --experimental-acp` | `npm install -g @google/gemini-cli` |
+| GitHub Copilot CLI | `copilot --acp` | `npm install -g @github/copilot` |
+
+<Aside type="caution">
+For Claude Code, install the **scoped** `@zed-industries/claude-code-acp`
+package. The unscoped `claude-code-acp` package on npm is an unrelated project
+that installs a `cc-acp` binary; symlinking it to `claude-code-acp` produces an
+agent that does not implement the full protocol.
+</Aside>
 
 ## Configuration
 
@@ -139,11 +154,14 @@ export PATH="$PATH:$(npm config get prefix)/bin"
 
 ### "AI tool not found"
 
-Make sure your AI tool is installed and accessible:
+ralph spawns the ACP binary, not the plain CLI, so check that one:
 
 ```bash
-which claude  # or: which opencode, which gemini, which copilot
+which claude-code-acp  # or: which opencode, which gemini, which copilot
 ```
+
+If it is missing, install the package listed in
+[Install an AI Tool](#install-an-ai-tool) above.
 
 ### Permission errors
 

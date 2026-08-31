@@ -116,6 +116,9 @@ export const runCommand: CommandModule<object, RunArgs> = {
     if (!available) {
       console.error(`Error: ${adapter.command} not found`);
       console.error(`Make sure '${adapter.command}' is installed and in PATH`);
+      if (adapter.installHint) {
+        console.error(`Install it with: ${adapter.installHint}`);
+      }
       process.exit(1);
     }
 

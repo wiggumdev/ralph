@@ -45,7 +45,7 @@ You'll also need an AI CLI tool:
 
 ```bash
 # Claude Code (recommended)
-npm install -g @anthropic-ai/claude-code
+npm install -g @anthropic-ai/claude-code @zed-industries/claude-code-acp
 
 # Or OpenCode
 npm i -g opencode-ai
@@ -56,14 +56,18 @@ npm install -g @github/copilot
 
 ### Supported Adapters
 
-| Adapter | Status | ACP Command |
-|---------|--------|-------------|
-| Claude Code | Complete | `claude-code-acp` |
-| OpenCode | Complete | `opencode acp` |
-| Gemini CLI | Under Development | `gemini --experimental-acp` |
-| GitHub Copilot CLI | Complete | `copilot --acp` |
+| Adapter | Status | ACP Command | Install |
+|---------|--------|-------------|---------|
+| Claude Code | Complete | `claude-code-acp` | `@zed-industries/claude-code-acp` |
+| OpenCode | Complete | `opencode acp` | `opencode-ai` |
+| Gemini CLI | Under Development | `gemini --experimental-acp` | `@google/gemini-cli` |
+| GitHub Copilot CLI | Complete | `copilot --acp` | `@github/copilot` |
 
 All adapters communicate via ACP (Agent Client Protocol).
+
+> **Note:** for Claude Code, install the scoped `@zed-industries/claude-code-acp`
+> package. The unscoped `claude-code-acp` package on npm is an unrelated project
+> that installs a `cc-acp` binary.
 
 ## Quick Start
 
