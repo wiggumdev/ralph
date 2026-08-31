@@ -8,6 +8,7 @@ import {
   type PromptResponse,
   type RequestPermissionRequest,
   type RequestPermissionResponse,
+  type SessionModeState,
   type SessionNotification,
 } from "@agentclientprotocol/sdk";
 import { type Subprocess, spawn } from "bun";
@@ -17,6 +18,7 @@ import type {
   PermissionRequest,
   PermissionResponse,
 } from "#parsers/permission-types";
+import { filterNonObjectMessages } from "./acp/message-filter";
 import { mapUpdateToRichMessage } from "./acp/message-mapper";
 import {
   initTransportLog,
@@ -62,6 +64,19 @@ export abstract class AcpAdapter {
   abstract readonly args: string[];
 
   /**
+   * Binary names to accept when `command` is missing from PATH, in order of
+   * preference. Lets an adapter keep working for users who still have an
+   * older, renamed agent installed.
+   */
+  readonly fallbackCommands: readonly string[] = [];
+
+  /**
+   * How to install the ACP binary this adapter spawns.
+   * Shown when `command` is missing from PATH.
+   */
+  readonly installHint: string | null = null;
+
+  /**
    * Get the command to resume a session in the native CLI.
    * Returns null if the adapter doesn't support session resume.
    */
@@ -78,13 +93,47 @@ export abstract class AcpAdapter {
   private readonly permissionCache = new Map<string, string>();
   private readonly toolNameCache = new Map<string, string>();
   private cleanupPromise?: Promise<void>;
+  private resolvedCommand?: string;
 
   /**
-   * Check if the adapter command is available.
+   * Check if the adapter command (or one of its fallbacks) is available.
    */
   async isAvailable(): Promise<boolean> {
+    return (await this.resolveCommand()) !== null;
+  }
+
+  /**
+   * Find the first candidate binary present on PATH, preferring `command`.
+   * Returns null when none of them are installed.
+   */
+  private async resolveCommand(): Promise<string | null> {
+    if (this.resolvedCommand) {
+      return this.resolvedCommand;
+    }
+
+    for (const candidate of [this.command, ...this.fallbackCommands]) {
+      if (await AcpAdapter.commandExists(candidate)) {
+        if (candidate !== this.command) {
+          log.warn("fallback_command", {
+            using: candidate,
+            preferred: this.command,
+            installHint: this.installHint,
+          });
+        }
+        this.resolvedCommand = candidate;
+        return candidate;
+      }
+    }
+
+    return null;
+  }
+
+  private static async commandExists(command: string): Promise<boolean> {
     try {
-      const which = spawn(["which", this.command], { stdout: "pipe" });
+      const which = spawn(["which", command], {
+        stdout: "pipe",
+        stderr: "pipe",
+      });
       await which.exited;
       return which.exitCode === 0;
     } catch {
@@ -112,8 +161,10 @@ export abstract class AcpAdapter {
     }
 
     try {
-      // Spawn the ACP subprocess
-      this.process = spawn([this.command, ...this.args], {
+      // Spawn the ACP subprocess, preferring the adapter's primary binary but
+      // accepting a fallback name when only an older agent is installed.
+      const command = (await this.resolveCommand()) ?? this.command;
+      this.process = spawn([command, ...this.args], {
         cwd: options.cwd,
         stdin: "pipe",
         stdout: "pipe",
@@ -149,14 +200,19 @@ export abstract class AcpAdapter {
       // ndJsonStream(output, input) - output is writable, input is readable
       const stream = ndJsonStream(writableStream, readableStream);
 
+      // Discard non-object lines before they reach the SDK dispatcher
+      let finalStream = {
+        readable: filterNonObjectMessages(stream.readable),
+        writable: stream.writable,
+      };
+
       // Wrap streams for transport logging if enabled
-      let finalStream = stream;
       if (options.transportLog) {
         const logFile = initTransportLog(options.cwd ?? process.cwd());
         log.debug("transport_log_init", { logFile });
         finalStream = {
-          readable: wrapReadableWithLogging(stream.readable),
-          writable: wrapWritableWithLogging(stream.writable),
+          readable: wrapReadableWithLogging(finalStream.readable),
+          writable: wrapWritableWithLogging(finalStream.writable),
         };
       }
 
@@ -210,17 +266,7 @@ export abstract class AcpAdapter {
         });
       }
 
-      // Set preferred mode if different from current
-      const preferredMode = this.getPreferredModeId();
-      if (
-        preferredMode &&
-        sessionResponse.modes?.currentModeId !== preferredMode
-      ) {
-        await this.connection.setSessionMode({
-          sessionId: this.sessionId,
-          modeId: preferredMode,
-        });
-      }
+      await this.applyPreferredMode(sessionResponse.modes);
 
       // Send the prompt as ContentBlock array
       let promptResponse: PromptResponse;
@@ -373,6 +419,61 @@ export abstract class AcpAdapter {
    */
   protected getPreferredModeId(): string | null {
     return null;
+  }
+
+  /**
+   * Switch the session to the adapter's preferred mode.
+   *
+   * Session modes are optional in ACP: an agent only has to handle
+   * `session/set_mode` for the modes it advertised in `session/new`. Agents
+   * that advertise none (or a different set) answer with
+   * "Method 'session/set_mode' not found", which used to abort the iteration.
+   * The mode is a nicety, so a rejected or unsupported switch is logged and
+   * the run continues.
+   */
+  private async applyPreferredMode(
+    modes: SessionModeState | null | undefined
+  ): Promise<void> {
+    const preferredMode = this.getPreferredModeId();
+    if (!(preferredMode && this.connection && this.sessionId)) {
+      return;
+    }
+
+    if (!modes) {
+      log.debug("mode_skipped", {
+        reason: "agent advertises no session modes",
+        preferredMode,
+      });
+      return;
+    }
+
+    if (modes.currentModeId === preferredMode) {
+      return;
+    }
+
+    const isAvailable = modes.availableModes?.some(
+      (mode) => mode.id === preferredMode
+    );
+    if (!isAvailable) {
+      log.debug("mode_skipped", {
+        reason: "preferred mode not advertised",
+        preferredMode,
+        availableModes: modes.availableModes?.map((mode) => mode.id),
+      });
+      return;
+    }
+
+    try {
+      await this.connection.setSessionMode({
+        sessionId: this.sessionId,
+        modeId: preferredMode,
+      });
+    } catch (modeError) {
+      log.warn("mode_set_failed", {
+        preferredMode,
+        error: this.formatError(modeError),
+      });
+    }
   }
 
   /**

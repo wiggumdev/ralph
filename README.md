@@ -45,7 +45,7 @@ You'll also need an AI CLI tool:
 
 ```bash
 # Claude Code (recommended)
-npm install -g @anthropic-ai/claude-code
+npm install -g @anthropic-ai/claude-code @agentclientprotocol/claude-agent-acp
 
 # Or OpenCode
 npm i -g opencode-ai
@@ -56,14 +56,20 @@ npm install -g @github/copilot
 
 ### Supported Adapters
 
-| Adapter | Status | ACP Command |
-|---------|--------|-------------|
-| Claude Code | Complete | `claude-code-acp` |
-| OpenCode | Complete | `opencode acp` |
-| Gemini CLI | Under Development | `gemini --experimental-acp` |
-| GitHub Copilot CLI | Complete | `copilot --acp` |
+| Adapter | Status | ACP Command | Install |
+|---------|--------|-------------|---------|
+| Claude Code | Complete | `claude-agent-acp` | `@agentclientprotocol/claude-agent-acp` |
+| OpenCode | Complete | `opencode acp` | `opencode-ai` |
+| Gemini CLI | Under Development | `gemini --experimental-acp` | `@google/gemini-cli` |
+| GitHub Copilot CLI | Complete | `copilot --acp` | `@github/copilot` |
 
 All adapters communicate via ACP (Agent Client Protocol).
+
+> **Note:** `@agentclientprotocol/claude-agent-acp` is the maintained Claude
+> Code agent. It supersedes `@zed-industries/claude-code-acp`, which is
+> deprecated — ralph still accepts its `claude-code-acp` binary if that is what
+> you have installed. The unscoped `claude-code-acp` package on npm is an
+> unrelated third-party project that installs `cc-acp` and is not supported.
 
 ## Quick Start
 
